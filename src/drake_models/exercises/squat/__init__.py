@@ -1,0 +1,1 @@
+"""Back squat exercise model."""

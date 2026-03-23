@@ -1,0 +1,99 @@
+name: CI Standard
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
+      - ".github/**"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
+      - ".github/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11" }
+      - run: pip install ruff==0.14.10 mypy>=1.15.0 bandit==1.7.7
+
+      - name: Lint
+        run: ruff check src scripts tests
+
+      - name: Check Formatting (ruff)
+        run: ruff format --check src scripts tests
+
+      - run: pip install mypy types-PyYAML types-requests types-lxml
+      - run: pip install -e .[dev]
+      - run: mypy src --config-file pyproject.toml
+
+      - name: Verify No Placeholders
+        run: |
+          violations=$(
+            find . \( -path "./.git" -o -path "./.mypy_cache" -o -path "./.ruff_cache" -o -path "./__pycache__" -o -path "./scripts" \) -prune -o -type f -name "*.py" -print0 \
+              | xargs -0 grep -nE "TODO|FIXME" || true
+          )
+          if [ -n "$violations" ]; then
+            echo "$violations"
+            echo "::error::Placeholders found. Remove TODOs/FIXMEs or create tracked GitHub issues."
+            exit 1
+          fi
+
+      - name: Security Audit
+        run: |
+          pip install pip-audit
+          pip-audit || echo "::warning::Security audit found issues"
+
+      - name: Bandit Security Scan
+        run: |
+          bandit -r src/ -ll -ii --format txt 2>&1 || echo "::warning::Bandit found issues"
+
+  tests:
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        python: ["3.11"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install Dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run Test Suite
+        run: |
+          python3 -m pytest \
+            --timeout=60 \
+            --timeout-method=thread \
+            -m "not slow and not requires_drake" \
+            --cov=src \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-config=pyproject.toml \
+            --cov-fail-under=80 \
+            --tb=short \
+            -v

@@ -1,0 +1,1 @@
+"""Snatch exercise model."""

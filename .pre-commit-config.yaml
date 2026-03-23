@@ -1,0 +1,77 @@
+# =============================================================================
+# Pre-commit Configuration — Drake_Models
+# =============================================================================
+# Fast checks on every commit (<15 seconds)
+#
+# Installation:
+#   pip install pre-commit
+#   pre-commit install
+# =============================================================================
+
+repos:
+  # Ruff - Fast Python linter with auto-fix
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.10
+    hooks:
+      - id: ruff
+        name: "ruff (lint + fix)"
+        args: ["--fix", "--exit-non-zero-on-fix"]
+        types: [python]
+        exclude: ^(\.github/|docs/|.*\.md$)
+
+      - id: ruff-format
+        name: "ruff format"
+        types: [python]
+        exclude: ^(\.github/|docs/|.*\.md$)
+
+  - repo: local
+    hooks:
+      # Prevent wildcard imports
+      - id: no-wildcard-imports
+        name: "no wildcard imports"
+        entry: "from .* import \\*"
+        language: pygrep
+        types: [python]
+        exclude: ^(tests/|\.github/)
+
+      # Check for debug statements
+      - id: no-debug-statements
+        name: "no debug statements"
+        entry: "(?:^|\\s)(breakpoint\\(|import pdb|pdb\\.set_trace)"
+        language: pygrep
+        types: [python]
+        exclude: ^(tests/|\.github/)
+
+      # Check for print statements in src (should use logging)
+      - id: no-print-in-src
+        name: "no print() in src (use logging)"
+        entry: "^\\s*print\\("
+        language: pygrep
+        files: ^src/
+        exclude: ^(tests/|\.github/)
+
+  # Prettier - Format YAML, JSON, Markdown
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        name: "prettier (yaml/json/md)"
+        types_or: [yaml, markdown, json]
+        exclude: '(\.py|package-lock\.json|\.ipynb)$'
+
+default_language_version:
+  python: python3.11
+
+exclude: |
+  (?x)^(
+    \.git/|
+    __pycache__/|
+    \.mypy_cache/|
+    \.ruff_cache/|
+    \.pytest_cache/|
+    build/|
+    dist/|
+    .*\.egg-info/
+  )
+
+fail_fast: false

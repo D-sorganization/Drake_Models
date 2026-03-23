@@ -1,0 +1,1 @@
+"""Bench press exercise model."""

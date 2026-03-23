@@ -1,0 +1,81 @@
+"""Tests for back squat model builder."""
+
+import xml.etree.ElementTree as ET
+
+from drake_models.exercises.base import ExerciseConfig
+from drake_models.exercises.squat.squat_model import (
+    SquatModelBuilder,
+    build_squat_model,
+)
+from drake_models.shared.barbell import BarbellSpec
+from drake_models.shared.body import BodyModelSpec
+
+
+class TestSquatModelBuilder:
+    def test_exercise_name(self):
+        builder = SquatModelBuilder()
+        assert builder.exercise_name == "back_squat"
+
+    def test_build_returns_xml_string(self):
+        xml_str = build_squat_model()
+        assert isinstance(xml_str, str)
+        assert "<?xml" in xml_str
+
+    def test_valid_sdf(self):
+        xml_str = build_squat_model()
+        root = ET.fromstring(xml_str)
+        assert root.tag == "sdf"
+        assert root.get("version") == "1.8"
+
+    def test_model_name(self):
+        xml_str = build_squat_model()
+        root = ET.fromstring(xml_str)
+        model = root.find("model")
+        assert model.get("name") == "back_squat"
+
+    def test_has_barbell_to_torso_joint(self):
+        xml_str = build_squat_model()
+        root = ET.fromstring(xml_str)
+        joints = {j.get("name") for j in root.findall(".//joint")}
+        assert "barbell_to_torso" in joints
+
+    def test_barbell_to_torso_is_fixed(self):
+        xml_str = build_squat_model()
+        root = ET.fromstring(xml_str)
+        for j in root.findall(".//joint"):
+            if j.get("name") == "barbell_to_torso":
+                assert j.get("type") == "fixed"
+
+    def test_barbell_attached_to_torso(self):
+        xml_str = build_squat_model()
+        root = ET.fromstring(xml_str)
+        for j in root.findall(".//joint"):
+            if j.get("name") == "barbell_to_torso":
+                assert j.find("parent").text == "torso"
+                assert j.find("child").text == "barbell_shaft"
+
+    def test_custom_config(self):
+        config = ExerciseConfig(
+            body_spec=BodyModelSpec(total_mass=100.0, height=1.90),
+            barbell_spec=BarbellSpec.mens_olympic(plate_mass_per_side=80.0),
+        )
+        builder = SquatModelBuilder(config)
+        xml_str = builder.build()
+        root = ET.fromstring(xml_str)
+        assert root.find(".//model").get("name") == "back_squat"
+
+    def test_has_gravity(self):
+        xml_str = build_squat_model()
+        root = ET.fromstring(xml_str)
+        gravity = root.find(".//gravity")
+        assert gravity is not None
+        assert "-9.806650" in gravity.text
+
+    def test_z_up_gravity(self):
+        xml_str = build_squat_model()
+        root = ET.fromstring(xml_str)
+        gravity = root.find(".//gravity")
+        parts = gravity.text.strip().split()
+        assert parts[0] == "0.000000"
+        assert parts[1] == "0.000000"
+        assert "-9.806650" in parts[2]
