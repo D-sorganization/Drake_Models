@@ -13,10 +13,17 @@ Biomechanical notes:
 
 from __future__ import annotations
 
+import logging
 import xml.etree.ElementTree as ET
 
 from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
 from drake_models.shared.utils.sdf_helpers import add_fixed_joint
+
+logger = logging.getLogger(__name__)
+
+# Initial joint angles for the unrack position (radians).
+SQUAT_INITIAL_HIP_ANGLE = 0.0873  # ~5 degrees flexion
+SQUAT_INITIAL_KNEE_ANGLE = -0.0873  # ~5 degrees flexion
 
 
 class SquatModelBuilder(ExerciseModelBuilder):
@@ -45,6 +52,11 @@ class SquatModelBuilder(ExerciseModelBuilder):
         Precondition: 'torso' exists in body_links.
         Precondition: 'barbell_shaft' exists in barbell_links.
         """
+        if "torso" not in body_links:
+            raise ValueError("Body model missing required 'torso' link")
+        if "barbell_shaft" not in barbell_links:
+            raise ValueError("Barbell model missing required 'barbell_shaft' link")
+
         torso_len = self.config.body_spec.height * 0.288
         trap_height = torso_len - 0.03
 
@@ -55,9 +67,26 @@ class SquatModelBuilder(ExerciseModelBuilder):
             child="barbell_shaft",
             pose=(0, -0.02, trap_height, 0, 0, 0),
         )
+        logger.debug("Attached barbell to torso at trap height %.3f m", trap_height)
 
     def set_initial_pose(self, model: ET.Element) -> None:
-        """Set standing unrack position: slight hip/knee flexion."""
+        """Set standing unrack position: slight hip/knee flexion.
+
+        Hip flexion ~5 degrees, knee flexion ~5 degrees for a natural
+        standing position after unracking the bar.
+        """
+        initial_pose = ET.SubElement(model, "initial_pose")
+        initial_pose.set("name", "unrack")
+        joints = {
+            "hip_l": SQUAT_INITIAL_HIP_ANGLE,
+            "hip_r": SQUAT_INITIAL_HIP_ANGLE,
+            "knee_l": SQUAT_INITIAL_KNEE_ANGLE,
+            "knee_r": SQUAT_INITIAL_KNEE_ANGLE,
+        }
+        for joint_name, angle in joints.items():
+            joint_el = ET.SubElement(initial_pose, "joint")
+            joint_el.set("name", joint_name)
+            joint_el.text = f"{angle:.6f}"
 
 
 def build_squat_model(

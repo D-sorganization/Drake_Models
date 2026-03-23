@@ -11,6 +11,7 @@ through their public APIs, never reaching into internal segment tables.
 
 from __future__ import annotations
 
+import logging
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -19,6 +20,8 @@ from drake_models.shared.barbell import BarbellSpec, create_barbell_links
 from drake_models.shared.body import BodyModelSpec, create_full_body
 from drake_models.shared.contracts.postconditions import ensure_valid_xml
 from drake_models.shared.utils.sdf_helpers import serialize_model, vec3_str
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -65,6 +68,7 @@ class ExerciseModelBuilder(ABC):
 
         Postcondition: returned string is well-formed XML.
         """
+        logger.info("Building exercise model: %s", self.exercise_name)
         root = ET.Element("sdf", version="1.8")
         model = ET.SubElement(root, "model", name=self.exercise_name)
 

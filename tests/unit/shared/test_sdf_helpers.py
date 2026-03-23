@@ -9,7 +9,6 @@ from drake_models.shared.utils.sdf_helpers import (
     add_floating_joint,
     add_link,
     add_revolute_joint,
-    indent_xml,
     make_box_geometry,
     make_cylinder_geometry,
     make_sphere_geometry,
@@ -295,23 +294,6 @@ class TestAddFixedJoint:
         )
         assert joint.find("parent").text == "a"
         assert joint.find("child").text == "b"
-
-
-class TestIndentXml:
-    def test_adds_whitespace(self):
-        root = ET.Element("root")
-        ET.SubElement(root, "child")
-        indent_xml(root)
-        xml_str = ET.tostring(root, encoding="unicode")
-        assert "\n" in xml_str
-
-    def test_nested_indentation(self):
-        root = ET.Element("root")
-        child = ET.SubElement(root, "child")
-        ET.SubElement(child, "grandchild")
-        indent_xml(root)
-        xml_str = ET.tostring(root, encoding="unicode")
-        assert "    " in xml_str
 
 
 class TestSerializeModel:

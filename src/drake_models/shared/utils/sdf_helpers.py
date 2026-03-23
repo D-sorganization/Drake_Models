@@ -8,7 +8,10 @@ Drake uses SDFormat 1.8 with Z-up convention.
 
 from __future__ import annotations
 
+import logging
 import xml.etree.ElementTree as ET
+
+logger = logging.getLogger(__name__)
 
 
 def vec3_str(x: float, y: float, z: float) -> str:
@@ -155,26 +158,7 @@ def add_fixed_joint(
     return joint
 
 
-def indent_xml(elem: ET.Element, level: int = 0) -> None:
-    """Add whitespace indentation to an ElementTree in-place."""
-    indent = "\n" + "  " * level
-    if len(elem):
-        if not elem.text or not elem.text.strip():
-            elem.text = indent + "  "
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = indent
-        for child in elem:
-            indent_xml(child, level + 1)
-        if not child.tail or not child.tail.strip():
-            child.tail = indent
-    else:
-        if level and (not elem.tail or not elem.tail.strip()):
-            elem.tail = indent
-    if level == 0:
-        elem.tail = "\n"
-
-
 def serialize_model(root: ET.Element) -> str:
     """Serialize an SDF model ElementTree to a formatted XML string."""
-    indent_xml(root)
+    ET.indent(root, space="  ")
     return ET.tostring(root, encoding="unicode", xml_declaration=True)
