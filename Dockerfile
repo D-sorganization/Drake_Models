@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1-mesa-dev libosmesa6-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir \
-    drake numpy scipy lxml meshcat \
+    drake numpy \
     pytest pytest-cov pytest-xdist pytest-timeout pytest-mock \
     ruff mypy hypothesis
 

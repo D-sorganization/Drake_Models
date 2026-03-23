@@ -16,6 +16,7 @@ internal geometry details remain encapsulated.
 
 from __future__ import annotations
 
+import logging
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
@@ -29,6 +30,8 @@ from drake_models.shared.utils.sdf_helpers import (
     add_link,
     make_cylinder_geometry,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -120,6 +123,12 @@ def create_barbell_links(
     symmetrically along the Y-axis (left = -Y, right = +Y) in the
     Drake Z-up convention.
     """
+    logger.info(
+        "Building barbell: total_mass=%.1f kg, length=%.2f m",
+        spec.total_mass,
+        spec.total_length,
+    )
+
     shaft_inertia = cylinder_inertia(
         spec.shaft_mass, spec.shaft_radius, spec.shaft_length
     )

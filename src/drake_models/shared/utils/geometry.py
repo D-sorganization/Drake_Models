@@ -8,6 +8,7 @@ Drake uses Z-up convention: vertical axis is Z, forward is X.
 
 from __future__ import annotations
 
+import logging
 import math
 
 import numpy as np
@@ -18,6 +19,8 @@ from drake_models.shared.contracts.postconditions import (
 from drake_models.shared.contracts.preconditions import (
     require_positive,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def cylinder_inertia(

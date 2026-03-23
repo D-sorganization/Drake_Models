@@ -5,12 +5,12 @@ floor to overhead in one movement. The lifter uses a wide (snatch) grip,
 pulls the bar explosively, then drops under it into an overhead squat.
 
 Phases:
-1. First pull — bar leaves the floor (deadlift-like, wide grip)
-2. Transition / scoop — knees re-bend, torso becomes more vertical
-3. Second pull — explosive triple extension (ankle, knee, hip)
-4. Turnover — lifter pulls under the bar, rotating arms overhead
-5. Catch — overhead squat position (deep squat, arms locked overhead)
-6. Recovery — stand up from overhead squat to full extension
+1. First pull -- bar leaves the floor (deadlift-like, wide grip)
+2. Transition / scoop -- knees re-bend, torso becomes more vertical
+3. Second pull -- explosive triple extension (ankle, knee, hip)
+4. Turnover -- lifter pulls under the bar, rotating arms overhead
+5. Catch -- overhead squat position (deep squat, arms locked overhead)
+6. Recovery -- stand up from overhead squat to full extension
 
 Biomechanical notes:
 - Grip width: ~1.5x shoulder width (approx 0.55-0.65 m from center)
@@ -18,15 +18,23 @@ Biomechanical notes:
 - Requires extreme shoulder mobility for overhead position
 - Bar path is close to the body (S-curve trajectory)
 
-The barbell is welded to the left hand with a wide grip offset.
+The barbell is welded to both hands with a wide grip offset.
 """
 
 from __future__ import annotations
 
+import logging
 import xml.etree.ElementTree as ET
 
 from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
 from drake_models.shared.utils.sdf_helpers import add_fixed_joint
+
+logger = logging.getLogger(__name__)
+
+# Initial joint angles for the first-pull setup position (radians).
+SNATCH_INITIAL_HIP_ANGLE = 1.0472  # ~60 degrees hip flexion
+SNATCH_INITIAL_KNEE_ANGLE = -1.0472  # ~60 degrees knee flexion
+SNATCH_INITIAL_SHOULDER_ANGLE = 0.5236  # ~30 degrees shoulder flexion
 
 
 class SnatchModelBuilder(ExerciseModelBuilder):
@@ -45,11 +53,18 @@ class SnatchModelBuilder(ExerciseModelBuilder):
         body_links: dict[str, ET.Element],
         barbell_links: dict[str, ET.Element],
     ) -> None:
-        """Weld barbell to left hand with wide (snatch) grip.
+        """Weld barbell to both hands with wide (snatch) grip.
 
         Snatch grip is approximately 0.55-0.60 m from shaft center
         on each side (~1.5x shoulder width).
         """
+        if "hand_l" not in body_links:
+            raise ValueError("Body model missing required 'hand_l' link")
+        if "hand_r" not in body_links:
+            raise ValueError("Body model missing required 'hand_r' link")
+        if "barbell_shaft" not in barbell_links:
+            raise ValueError("Barbell model missing required 'barbell_shaft' link")
+
         grip_offset = 0.58
 
         add_fixed_joint(
@@ -59,9 +74,37 @@ class SnatchModelBuilder(ExerciseModelBuilder):
             child="barbell_shaft",
             pose=(0, -grip_offset, 0, 0, 0, 0),
         )
+        add_fixed_joint(
+            model,
+            name="barbell_to_right_hand",
+            parent="hand_r",
+            child="barbell_shaft",
+            pose=(0, grip_offset, 0, 0, 0, 0),
+        )
+        logger.debug(
+            "Attached barbell bilaterally with snatch grip at %.3f m", grip_offset
+        )
 
     def set_initial_pose(self, model: ET.Element) -> None:
-        """Set starting position: bar on floor, wide grip, deep hip hinge."""
+        """Set starting position: bar on floor, wide grip, deep hip hinge.
+
+        The lifter is in the first-pull position with significant hip and
+        knee flexion and arms reaching down to the wide-grip bar.
+        """
+        initial_pose = ET.SubElement(model, "initial_pose")
+        initial_pose.set("name", "first_pull")
+        joints = {
+            "hip_l": SNATCH_INITIAL_HIP_ANGLE,
+            "hip_r": SNATCH_INITIAL_HIP_ANGLE,
+            "knee_l": SNATCH_INITIAL_KNEE_ANGLE,
+            "knee_r": SNATCH_INITIAL_KNEE_ANGLE,
+            "shoulder_l": SNATCH_INITIAL_SHOULDER_ANGLE,
+            "shoulder_r": SNATCH_INITIAL_SHOULDER_ANGLE,
+        }
+        for joint_name, angle in joints.items():
+            joint_el = ET.SubElement(initial_pose, "joint")
+            joint_el.set("name", joint_name)
+            joint_el.text = f"{angle:.6f}"
 
 
 def build_snatch_model(

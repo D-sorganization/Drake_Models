@@ -2,19 +2,19 @@
 
 The clean and jerk is a two-part lift:
 
-**Clean** — bar from floor to front-rack (shoulders):
-1. First pull — bar leaves the floor (similar to deadlift)
-2. Transition / scoop — knees re-bend
-3. Second pull — explosive triple extension
-4. Turnover — elbows rotate forward, bar lands on front deltoids
-5. Front squat catch — receive bar in front rack at bottom of squat
-6. Recovery — stand from front squat
+**Clean** -- bar from floor to front-rack (shoulders):
+1. First pull -- bar leaves the floor (similar to deadlift)
+2. Transition / scoop -- knees re-bend
+3. Second pull -- explosive triple extension
+4. Turnover -- elbows rotate forward, bar lands on front deltoids
+5. Front squat catch -- receive bar in front rack at bottom of squat
+6. Recovery -- stand from front squat
 
-**Jerk** — bar from shoulders to overhead:
-1. Dip — slight knee bend to load legs
-2. Drive — explosive leg drive pushes bar upward
-3. Split / push / squat jerk — lifter drops under bar
-4. Recovery — bring feet together, stand with bar overhead
+**Jerk** -- bar from shoulders to overhead:
+1. Dip -- slight knee bend to load legs
+2. Drive -- explosive leg drive pushes bar upward
+3. Split / push / squat jerk -- lifter drops under bar
+4. Recovery -- bring feet together, stand with bar overhead
 
 Biomechanical notes:
 - Grip width: shoulder width or slightly outside (~0.25-0.30 m from center)
@@ -22,15 +22,23 @@ Biomechanical notes:
 - Jerk phase requires rapid coordination of upper and lower body
 - Primary movers: entire posterior chain + quadriceps + deltoids + triceps
 
-The barbell is welded to the left hand at clean grip width.
+The barbell is welded to both hands at clean grip width.
 """
 
 from __future__ import annotations
 
+import logging
 import xml.etree.ElementTree as ET
 
 from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
 from drake_models.shared.utils.sdf_helpers import add_fixed_joint
+
+logger = logging.getLogger(__name__)
+
+# Initial joint angles for the clean setup position (radians).
+CLEAN_INITIAL_HIP_ANGLE = 0.8727  # ~50 degrees hip flexion
+CLEAN_INITIAL_KNEE_ANGLE = -1.0472  # ~60 degrees knee flexion
+CLEAN_INITIAL_LUMBAR_ANGLE = 0.1745  # ~10 degrees lumbar flexion
 
 
 class CleanAndJerkModelBuilder(ExerciseModelBuilder):
@@ -53,10 +61,17 @@ class CleanAndJerkModelBuilder(ExerciseModelBuilder):
         body_links: dict[str, ET.Element],
         barbell_links: dict[str, ET.Element],
     ) -> None:
-        """Weld barbell to left hand at clean grip width.
+        """Weld barbell to both hands at clean grip width.
 
         Clean grip: approximately shoulder width, ~0.25 m from shaft center.
         """
+        if "hand_l" not in body_links:
+            raise ValueError("Body model missing required 'hand_l' link")
+        if "hand_r" not in body_links:
+            raise ValueError("Body model missing required 'hand_r' link")
+        if "barbell_shaft" not in barbell_links:
+            raise ValueError("Barbell model missing required 'barbell_shaft' link")
+
         grip_offset = 0.25
 
         add_fixed_joint(
@@ -66,9 +81,36 @@ class CleanAndJerkModelBuilder(ExerciseModelBuilder):
             child="barbell_shaft",
             pose=(0, -grip_offset, 0, 0, 0, 0),
         )
+        add_fixed_joint(
+            model,
+            name="barbell_to_right_hand",
+            parent="hand_r",
+            child="barbell_shaft",
+            pose=(0, grip_offset, 0, 0, 0, 0),
+        )
+        logger.debug(
+            "Attached barbell bilaterally at clean grip offset %.3f m", grip_offset
+        )
 
     def set_initial_pose(self, model: ET.Element) -> None:
-        """Set starting position: bar on floor, clean grip, hip hinge."""
+        """Set starting position: bar on floor, clean grip, hip hinge.
+
+        The lifter is in the first-pull setup with the bar on the floor,
+        similar to a deadlift but with a more upright torso.
+        """
+        initial_pose = ET.SubElement(model, "initial_pose")
+        initial_pose.set("name", "clean_setup")
+        joints = {
+            "hip_l": CLEAN_INITIAL_HIP_ANGLE,
+            "hip_r": CLEAN_INITIAL_HIP_ANGLE,
+            "knee_l": CLEAN_INITIAL_KNEE_ANGLE,
+            "knee_r": CLEAN_INITIAL_KNEE_ANGLE,
+            "lumbar": CLEAN_INITIAL_LUMBAR_ANGLE,
+        }
+        for joint_name, angle in joints.items():
+            joint_el = ET.SubElement(initial_pose, "joint")
+            joint_el.set("name", joint_name)
+            joint_el.text = f"{angle:.6f}"
 
 
 def build_clean_and_jerk_model(
