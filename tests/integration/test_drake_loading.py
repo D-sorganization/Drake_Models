@@ -128,12 +128,10 @@ class TestSdfWellFormedness:
             jname = joint.get("name", "<unnamed>")
             parent_el = joint.find("parent")
             child_el = joint.find("child")
-            assert parent_el is not None and parent_el.text, (
-                f"{name}/{jname}: missing or empty <parent>"
-            )
-            assert child_el is not None and child_el.text, (
-                f"{name}/{jname}: missing or empty <child>"
-            )
+            msg_p = f"{name}/{jname}: missing or empty <parent>"
+            assert parent_el is not None and parent_el.text, msg_p
+            msg_c = f"{name}/{jname}: missing or empty <child>"
+            assert child_el is not None and child_el.text, msg_c
 
     @pytest.mark.parametrize(
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
@@ -163,7 +161,7 @@ class TestSdfWellFormedness:
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
     )
     def test_bench_press_has_pelvis_weld(self, name: str, builder) -> None:
-        """bench_press must have a fixed joint connecting pelvis to bench (Issue #25)."""
+        """bench_press must have a fixed joint connecting pelvis to bench."""
         if name != "bench_press":
             pytest.skip("Only applicable to bench_press")
         xml_str = builder()
@@ -200,7 +198,7 @@ class TestDrakeParserLoading:
         plant.Finalize()
 
         # Basic sanity: at least one body was added (world + model bodies).
-        assert plant.num_bodies() > 1, f"{name}: Drake plant has no bodies after parsing SDF"
+        assert plant.num_bodies() > 1, f"{name}: no bodies after parsing SDF"
 
     @pytest.mark.parametrize(
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
@@ -221,4 +219,4 @@ class TestDrakeParserLoading:
         parser.AddModelFromFile(str(sdf_file))
         plant.Finalize()
 
-        assert plant.num_positions() > 0, f"{name}: Drake plant reports 0 generalized positions"
+        assert plant.num_positions() > 0, f"{name}: 0 generalized positions"
