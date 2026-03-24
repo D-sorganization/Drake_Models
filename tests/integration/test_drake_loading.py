@@ -96,18 +96,24 @@ class TestSdfWellFormedness:
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_has_at_least_one_joint(self, name: str, builder) -> None:
-        """SDF must contain at least one <joint> element."""
+        """SDF must contain at least one model-level <joint> element."""
         xml_str = builder()
         root = ET.fromstring(xml_str)
-        joints = root.findall(".//joint")
+        model = root.find("model")
+        assert model is not None
+        joints = model.findall("joint")
         assert len(joints) > 0
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_all_joints_have_parent_and_child(self, name: str, builder) -> None:
-        """Every <joint> must have non-empty <parent> and <child> text."""
+        """Every model-level <joint> must have non-empty <parent> and <child>."""
         xml_str = builder()
         root = ET.fromstring(xml_str)
-        for joint in root.findall(".//joint"):
+        model = root.find("model")
+        assert model is not None
+        # Only check direct <joint> children of <model>, not <joint> elements
+        # inside <initial_pose> which are coordinate references, not SDF joints.
+        for joint in model.findall("joint"):
             jname = joint.get("name", "<unnamed>")
             parent_el = joint.find("parent")
             child_el = joint.find("child")
@@ -143,7 +149,9 @@ class TestSdfWellFormedness:
             pytest.skip("Only applicable to bench_press")
         xml_str = builder()
         root = ET.fromstring(xml_str)
-        fixed_joints = [j for j in root.findall(".//joint") if j.get("type") == "fixed"]
+        model = root.find("model")
+        assert model is not None
+        fixed_joints = [j for j in model.findall("joint") if j.get("type") == "fixed"]
         joint_names = {j.get("name") for j in fixed_joints}
         assert "pelvis_to_bench" in joint_names
 
