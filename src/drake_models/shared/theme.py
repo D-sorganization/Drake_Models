@@ -6,8 +6,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 try:
-    from plot_theme.themes import get_theme, DEFAULT_THEME
     from plot_theme.integration import style_axis as _style_axis
+    from plot_theme.themes import DEFAULT_THEME, get_theme
     
     # Export the default theme
     theme = get_theme(DEFAULT_THEME)
@@ -25,4 +25,3 @@ except ImportError:
     
     def style_axis(ax) -> None:
         """Fallback empty styling if plot_theme is missing."""
-        pass
