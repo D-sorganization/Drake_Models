@@ -17,6 +17,8 @@ import logging
 import xml.etree.ElementTree as ET
 
 from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
+from drake_models.shared.barbell import BarbellSpec
+from drake_models.shared.body import BodyModelSpec
 from drake_models.shared.utils.sdf_helpers import add_fixed_joint
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,19 @@ logger = logging.getLogger(__name__)
 # Initial joint angles for the unrack position (radians).
 SQUAT_INITIAL_HIP_ANGLE = 0.0873  # ~5 degrees flexion
 SQUAT_INITIAL_KNEE_ANGLE = -0.0873  # ~5 degrees flexion
+
+# Torso length as a fraction of body height (Winter 2009 segment table).
+# Matches the "torso" length_frac entry in body_model._SEGMENT_TABLE.
+TORSO_LENGTH_FRAC = 0.288
+
+# Distance below the top of the torso for the high-bar trap attachment (meters).
+# Positions the barbell across the upper trapezius, slightly below the neck.
+TRAP_BELOW_TOP = 0.03
+
+# Lateral (Y) offset of the barbell from the torso center (meters).
+# Negative Y places the bar at the rear of the torso (high-bar position
+# on rear deltoids / trapezius).  Follows Drake Y-axis convention.
+BARBELL_LATERAL_OFFSET = -0.02
 
 
 class SquatModelBuilder(ExerciseModelBuilder):
@@ -57,15 +72,15 @@ class SquatModelBuilder(ExerciseModelBuilder):
         if "barbell_shaft" not in barbell_links:
             raise ValueError("Barbell model missing required 'barbell_shaft' link")
 
-        torso_len = self.config.body_spec.height * 0.288
-        trap_height = torso_len - 0.03
+        torso_len = self.config.body_spec.height * TORSO_LENGTH_FRAC
+        trap_height = torso_len - TRAP_BELOW_TOP
 
         add_fixed_joint(
             model,
             name="barbell_to_torso",
             parent="torso",
             child="barbell_shaft",
-            pose=(0, -0.02, trap_height, 0, 0, 0),
+            pose=(0, BARBELL_LATERAL_OFFSET, trap_height, 0, 0, 0),
         )
         logger.debug("Attached barbell to torso at trap height %.3f m", trap_height)
 
@@ -99,9 +114,6 @@ def build_squat_model(
     Default: 80 kg person, 1.75 m tall, 140 kg total barbell
     (20 kg bar + 60 kg per side).
     """
-    from drake_models.shared.barbell import BarbellSpec
-    from drake_models.shared.body import BodyModelSpec
-
     config = ExerciseConfig(
         body_spec=BodyModelSpec(total_mass=body_mass, height=height),
         barbell_spec=BarbellSpec.mens_olympic(plate_mass_per_side=plate_mass_per_side),

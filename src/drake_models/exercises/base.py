@@ -63,6 +63,16 @@ class ExerciseModelBuilder(ABC):
     def set_initial_pose(self, model: ET.Element) -> None:
         """Set default coordinate values for the starting position."""
 
+    @property
+    def pelvis_joint_type(self) -> str:
+        """Joint type for the world-to-pelvis connection.
+
+        Override in subclasses to ``"fixed"`` when the exercise constrains
+        the pelvis via an external body (e.g. bench press weld through bench).
+        Default is ``"floating"`` (6-DOF free joint).
+        """
+        return "floating"
+
     def build(self) -> str:
         """Build the complete SDF model XML and return as string.
 
@@ -81,7 +91,9 @@ class ExerciseModelBuilder(ABC):
         ET.SubElement(model, "static").text = "false"
 
         # Build body
-        body_links = create_full_body(model, self.config.body_spec)
+        body_links = create_full_body(
+            model, self.config.body_spec, pelvis_joint_type=self.pelvis_joint_type
+        )
 
         # Build barbell
         barbell_links = create_barbell_links(model, self.config.barbell_spec)
