@@ -155,3 +155,34 @@ class TestAllExercisesBuild:
                 el = inertia.find(tag)
                 assert el is not None, f"{link.get('name')} missing {tag}"
                 assert float(el.text) > 0
+
+    @pytest.mark.parametrize(
+        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
+    )
+    def test_each_link_has_at_most_one_parent(self, name, builder):
+        """SDF kinematic tree: every link must be <child> of at most one joint.
+
+        Closes issue #34 — dual-parent barbell bug went undetected because no
+        test checked this invariant.  A pure-Python parse of the XML is
+        sufficient; Drake is not required.
+        """
+        xml_str = builder()
+        root = ET.fromstring(xml_str)
+        model = root.find("model")
+        assert model is not None
+
+        child_counts: dict[str, int] = {}
+        for joint in model.findall("joint"):
+            child_el = joint.find("child")
+            if child_el is not None and child_el.text:
+                child_name = child_el.text.strip()
+                child_counts[child_name] = child_counts.get(child_name, 0) + 1
+
+        violations = [
+            f"'{link}' is child of {count} joints"
+            for link, count in child_counts.items()
+            if count > 1
+        ]
+        assert not violations, f"{name}: kinematic tree violation — " + "; ".join(
+            violations
+        )

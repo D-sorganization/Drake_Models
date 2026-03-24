@@ -10,6 +10,19 @@ The barbell is modelled as three rigid links (left_sleeve, shaft, right_sleeve)
 connected by fixed joints (welds). Plates are added as additional mass on
 the sleeves.
 
+Geometry note: The barbell extends along the Y-axis (sleeve joints are at
+±Y offsets from the shaft center). SDF cylinders default to a local Z-axis
+orientation, so ``make_cylinder_geometry_y`` is used throughout to apply a
+roll=π/2 rotation that aligns each cylinder's long axis with Y.
+
+Inertia note: ``cylinder_inertia(mass, radius, length)`` returns
+(Ixx, Iyy, Izz) for a Z-aligned cylinder, where Izz is the (small) axial
+moment and Ixx=Iyy are the (large) transverse moments.  After rotating
+to Y alignment, the axial moment is about Y, so we map:
+  inertia_xx ← Ixx (transverse, unchanged)
+  inertia_yy ← Izz (axial, now about Y)
+  inertia_zz ← Iyy (transverse, unchanged)
+
 Law of Demeter: callers interact only with BarbellSpec and create_barbell_links;
 internal geometry details remain encapsulated.
 """
@@ -28,7 +41,7 @@ from drake_models.shared.utils.geometry import cylinder_inertia
 from drake_models.shared.utils.sdf_helpers import (
     add_fixed_joint,
     add_link,
-    make_cylinder_geometry,
+    make_cylinder_geometry_y,
 )
 
 logger = logging.getLogger(__name__)
@@ -109,6 +122,23 @@ class BarbellSpec:
         )
 
 
+def _cylinder_inertia_y_axis(
+    mass: float, radius: float, length: float
+) -> tuple[float, float, float]:
+    """Principal inertias (Ixx, Iyy, Izz) for a cylinder aligned along Y.
+
+    ``cylinder_inertia`` assumes Z-axis alignment: it returns
+    (Ixx=transverse, Iyy=transverse, Izz=axial).  After rotating the
+    cylinder to lie along Y, the axial moment is now Iyy, giving:
+      Ixx = transverse  (unchanged from Z-aligned Ixx)
+      Iyy = axial       (= Z-aligned Izz)
+      Izz = transverse  (= Z-aligned Iyy)
+    """
+    ixx_t, iyy_t, izz_axial = cylinder_inertia(mass, radius, length)
+    # ixx_t == iyy_t for a symmetric cylinder; swap axial from Z to Y
+    return (ixx_t, izz_axial, iyy_t)
+
+
 def create_barbell_links(
     model: ET.Element,
     spec: BarbellSpec,
@@ -121,7 +151,8 @@ def create_barbell_links(
 
     The barbell shaft center is at the local origin. Sleeves extend
     symmetrically along the Y-axis (left = -Y, right = +Y) in the
-    Drake Z-up convention.
+    Drake Z-up convention.  All cylinder geometries are pre-rotated
+    with roll=π/2 so their long axes align with Y.
     """
     logger.info(
         "Building barbell: total_mass=%.1f kg, length=%.2f m",
@@ -129,12 +160,13 @@ def create_barbell_links(
         spec.total_length,
     )
 
-    shaft_inertia = cylinder_inertia(
+    # Inertia for Y-aligned cylinders (axial moment is about Y)
+    shaft_inertia = _cylinder_inertia_y_axis(
         spec.shaft_mass, spec.shaft_radius, spec.shaft_length
     )
 
     sleeve_total_mass = spec.sleeve_mass + spec.plate_mass_per_side
-    sleeve_inertia = cylinder_inertia(
+    sleeve_inertia = _cylinder_inertia_y_axis(
         sleeve_total_mass, spec.sleeve_radius, spec.sleeve_length
     )
 
@@ -150,8 +182,10 @@ def create_barbell_links(
         inertia_xx=shaft_inertia[0],
         inertia_yy=shaft_inertia[1],
         inertia_zz=shaft_inertia[2],
-        visual_geometry=make_cylinder_geometry(spec.shaft_radius, spec.shaft_length),
-        collision_geometry=make_cylinder_geometry(spec.shaft_radius, spec.shaft_length),
+        visual_geometry=make_cylinder_geometry_y(spec.shaft_radius, spec.shaft_length),
+        collision_geometry=make_cylinder_geometry_y(
+            spec.shaft_radius, spec.shaft_length
+        ),
     )
 
     left_link = add_link(
@@ -162,8 +196,10 @@ def create_barbell_links(
         inertia_xx=sleeve_inertia[0],
         inertia_yy=sleeve_inertia[1],
         inertia_zz=sleeve_inertia[2],
-        visual_geometry=make_cylinder_geometry(spec.sleeve_radius, spec.sleeve_length),
-        collision_geometry=make_cylinder_geometry(
+        visual_geometry=make_cylinder_geometry_y(
+            spec.sleeve_radius, spec.sleeve_length
+        ),
+        collision_geometry=make_cylinder_geometry_y(
             spec.sleeve_radius, spec.sleeve_length
         ),
     )
@@ -176,8 +212,10 @@ def create_barbell_links(
         inertia_xx=sleeve_inertia[0],
         inertia_yy=sleeve_inertia[1],
         inertia_zz=sleeve_inertia[2],
-        visual_geometry=make_cylinder_geometry(spec.sleeve_radius, spec.sleeve_length),
-        collision_geometry=make_cylinder_geometry(
+        visual_geometry=make_cylinder_geometry_y(
+            spec.sleeve_radius, spec.sleeve_length
+        ),
+        collision_geometry=make_cylinder_geometry_y(
             spec.sleeve_radius, spec.sleeve_length
         ),
     )

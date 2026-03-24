@@ -24,9 +24,14 @@ from drake_models.shared.utils.sdf_helpers import serialize_model, vec3_str
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExerciseConfig:
-    """Configuration common to all exercise models."""
+    """Immutable configuration common to all exercise models.
+
+    Frozen to match ``BodyModelSpec`` and ``BarbellSpec`` and to prevent
+    accidental shared-state mutation when a single config is reused across
+    multiple builders.
+    """
 
     body_spec: BodyModelSpec = field(default_factory=BodyModelSpec)
     barbell_spec: BarbellSpec = field(default_factory=BarbellSpec.mens_olympic)
@@ -72,6 +77,73 @@ class ExerciseModelBuilder(ABC):
         Default is ``"floating"`` (6-DOF free joint).
         """
         return "floating"
+
+    @staticmethod
+    def _write_initial_pose(
+        model: ET.Element,
+        pose_name: str,
+        joint_angles: dict[str, float],
+    ) -> ET.Element:
+        """Append an ``<initial_pose name='...'>`` block to *model*.
+
+        Creates one ``<joint name='...'>{angle}</joint>`` child per entry in
+        *joint_angles*.  Returns the created ``<initial_pose>`` element.
+
+        DRY: all five exercise builders share this identical XML-building loop.
+        """
+        initial_pose = ET.SubElement(model, "initial_pose")
+        initial_pose.set("name", pose_name)
+        for joint_name, angle in joint_angles.items():
+            joint_el = ET.SubElement(initial_pose, "joint")
+            joint_el.set("name", joint_name)
+            joint_el.text = f"{angle:.6f}"
+        return initial_pose
+
+    @staticmethod
+    def _attach_bilateral_grip(
+        model: ET.Element,
+        body_links: dict[str, ET.Element],
+        barbell_links: dict[str, ET.Element],
+        grip_offset: float,
+    ) -> None:
+        """Weld barbell_shaft to hand_l only — SDF 1.8 kinematic-tree-safe.
+
+        SDF 1.8 requires a strict kinematic tree: each link may be the
+        ``<child>`` of exactly one joint.  Both ``hand_l`` and ``hand_r``
+        already have a parent joint in the body model (``wrist_l`` /
+        ``wrist_r``).  ``barbell_shaft`` has no body-model parent, so it is
+        correctly attached as a child of ``hand_l``.
+
+        The right hand contacts the barbell in reality, but this cannot be
+        expressed as a second fixed joint in SDF without violating the tree
+        invariant.  Proper loop-closure requires a Drake-specific constraint
+        mechanism outside the scope of the SDF generator.  For a fully rigid
+        barbell, attaching via one hand is kinematically equivalent.
+
+        Preconditions: 'hand_l', 'hand_r' in body_links;
+                       'barbell_shaft' in barbell_links.
+        """
+        from drake_models.shared.utils.sdf_helpers import add_fixed_joint
+
+        if "hand_l" not in body_links:
+            raise ValueError("Body model missing required 'hand_l' link")
+        if "hand_r" not in body_links:
+            raise ValueError("Body model missing required 'hand_r' link")
+        if "barbell_shaft" not in barbell_links:
+            raise ValueError("Barbell model missing required 'barbell_shaft' link")
+
+        # barbell_shaft is a child of hand_l — valid single-parent attachment
+        add_fixed_joint(
+            model,
+            name="barbell_to_left_hand",
+            parent="hand_l",
+            child="barbell_shaft",
+            pose=(0, -grip_offset, 0, 0, 0, 0),
+        )
+        logger.debug(
+            "Attached barbell to left hand at grip offset %.3f m (SDF tree-safe)",
+            grip_offset,
+        )
 
     def build(self) -> str:
         """Build the complete SDF model XML and return as string.

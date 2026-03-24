@@ -146,9 +146,15 @@ class TestCreateFullBody:
             )
 
     def test_total_mass_approximately_correct(self, model):
+        """Total mass of all links must exactly equal spec.total_mass.
+
+        Segment fractions from the Winter (2009) table sum to 1.0 by design;
+        the 5 % tolerance previously used masked rounding drift.  Use rel=1e-9
+        to catch any future regression in the segment table or mass allocation.
+        """
         spec = BodyModelSpec(total_mass=80.0)
         create_full_body(model, spec)
         total = sum(
             float(el.find("inertial/mass").text) for el in model.findall("link")
         )
-        assert total == pytest.approx(80.0, rel=0.05)
+        assert total == pytest.approx(80.0, rel=1e-9)

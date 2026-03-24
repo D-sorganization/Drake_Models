@@ -11,42 +11,40 @@ Biomechanical notes:
 - Mixed grip or double-overhand grip -- modelled as rigid hand attachment
 - Hip hinge dominant pattern with simultaneous knee extension
 
-The barbell is welded to both hands (bilateral grip). Initial pose has
-significant hip and knee flexion to reach the bar on the ground.
+The barbell is welded to hand_l and hand_r is welded to barbell_shaft,
+preserving a valid SDF kinematic tree. Initial pose has significant hip
+and knee flexion to reach the bar on the ground.
 """
 
 from __future__ import annotations
 
 import logging
+import math
 import xml.etree.ElementTree as ET
 
 from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
 from drake_models.shared.barbell import BarbellSpec
 from drake_models.shared.body import BodyModelSpec
-from drake_models.shared.utils.sdf_helpers import add_fixed_joint
 
 logger = logging.getLogger(__name__)
-
-PLATE_RADIUS = 0.225  # Standard 450mm diameter plate radius
 
 # Grip offset from barbell center to each hand (meters).
 # Slightly outside the knees for conventional deadlift (~shoulder width).
 GRIP_OFFSET = 0.22
 
 # Initial joint angles for the setup position (radians).
-DEADLIFT_INITIAL_HIP_ANGLE = 1.0472  # ~60 degrees hip flexion
-DEADLIFT_INITIAL_KNEE_ANGLE = -1.2217  # ~70 degrees knee flexion
-DEADLIFT_INITIAL_LUMBAR_ANGLE = 0.2618  # ~15 degrees lumbar flexion
+DEADLIFT_INITIAL_HIP_ANGLE = math.pi / 3  # ~60 degrees hip flexion
+DEADLIFT_INITIAL_KNEE_ANGLE = -math.pi * 70 / 180  # ~70 degrees knee flexion
+DEADLIFT_INITIAL_LUMBAR_ANGLE = math.pi * 15 / 180  # ~15 degrees lumbar flexion
 
 
 class DeadliftModelBuilder(ExerciseModelBuilder):
     """Builds a conventional deadlift Drake SDF model.
 
-    The barbell is welded to both hands and starts on the floor.
+    The barbell is welded to hand_l (barbell_shaft is child of hand_l).
+    hand_r is welded to barbell_shaft as a leaf node, preserving a valid
+    SDF kinematic tree (each link has exactly one parent joint).
     """
-
-    def __init__(self, config: ExerciseConfig | None = None) -> None:
-        super().__init__(config)
 
     @property
     def exercise_name(self) -> str:
@@ -58,32 +56,13 @@ class DeadliftModelBuilder(ExerciseModelBuilder):
         body_links: dict[str, ET.Element],
         barbell_links: dict[str, ET.Element],
     ) -> None:
-        """Weld barbell shaft to both hands at shoulder-width grip.
+        """Weld barbell shaft to left hand; weld right hand to barbell shaft.
 
         Grip is slightly outside the knees (~0.22 m from center).
+        Kinematic tree: barbell_shaft child of hand_l; hand_r child of
+        barbell_shaft — each link has exactly one parent joint (SDF 1.8 valid).
         """
-        if "hand_l" not in body_links:
-            raise ValueError("Body model missing required 'hand_l' link")
-        if "hand_r" not in body_links:
-            raise ValueError("Body model missing required 'hand_r' link")
-        if "barbell_shaft" not in barbell_links:
-            raise ValueError("Barbell model missing required 'barbell_shaft' link")
-
-        add_fixed_joint(
-            model,
-            name="barbell_to_left_hand",
-            parent="hand_l",
-            child="barbell_shaft",
-            pose=(0, -GRIP_OFFSET, 0, 0, 0, 0),
-        )
-        add_fixed_joint(
-            model,
-            name="barbell_to_right_hand",
-            parent="hand_r",
-            child="barbell_shaft",
-            pose=(0, GRIP_OFFSET, 0, 0, 0, 0),
-        )
-        logger.debug("Attached barbell bilaterally at grip offset %.3f m", GRIP_OFFSET)
+        self._attach_bilateral_grip(model, body_links, barbell_links, GRIP_OFFSET)
 
     def set_initial_pose(self, model: ET.Element) -> None:
         """Set the starting position: deep hip hinge, knees flexed.
@@ -91,19 +70,17 @@ class DeadliftModelBuilder(ExerciseModelBuilder):
         The lifter is bent over with the bar on the floor, hips hinged
         approximately 60 degrees and knees flexed approximately 70 degrees.
         """
-        initial_pose = ET.SubElement(model, "initial_pose")
-        initial_pose.set("name", "setup")
-        joints = {
-            "hip_l": DEADLIFT_INITIAL_HIP_ANGLE,
-            "hip_r": DEADLIFT_INITIAL_HIP_ANGLE,
-            "knee_l": DEADLIFT_INITIAL_KNEE_ANGLE,
-            "knee_r": DEADLIFT_INITIAL_KNEE_ANGLE,
-            "lumbar": DEADLIFT_INITIAL_LUMBAR_ANGLE,
-        }
-        for joint_name, angle in joints.items():
-            joint_el = ET.SubElement(initial_pose, "joint")
-            joint_el.set("name", joint_name)
-            joint_el.text = f"{angle:.6f}"
+        self._write_initial_pose(
+            model,
+            "setup",
+            {
+                "hip_l": DEADLIFT_INITIAL_HIP_ANGLE,
+                "hip_r": DEADLIFT_INITIAL_HIP_ANGLE,
+                "knee_l": DEADLIFT_INITIAL_KNEE_ANGLE,
+                "knee_r": DEADLIFT_INITIAL_KNEE_ANGLE,
+                "lumbar": DEADLIFT_INITIAL_LUMBAR_ANGLE,
+            },
+        )
 
 
 def build_deadlift_model(

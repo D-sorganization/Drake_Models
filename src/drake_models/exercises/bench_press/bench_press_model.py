@@ -18,6 +18,7 @@ pelvis to a supine position at bench height (0.43 m, standard IPF).
 from __future__ import annotations
 
 import logging
+import math
 import xml.etree.ElementTree as ET
 
 from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
@@ -47,18 +48,18 @@ BENCH_PAD_MASS = 30.0
 # modelled here as offset from shaft center to each hand attachment point.
 GRIP_OFFSET = 0.20  # meters from barbell center to each hand
 
-# Supine pelvis orientation: pitched 90 degrees about X so body lies flat.
-# Drake Z-up convention: pitch = -pi/2 rotates the pelvis so that the
-# pelvis Z-axis (normally up when standing) points in the -X direction,
-# placing the lifter horizontally on the bench.
-PELVIS_SUPINE_PITCH = -1.5708  # -pi/2 radians
+# Supine pelvis orientation: pitched -90 degrees about Y so body lies flat.
+# Drake Z-up / X-forward convention: SDF pose format is "x y z roll pitch yaw".
+# Pitch = -pi/2 rotates the pelvis so that its local Z-axis (normally pointing
+# up when standing) becomes aligned with world -X, placing the lifter horizontal.
+PELVIS_SUPINE_PITCH = -math.pi / 2  # -pi/2 radians  (rotation about Y)
 
 # Initial joint angles for the lockout position (radians).
 # Positive shoulder flexion lifts the arms upward (toward the ceiling)
 # when the lifter is supine. In the lockout position the arms are
 # extended vertically above the chest, which corresponds to +pi/2
 # shoulder flexion in the Drake Z-up / X-forward convention.
-BENCH_INITIAL_SHOULDER_ANGLE = 1.5708  # +pi/2 radians — arms vertical (lockout)
+BENCH_INITIAL_SHOULDER_ANGLE = math.pi / 2  # +pi/2 radians — arms vertical (lockout)
 BENCH_INITIAL_ELBOW_ANGLE = 0.0  # Arms fully extended
 
 
@@ -66,11 +67,9 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
     """Builds a bench-press Drake SDF model.
 
     The pelvis is welded to ground in a supine orientation at bench height.
-    The barbell shaft is welded to both hands at grip width.
+    The barbell shaft is welded to hand_l only; each link has exactly one
+    parent joint, satisfying the SDF 1.8 kinematic tree requirement.
     """
-
-    def __init__(self, config: ExerciseConfig | None = None) -> None:
-        super().__init__(config)
 
     @property
     def exercise_name(self) -> str:
@@ -119,16 +118,17 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
     def _weld_pelvis_to_bench(self, model: ET.Element) -> None:
         """Weld the pelvis to the bench pad in supine orientation.
 
-        The lifter lies supine: the pelvis is rotated 90 degrees about the
+        The lifter lies supine: the pelvis is rotated -pi/2 about the
         Y-axis (pitch = -pi/2) so the torso axis lies along X rather than Z.
-        The pelvis center is placed at BENCH_HEIGHT along Z.
+        SDF pose format: x y z roll pitch yaw — roll is index 3, pitch is index 4.
         """
         add_fixed_joint(
             model,
             name="pelvis_to_bench",
             parent="bench_pad",
             child="pelvis",
-            pose=(0, 0, BENCH_PAD_THICKNESS / 2.0, PELVIS_SUPINE_PITCH, 0, 0),
+            # roll=0, pitch=PELVIS_SUPINE_PITCH, yaw=0
+            pose=(0, 0, BENCH_PAD_THICKNESS / 2.0, 0, PELVIS_SUPINE_PITCH, 0),
         )
         logger.debug(
             "Welded pelvis to bench in supine orientation (pitch=%.4f rad)",
@@ -141,12 +141,12 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
         body_links: dict[str, ET.Element],
         barbell_links: dict[str, ET.Element],
     ) -> None:
-        """Add bench body, weld pelvis, then weld barbell to both hands.
+        """Add bench body, weld pelvis, then weld barbell to left hand.
 
         Steps:
         1. Add the bench pad body and weld it to world.
         2. Weld the pelvis to the bench in supine orientation.
-        3. Weld barbell shaft to left and right hands at grip offset.
+        3. Weld barbell_shaft to hand_l (single-parent, SDF 1.8 valid).
         """
         if "hand_l" not in body_links:
             raise ValueError("Body model missing required 'hand_l' link")
@@ -159,22 +159,8 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
         self._add_bench_body(model)
         self._weld_pelvis_to_bench(model)
 
-        # Weld barbell shaft to both hands at grip offset
-        add_fixed_joint(
-            model,
-            name="barbell_to_left_hand",
-            parent="hand_l",
-            child="barbell_shaft",
-            pose=(0, -GRIP_OFFSET, 0, 0, 0, 0),
-        )
-        add_fixed_joint(
-            model,
-            name="barbell_to_right_hand",
-            parent="hand_r",
-            child="barbell_shaft",
-            pose=(0, GRIP_OFFSET, 0, 0, 0, 0),
-        )
-        logger.debug("Attached barbell bilaterally at grip offset %.3f m", GRIP_OFFSET)
+        # Issue #31: use tree-valid bilateral grip helper
+        self._attach_bilateral_grip(model, body_links, barbell_links, GRIP_OFFSET)
 
     def set_initial_pose(self, model: ET.Element) -> None:
         """Set supine lockout position.
@@ -183,18 +169,16 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
         holding the barbell at arm's length above the chest.
         Positive shoulder flexion = arms pointing toward ceiling when supine.
         """
-        initial_pose = ET.SubElement(model, "initial_pose")
-        initial_pose.set("name", "lockout")
-        joints = {
-            "shoulder_l": BENCH_INITIAL_SHOULDER_ANGLE,
-            "shoulder_r": BENCH_INITIAL_SHOULDER_ANGLE,
-            "elbow_l": BENCH_INITIAL_ELBOW_ANGLE,
-            "elbow_r": BENCH_INITIAL_ELBOW_ANGLE,
-        }
-        for joint_name, angle in joints.items():
-            joint_el = ET.SubElement(initial_pose, "joint")
-            joint_el.set("name", joint_name)
-            joint_el.text = f"{angle:.6f}"
+        self._write_initial_pose(
+            model,
+            "lockout",
+            {
+                "shoulder_l": BENCH_INITIAL_SHOULDER_ANGLE,
+                "shoulder_r": BENCH_INITIAL_SHOULDER_ANGLE,
+                "elbow_l": BENCH_INITIAL_ELBOW_ANGLE,
+                "elbow_r": BENCH_INITIAL_ELBOW_ANGLE,
+            },
+        )
 
 
 def build_bench_press_model(
