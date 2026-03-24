@@ -16,7 +16,7 @@ def main() -> None:
     print("[INFO] Initialising git submodules...")
     subprocess.run(["git", "submodule", "update", "--init", "--recursive"], cwd=PROJECT_ROOT, check=True)
     
-    print(f"[INFO] Installing drake-models[dev] in editable mode...")
+    print("[INFO] Installing drake-models[dev] in editable mode...")
     subprocess.run([sys.executable, "-m", "pip", "install", "-e", ".[dev]"], cwd=PROJECT_ROOT, check=True)
     
     if not VENDOR_UD_TOOLS.is_dir():
