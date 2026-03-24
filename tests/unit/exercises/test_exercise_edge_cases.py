@@ -148,7 +148,7 @@ class TestAllExercisesProduceInitialPose:
     def test_has_initial_pose(self, builder_fn: object) -> None:
         xml_str = builder_fn()  # type: ignore[operator]
         root = ET.fromstring(xml_str)
-        initial_pose = root.find(".//initial_pose")
+        initial_pose = root.find(".//initial_pose")  # type: ignore
         assert initial_pose is not None, f"{builder_fn} missing initial_pose"
 
 
@@ -177,9 +177,9 @@ class TestEdgeCaseAnthropometrics:
             )
             root = ET.fromstring(xml_str)
             assert root.tag == "sdf"
-            links = root.findall(".//link")
+            links = root.findall(".//link")  # type: ignore
             assert len(links) >= 18
             for link in links:
-                mass_el = link.find("inertial/mass")
+                mass_el = link.find("inertial/mass")  # type: ignore
                 assert mass_el is not None
-                assert float(mass_el.text) > 0
+                assert float(mass_el.text) > 0  # type: ignore
