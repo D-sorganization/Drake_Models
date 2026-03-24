@@ -24,7 +24,6 @@ from drake_models.exercises.squat.squat_model import build_squat_model
 
 try:
     import pydrake  # noqa: F401
-
     _PYDRAKE_AVAILABLE = True
 except ImportError:
     _PYDRAKE_AVAILABLE = False
