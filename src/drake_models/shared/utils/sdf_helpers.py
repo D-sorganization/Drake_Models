@@ -40,11 +40,13 @@ def add_link(
     inertia_yz: float = 0.0,
     visual_geometry: ET.Element | None = None,
     collision_geometry: ET.Element | None = None,
+    geom_pose: tuple[float, float, float, float, float, float] | None = None,
 ) -> ET.Element:
     """Append a <link> element to *model* and return it.
 
     Creates the link with full <inertial> block (mass, pose, inertia tensor).
     Optionally adds <visual> and <collision> elements if geometry is provided.
+    geom_pose is applied to both visual and collision if provided.
     """
     link = ET.SubElement(model, "link", name=name)
 
@@ -62,10 +64,14 @@ def add_link(
 
     if visual_geometry is not None:
         visual = ET.SubElement(link, "visual", name=f"{name}_visual")
+        if geom_pose is not None:
+            ET.SubElement(visual, "pose").text = pose_str(*geom_pose)
         visual.append(visual_geometry)
 
     if collision_geometry is not None:
         collision = ET.SubElement(link, "collision", name=f"{name}_collision")
+        if geom_pose is not None:
+            ET.SubElement(collision, "pose").text = pose_str(*geom_pose)
         collision.append(collision_geometry)
 
     return link

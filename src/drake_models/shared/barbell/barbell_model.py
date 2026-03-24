@@ -152,6 +152,7 @@ def create_barbell_links(
         inertia_zz=shaft_inertia[2],
         visual_geometry=make_cylinder_geometry(spec.shaft_radius, spec.shaft_length),
         collision_geometry=make_cylinder_geometry(spec.shaft_radius, spec.shaft_length),
+        geom_pose=(0, 0, 0, 1.570796, 0, 0),
     )
 
     left_link = add_link(
@@ -166,6 +167,7 @@ def create_barbell_links(
         collision_geometry=make_cylinder_geometry(
             spec.sleeve_radius, spec.sleeve_length
         ),
+        geom_pose=(0, 0, 0, 1.570796, 0, 0),
     )
 
     right_link = add_link(
@@ -180,6 +182,7 @@ def create_barbell_links(
         collision_geometry=make_cylinder_geometry(
             spec.sleeve_radius, spec.sleeve_length
         ),
+        geom_pose=(0, 0, 0, 1.570796, 0, 0),
     )
 
     half_shaft = spec.shaft_length / 2.0
