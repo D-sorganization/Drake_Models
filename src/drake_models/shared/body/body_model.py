@@ -39,6 +39,7 @@ from drake_models.shared.utils.geometry import (
     rectangular_prism_inertia,
 )
 from drake_models.shared.utils.sdf_helpers import (
+    add_fixed_joint,
     add_floating_joint,
     add_link,
     add_revolute_joint,
@@ -182,8 +183,18 @@ def _add_bilateral_limb(
 def create_full_body(
     model: ET.Element,
     spec: BodyModelSpec | None = None,
+    *,
+    pelvis_joint_type: str = "floating",
 ) -> dict[str, ET.Element]:
     """Build the full-body model and append links/joints to the SDF model.
+
+    Args:
+        model: SDF model element to append to.
+        spec: Anthropometric specification (defaults to 50th-percentile male).
+        pelvis_joint_type: Joint type for the world-to-pelvis connection.
+            Use ``"floating"`` (default) for unconstrained 6-DOF motion, or
+            ``"fixed"`` when the exercise constrains the pelvis externally
+            (e.g. bench press weld through the bench pad).
 
     Returns dict of link name -> ET.Element for all created links.
     """
@@ -198,7 +209,7 @@ def create_full_body(
 
     links: dict[str, ET.Element] = {}
 
-    # --- Pelvis (connected to world via floating joint) ---
+    # --- Pelvis (connected to world) ---
     p_mass, p_len, p_rad = _seg(spec, "pelvis")
     p_inertia = rectangular_prism_inertia(p_mass, p_rad * 2, p_len, p_rad * 2)
     links["pelvis"] = add_link(
@@ -212,13 +223,21 @@ def create_full_body(
         visual_geometry=make_box_geometry(p_rad * 2, p_rad * 2, p_len),
         collision_geometry=make_box_geometry(p_rad * 2, p_rad * 2, p_len),
     )
-    add_floating_joint(
-        model,
-        name="ground_pelvis",
-        parent="world",
-        child="pelvis",
-        pose=(0, 0, PELVIS_STANDING_HEIGHT, 0, 0, 0),
-    )
+    if pelvis_joint_type == "fixed":
+        # Exercise constrains the pelvis via an external body (e.g. bench pad).
+        # No world->pelvis joint is created here; the exercise builder adds
+        # the weld joint (external_body -> pelvis) after this function returns.
+        logger.debug(
+            "Skipping world->pelvis joint; exercise builder will weld pelvis externally"
+        )
+    else:
+        add_floating_joint(
+            model,
+            name="ground_pelvis",
+            parent="world",
+            child="pelvis",
+            pose=(0, 0, PELVIS_STANDING_HEIGHT, 0, 0, 0),
+        )
 
     # --- Torso ---
     t_mass, t_len, t_rad = _seg(spec, "torso")

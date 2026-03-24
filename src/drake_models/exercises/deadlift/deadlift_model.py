@@ -21,11 +21,17 @@ import logging
 import xml.etree.ElementTree as ET
 
 from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
+from drake_models.shared.barbell import BarbellSpec
+from drake_models.shared.body import BodyModelSpec
 from drake_models.shared.utils.sdf_helpers import add_fixed_joint
 
 logger = logging.getLogger(__name__)
 
 PLATE_RADIUS = 0.225  # Standard 450mm diameter plate radius
+
+# Grip offset from barbell center to each hand (meters).
+# Slightly outside the knees for conventional deadlift (~shoulder width).
+GRIP_OFFSET = 0.22
 
 # Initial joint angles for the setup position (radians).
 DEADLIFT_INITIAL_HIP_ANGLE = 1.0472  # ~60 degrees hip flexion
@@ -63,23 +69,21 @@ class DeadliftModelBuilder(ExerciseModelBuilder):
         if "barbell_shaft" not in barbell_links:
             raise ValueError("Barbell model missing required 'barbell_shaft' link")
 
-        grip_offset = 0.22
-
         add_fixed_joint(
             model,
             name="barbell_to_left_hand",
             parent="hand_l",
             child="barbell_shaft",
-            pose=(0, -grip_offset, 0, 0, 0, 0),
+            pose=(0, -GRIP_OFFSET, 0, 0, 0, 0),
         )
         add_fixed_joint(
             model,
             name="barbell_to_right_hand",
             parent="hand_r",
             child="barbell_shaft",
-            pose=(0, grip_offset, 0, 0, 0, 0),
+            pose=(0, GRIP_OFFSET, 0, 0, 0, 0),
         )
-        logger.debug("Attached barbell bilaterally at grip offset %.3f m", grip_offset)
+        logger.debug("Attached barbell bilaterally at grip offset %.3f m", GRIP_OFFSET)
 
     def set_initial_pose(self, model: ET.Element) -> None:
         """Set the starting position: deep hip hinge, knees flexed.
@@ -108,9 +112,6 @@ def build_deadlift_model(
     plate_mass_per_side: float = 80.0,
 ) -> str:
     """Convenience function to build a deadlift model SDF string."""
-    from drake_models.shared.barbell import BarbellSpec
-    from drake_models.shared.body import BodyModelSpec
-
     config = ExerciseConfig(
         body_spec=BodyModelSpec(total_mass=body_mass, height=height),
         barbell_spec=BarbellSpec.mens_olympic(plate_mass_per_side=plate_mass_per_side),

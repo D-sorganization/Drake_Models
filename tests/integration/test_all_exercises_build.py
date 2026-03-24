@@ -120,6 +120,10 @@ class TestAllExercisesBuild:
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
     )
     def test_has_floating_joint(self, name, builder):
+        # The bench press welds the pelvis to a fixed bench pad rather than
+        # using a free floating joint, so it legitimately has zero floating joints.
+        if name == "bench_press":
+            pytest.skip("bench_press uses a weld constraint instead of floating joint")
         xml_str = builder()
         root = ET.fromstring(xml_str)
         floating = [j for j in root.findall(".//joint") if j.get("type") == "floating"]

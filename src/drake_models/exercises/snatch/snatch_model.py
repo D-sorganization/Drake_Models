@@ -27,6 +27,8 @@ import logging
 import xml.etree.ElementTree as ET
 
 from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
+from drake_models.shared.barbell import BarbellSpec
+from drake_models.shared.body import BodyModelSpec
 from drake_models.shared.utils.sdf_helpers import add_fixed_joint
 
 logger = logging.getLogger(__name__)
@@ -35,6 +37,10 @@ logger = logging.getLogger(__name__)
 SNATCH_INITIAL_HIP_ANGLE = 1.0472  # ~60 degrees hip flexion
 SNATCH_INITIAL_KNEE_ANGLE = -1.0472  # ~60 degrees knee flexion
 SNATCH_INITIAL_SHOULDER_ANGLE = 0.5236  # ~30 degrees shoulder flexion
+
+# Grip offset from barbell center to each hand (meters).
+# Snatch grip is ~1.5x shoulder width (approx 0.55-0.60 m from center).
+GRIP_OFFSET = 0.58
 
 
 class SnatchModelBuilder(ExerciseModelBuilder):
@@ -65,24 +71,22 @@ class SnatchModelBuilder(ExerciseModelBuilder):
         if "barbell_shaft" not in barbell_links:
             raise ValueError("Barbell model missing required 'barbell_shaft' link")
 
-        grip_offset = 0.58
-
         add_fixed_joint(
             model,
             name="barbell_to_left_hand",
             parent="hand_l",
             child="barbell_shaft",
-            pose=(0, -grip_offset, 0, 0, 0, 0),
+            pose=(0, -GRIP_OFFSET, 0, 0, 0, 0),
         )
         add_fixed_joint(
             model,
             name="barbell_to_right_hand",
             parent="hand_r",
             child="barbell_shaft",
-            pose=(0, grip_offset, 0, 0, 0, 0),
+            pose=(0, GRIP_OFFSET, 0, 0, 0, 0),
         )
         logger.debug(
-            "Attached barbell bilaterally with snatch grip at %.3f m", grip_offset
+            "Attached barbell bilaterally with snatch grip at %.3f m", GRIP_OFFSET
         )
 
     def set_initial_pose(self, model: ET.Element) -> None:
@@ -116,9 +120,6 @@ def build_snatch_model(
 
     Default: 80 kg person, 120 kg total barbell (competitive 96 kg class).
     """
-    from drake_models.shared.barbell import BarbellSpec
-    from drake_models.shared.body import BodyModelSpec
-
     config = ExerciseConfig(
         body_spec=BodyModelSpec(total_mass=body_mass, height=height),
         barbell_spec=BarbellSpec.mens_olympic(plate_mass_per_side=plate_mass_per_side),
