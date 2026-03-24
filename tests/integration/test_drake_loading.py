@@ -56,7 +56,7 @@ class TestSdfWellFormedness:
         """SDF string must be parseable by the stdlib XML parser."""
         xml_str = builder()
         root = ET.fromstring(xml_str)
-        assert root is not None, f"{name}: fromstring returned None"
+        assert root is not None
 
     @pytest.mark.parametrize(
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
@@ -65,7 +65,7 @@ class TestSdfWellFormedness:
         """Root element must be <sdf>."""
         xml_str = builder()
         root = ET.fromstring(xml_str)
-        assert root.tag == "sdf", f"{name}: expected root tag 'sdf', got '{root.tag}'"
+        assert root.tag == "sdf"
 
     @pytest.mark.parametrize(
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
@@ -74,10 +74,7 @@ class TestSdfWellFormedness:
         """Root <sdf> element must carry version='1.8'."""
         xml_str = builder()
         root = ET.fromstring(xml_str)
-        version = root.get("version")
-        assert version == "1.8", (
-            f"{name}: expected sdf version '1.8', got '{version}'"
-        )
+        assert root.get("version") == "1.8"
 
     @pytest.mark.parametrize(
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
@@ -87,9 +84,7 @@ class TestSdfWellFormedness:
         xml_str = builder()
         root = ET.fromstring(xml_str)
         models = root.findall("model")
-        assert len(models) == 1, (
-            f"{name}: expected 1 <model> child, found {len(models)}"
-        )
+        assert len(models) == 1
 
     @pytest.mark.parametrize(
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
@@ -100,9 +95,7 @@ class TestSdfWellFormedness:
         root = ET.fromstring(xml_str)
         model = root.find("model")
         assert model is not None
-        assert model.get("name") == name, (
-            f"model name mismatch: expected '{name}', got '{model.get('name')}'"
-        )
+        assert model.get("name") == name
 
     @pytest.mark.parametrize(
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
@@ -112,7 +105,7 @@ class TestSdfWellFormedness:
         xml_str = builder()
         root = ET.fromstring(xml_str)
         links = root.findall(".//link")
-        assert len(links) > 0, f"{name}: no <link> elements found"
+        assert len(links) > 0
 
     @pytest.mark.parametrize(
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
@@ -122,7 +115,7 @@ class TestSdfWellFormedness:
         xml_str = builder()
         root = ET.fromstring(xml_str)
         joints = root.findall(".//joint")
-        assert len(joints) > 0, f"{name}: no <joint> elements found"
+        assert len(joints) > 0
 
     @pytest.mark.parametrize(
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
@@ -152,9 +145,7 @@ class TestSdfWellFormedness:
         for link in root.findall(".//link"):
             lname = link.get("name", "<unnamed>")
             inertial = link.find("inertial")
-            assert inertial is not None, (
-                f"{name}/{lname}: missing <inertial> element"
-            )
+            assert inertial is not None, f"{name}/{lname}: missing <inertial> element"
 
     @pytest.mark.parametrize(
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
@@ -166,9 +157,7 @@ class TestSdfWellFormedness:
         xml_str = builder()
         root = ET.fromstring(xml_str)
         link_names = {el.get("name") for el in root.findall(".//link")}
-        assert "bench_pad" in link_names, (
-            "bench_press model missing 'bench_pad' link — Issue #25 not resolved"
-        )
+        assert "bench_pad" in link_names
 
     @pytest.mark.parametrize(
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
@@ -183,9 +172,7 @@ class TestSdfWellFormedness:
             j for j in root.findall(".//joint") if j.get("type") == "fixed"
         ]
         joint_names = {j.get("name") for j in fixed_joints}
-        assert "pelvis_to_bench" in joint_names, (
-            "bench_press model missing 'pelvis_to_bench' weld joint — Issue #25 not resolved"
-        )
+        assert "pelvis_to_bench" in joint_names
 
 
 @_SKIP_DRAKE
@@ -213,9 +200,7 @@ class TestDrakeParserLoading:
         plant.Finalize()
 
         # Basic sanity: at least one body was added (world + model bodies).
-        assert plant.num_bodies() > 1, (
-            f"{name}: Drake plant has no bodies after parsing SDF"
-        )
+        assert plant.num_bodies() > 1, f"{name}: Drake plant has no bodies after parsing SDF"
 
     @pytest.mark.parametrize(
         "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
@@ -236,6 +221,4 @@ class TestDrakeParserLoading:
         parser.AddModelFromFile(str(sdf_file))
         plant.Finalize()
 
-        assert plant.num_positions() > 0, (
-            f"{name}: Drake plant reports 0 generalized positions"
-        )
+        assert plant.num_positions() > 0, f"{name}: Drake plant reports 0 generalized positions"
