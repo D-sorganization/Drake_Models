@@ -39,7 +39,6 @@ from drake_models.shared.utils.geometry import (
     rectangular_prism_inertia,
 )
 from drake_models.shared.utils.sdf_helpers import (
-    add_fixed_joint,
     add_floating_joint,
     add_link,
     add_revolute_joint,
