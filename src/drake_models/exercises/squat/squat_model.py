@@ -14,6 +14,7 @@ Biomechanical notes:
 from __future__ import annotations
 
 import logging
+import math
 import xml.etree.ElementTree as ET
 
 from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
@@ -24,8 +25,8 @@ from drake_models.shared.utils.sdf_helpers import add_fixed_joint
 logger = logging.getLogger(__name__)
 
 # Initial joint angles for the unrack position (radians).
-SQUAT_INITIAL_HIP_ANGLE = 0.0873  # ~5 degrees flexion
-SQUAT_INITIAL_KNEE_ANGLE = -0.0873  # ~5 degrees flexion
+SQUAT_INITIAL_HIP_ANGLE = math.pi * 5 / 180  # ~5 degrees flexion
+SQUAT_INITIAL_KNEE_ANGLE = -math.pi * 5 / 180  # ~5 degrees flexion
 
 # Torso length as a fraction of body height (Winter 2009 segment table).
 # Matches the "torso" length_frac entry in body_model._SEGMENT_TABLE.
@@ -48,9 +49,6 @@ class SquatModelBuilder(ExerciseModelBuilder):
     upper trapezius (high-bar squat). For a low-bar variant, the attachment
     point would be shifted ~5 cm inferior.
     """
-
-    def __init__(self, config: ExerciseConfig | None = None) -> None:
-        super().__init__(config)
 
     @property
     def exercise_name(self) -> str:
@@ -90,18 +88,16 @@ class SquatModelBuilder(ExerciseModelBuilder):
         Hip flexion ~5 degrees, knee flexion ~5 degrees for a natural
         standing position after unracking the bar.
         """
-        initial_pose = ET.SubElement(model, "initial_pose")
-        initial_pose.set("name", "unrack")
-        joints = {
-            "hip_l": SQUAT_INITIAL_HIP_ANGLE,
-            "hip_r": SQUAT_INITIAL_HIP_ANGLE,
-            "knee_l": SQUAT_INITIAL_KNEE_ANGLE,
-            "knee_r": SQUAT_INITIAL_KNEE_ANGLE,
-        }
-        for joint_name, angle in joints.items():
-            joint_el = ET.SubElement(initial_pose, "joint")
-            joint_el.set("name", joint_name)
-            joint_el.text = f"{angle:.6f}"
+        self._write_initial_pose(
+            model,
+            "unrack",
+            {
+                "hip_l": SQUAT_INITIAL_HIP_ANGLE,
+                "hip_r": SQUAT_INITIAL_HIP_ANGLE,
+                "knee_l": SQUAT_INITIAL_KNEE_ANGLE,
+                "knee_r": SQUAT_INITIAL_KNEE_ANGLE,
+            },
+        )
 
 
 def build_squat_model(

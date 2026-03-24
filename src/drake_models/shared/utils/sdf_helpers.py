@@ -9,6 +9,7 @@ Drake uses SDFormat 1.8 with Z-up convention.
 from __future__ import annotations
 
 import logging
+import math
 import xml.etree.ElementTree as ET
 
 logger = logging.getLogger(__name__)
@@ -72,8 +73,32 @@ def add_link(
 
 
 def make_cylinder_geometry(radius: float, length: float) -> ET.Element:
-    """Create an SDF <geometry><cylinder> element."""
+    """Create an SDF <geometry><cylinder> element.
+
+    The cylinder long axis is aligned with the local Z-axis (SDF default).
+    Use ``make_cylinder_geometry_y`` for Y-axis alignment (e.g. barbells).
+    """
     geometry = ET.Element("geometry")
+    cylinder = ET.SubElement(geometry, "cylinder")
+    ET.SubElement(cylinder, "radius").text = f"{radius:.6f}"
+    ET.SubElement(cylinder, "length").text = f"{length:.6f}"
+    return geometry
+
+
+def make_cylinder_geometry_y(radius: float, length: float) -> ET.Element:
+    """Create an SDF <geometry> wrapping a cylinder aligned with the Y-axis.
+
+    SDF cylinders default to the local Z-axis as their long axis.  A
+    ``<pose>`` of ``roll=π/2`` rotates the local Z-axis onto the world Y-axis,
+    so this helper should be used whenever the cylinder extends along Y
+    (e.g. the barbell shaft and sleeves which connect at ±Y offsets).
+
+    The returned ``<geometry>`` element contains both the ``<cylinder>`` and
+    a sibling ``<pose>`` so callers do not need to remember the rotation.
+    """
+    geometry = ET.Element("geometry")
+    # roll=π/2 rotates local Z → world Y
+    ET.SubElement(geometry, "pose").text = pose_str(0, 0, 0, math.pi / 2, 0, 0)
     cylinder = ET.SubElement(geometry, "cylinder")
     ET.SubElement(cylinder, "radius").text = f"{radius:.6f}"
     ET.SubElement(cylinder, "length").text = f"{length:.6f}"

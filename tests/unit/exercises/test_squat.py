@@ -89,3 +89,6 @@ class TestSquatModelBuilder:
         root = ET.fromstring(xml_str)
         initial_pose = root.find(".//initial_pose")
         assert initial_pose is not None
+        assert initial_pose.get("name") == "unrack"
+        joints = initial_pose.findall("joint")
+        assert len(joints) > 0, "initial_pose must contain at least one joint element"

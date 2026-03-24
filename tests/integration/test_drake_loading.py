@@ -4,6 +4,9 @@ These tests check that all exercise models produce valid SDF XML. The
 Drake-specific parser tests are guarded with ``pytest.mark.skipif`` so
 that the full test suite can run in environments where pydrake is not
 installed.
+
+``ALL_BUILDERS`` is imported from ``test_all_exercises_build`` so the
+canonical list of exercise builders is defined in exactly one place.
 """
 
 from __future__ import annotations
@@ -12,15 +15,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from drake_models.exercises.bench_press.bench_press_model import (
-    build_bench_press_model,
-)
-from drake_models.exercises.clean_and_jerk.clean_and_jerk_model import (
-    build_clean_and_jerk_model,
-)
-from drake_models.exercises.deadlift.deadlift_model import build_deadlift_model
-from drake_models.exercises.snatch.snatch_model import build_snatch_model
-from drake_models.exercises.squat.squat_model import build_squat_model
+from tests.integration.test_all_exercises_build import ALL_BUILDERS
 
 try:
     import pydrake  # noqa: F401
@@ -33,14 +28,6 @@ _SKIP_DRAKE = pytest.mark.skipif(
     not _PYDRAKE_AVAILABLE,
     reason="pydrake is not installed in this environment",
 )
-
-ALL_BUILDERS = [
-    ("back_squat", build_squat_model),
-    ("bench_press", build_bench_press_model),
-    ("deadlift", build_deadlift_model),
-    ("snatch", build_snatch_model),
-    ("clean_and_jerk", build_clean_and_jerk_model),
-]
 
 _IDS = [n for n, _ in ALL_BUILDERS]
 
