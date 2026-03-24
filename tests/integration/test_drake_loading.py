@@ -24,6 +24,7 @@ from drake_models.exercises.squat.squat_model import build_squat_model
 
 try:
     import pydrake  # noqa: F401
+
     _PYDRAKE_AVAILABLE = True
 except ImportError:
     _PYDRAKE_AVAILABLE = False
@@ -142,9 +143,7 @@ class TestSdfWellFormedness:
             pytest.skip("Only applicable to bench_press")
         xml_str = builder()
         root = ET.fromstring(xml_str)
-        fixed_joints = [
-            j for j in root.findall(".//joint") if j.get("type") == "fixed"
-        ]
+        fixed_joints = [j for j in root.findall(".//joint") if j.get("type") == "fixed"]
         joint_names = {j.get("name") for j in fixed_joints}
         assert "pelvis_to_bench" in joint_names
 
