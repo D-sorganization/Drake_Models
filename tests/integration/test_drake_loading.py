@@ -1,4 +1,4 @@
-"""Integration tests: verify SDF well-formedness and optional Drake parser loading.
+"""Integration tests: verify SDF well-formedness and optional Drake loading.
 
 These tests check that all exercise models produce valid SDF XML. The
 Drake-specific parser tests are guarded with ``pytest.mark.skipif`` so
@@ -22,9 +22,6 @@ from drake_models.exercises.deadlift.deadlift_model import build_deadlift_model
 from drake_models.exercises.snatch.snatch_model import build_snatch_model
 from drake_models.exercises.squat.squat_model import build_squat_model
 
-# ---------------------------------------------------------------------------
-# Detect whether pydrake is importable (optional dependency).
-# ---------------------------------------------------------------------------
 try:
     import pydrake  # noqa: F401
 
@@ -45,40 +42,34 @@ ALL_BUILDERS = [
     ("clean_and_jerk", build_clean_and_jerk_model),
 ]
 
+_IDS = [n for n, _ in ALL_BUILDERS]
+
 
 class TestSdfWellFormedness:
     """Verify each exercise model produces well-formed SDF XML."""
 
-    @pytest.mark.parametrize(
-        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
-    )
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_xml_is_parseable(self, name: str, builder) -> None:
         """SDF string must be parseable by the stdlib XML parser."""
         xml_str = builder()
         root = ET.fromstring(xml_str)
         assert root is not None
 
-    @pytest.mark.parametrize(
-        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
-    )
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_sdf_root_tag(self, name: str, builder) -> None:
         """Root element must be <sdf>."""
         xml_str = builder()
         root = ET.fromstring(xml_str)
         assert root.tag == "sdf"
 
-    @pytest.mark.parametrize(
-        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
-    )
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_sdf_version_attribute(self, name: str, builder) -> None:
         """Root <sdf> element must carry version='1.8'."""
         xml_str = builder()
         root = ET.fromstring(xml_str)
         assert root.get("version") == "1.8"
 
-    @pytest.mark.parametrize(
-        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
-    )
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_model_element_present(self, name: str, builder) -> None:
         """Each SDF must contain exactly one <model> child element."""
         xml_str = builder()
@@ -86,9 +77,7 @@ class TestSdfWellFormedness:
         models = root.findall("model")
         assert len(models) == 1
 
-    @pytest.mark.parametrize(
-        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
-    )
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_model_name_attribute(self, name: str, builder) -> None:
         """The <model name='...'> attribute must match the exercise name."""
         xml_str = builder()
@@ -97,9 +86,7 @@ class TestSdfWellFormedness:
         assert model is not None
         assert model.get("name") == name
 
-    @pytest.mark.parametrize(
-        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
-    )
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_has_at_least_one_link(self, name: str, builder) -> None:
         """SDF must contain at least one <link> element."""
         xml_str = builder()
@@ -107,9 +94,7 @@ class TestSdfWellFormedness:
         links = root.findall(".//link")
         assert len(links) > 0
 
-    @pytest.mark.parametrize(
-        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
-    )
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_has_at_least_one_joint(self, name: str, builder) -> None:
         """SDF must contain at least one <joint> element."""
         xml_str = builder()
@@ -117,9 +102,7 @@ class TestSdfWellFormedness:
         joints = root.findall(".//joint")
         assert len(joints) > 0
 
-    @pytest.mark.parametrize(
-        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
-    )
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_all_joints_have_parent_and_child(self, name: str, builder) -> None:
         """Every <joint> must have non-empty <parent> and <child> text."""
         xml_str = builder()
@@ -133,9 +116,7 @@ class TestSdfWellFormedness:
             msg_c = f"{name}/{jname}: missing or empty <child>"
             assert child_el is not None and child_el.text, msg_c
 
-    @pytest.mark.parametrize(
-        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
-    )
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_all_links_have_inertial(self, name: str, builder) -> None:
         """Every <link> must contain an <inertial> block."""
         xml_str = builder()
@@ -143,13 +124,11 @@ class TestSdfWellFormedness:
         for link in root.findall(".//link"):
             lname = link.get("name", "<unnamed>")
             inertial = link.find("inertial")
-            assert inertial is not None, f"{name}/{lname}: missing <inertial> element"
+            assert inertial is not None, f"{name}/{lname}: missing <inertial>"
 
-    @pytest.mark.parametrize(
-        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
-    )
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_bench_press_has_bench_pad_link(self, name: str, builder) -> None:
-        """bench_press model must contain a 'bench_pad' link (Issue #25)."""
+        """bench_press model must contain a 'bench_pad' link."""
         if name != "bench_press":
             pytest.skip("Only applicable to bench_press")
         xml_str = builder()
@@ -157,9 +136,7 @@ class TestSdfWellFormedness:
         link_names = {el.get("name") for el in root.findall(".//link")}
         assert "bench_pad" in link_names
 
-    @pytest.mark.parametrize(
-        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
-    )
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_bench_press_has_pelvis_weld(self, name: str, builder) -> None:
         """bench_press must have a fixed joint connecting pelvis to bench."""
         if name != "bench_press":
@@ -175,16 +152,14 @@ class TestSdfWellFormedness:
 
 @_SKIP_DRAKE
 class TestDrakeParserLoading:
-    """Verify SDF models load cleanly through the Drake MultibodyPlant parser.
+    """Verify SDF models load through the Drake MultibodyPlant parser.
 
     All tests in this class are skipped when pydrake is not importable.
     """
 
-    @pytest.mark.parametrize(
-        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
-    )
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_drake_parser_accepts_sdf(self, name: str, builder, tmp_path) -> None:
-        """Drake MultibodyPlant must accept the SDF without raising an exception."""
+        """Drake MultibodyPlant must accept the SDF without raising."""
         from pydrake.multibody.parsing import Parser  # type: ignore[import]
         from pydrake.multibody.plant import MultibodyPlant  # type: ignore[import]
 
@@ -197,12 +172,9 @@ class TestDrakeParserLoading:
         parser.AddModelFromFile(str(sdf_file))
         plant.Finalize()
 
-        # Basic sanity: at least one body was added (world + model bodies).
         assert plant.num_bodies() > 1, f"{name}: no bodies after parsing SDF"
 
-    @pytest.mark.parametrize(
-        "name,builder", ALL_BUILDERS, ids=[n for n, _ in ALL_BUILDERS]
-    )
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_drake_plant_num_positions_positive(
         self, name: str, builder, tmp_path
     ) -> None:
