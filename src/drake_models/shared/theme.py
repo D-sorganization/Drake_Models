@@ -18,7 +18,7 @@ try:
         """Apply the global shared plot theme to a Matplotlib axis."""
         _style_axis(ax)
 
-    logger.debug(f"Loaded shared plot theme: {theme.name}")
+    logger.debug("Loaded shared plot theme: %s", theme.name)
 
 except ImportError:
     logger.warning(
