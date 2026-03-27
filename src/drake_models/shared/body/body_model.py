@@ -84,8 +84,9 @@ HIP_FLEXION_LIMIT: float = 2.0944  # +120 degrees
 # Knee range of motion (radians): flexion to neutral.
 KNEE_FLEXION_LIMIT: float = -2.618  # -150 degrees
 
-# Ankle range of motion (radians): +/-45 degrees.
-ANKLE_ROM: float = 0.7854
+# Ankle range of motion (radians): asymmetric plantarflexion / dorsiflexion.
+ANKLE_PLANTAR_MAX: float = -0.8727  # -50 degrees plantarflexion
+ANKLE_DORSI_MAX: float = 0.3491  # +20 degrees dorsiflexion
 
 
 @dataclass(frozen=True)
@@ -378,8 +379,8 @@ def create_full_body(
             parent_offset_z=-sh_len,
             parent_lateral_y=0,
             coord_prefix="ankle",
-            range_min=-ANKLE_ROM,
-            range_max=ANKLE_ROM,
+            range_min=ANKLE_PLANTAR_MAX,
+            range_max=ANKLE_DORSI_MAX,
         )
     )
 
