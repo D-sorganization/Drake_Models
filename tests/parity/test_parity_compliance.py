@@ -155,16 +155,36 @@ class TestExercisePhases:
     """Verify canonical exercise phase counts."""
 
     def test_back_squat_phases(self) -> None:
-        assert EXERCISE_PHASE_COUNTS["back_squat"] == 5
+        assert EXERCISE_PHASE_COUNTS["back_squat"] == 3
+
+    def test_deadlift_phases(self) -> None:
+        assert EXERCISE_PHASE_COUNTS["deadlift"] == 3
+
+    def test_bench_press_phases(self) -> None:
+        assert EXERCISE_PHASE_COUNTS["bench_press"] == 3
 
     def test_snatch_phases(self) -> None:
-        assert EXERCISE_PHASE_COUNTS["snatch"] == 6
+        assert EXERCISE_PHASE_COUNTS["snatch"] == 5
 
     def test_clean_and_jerk_phases(self) -> None:
-        assert EXERCISE_PHASE_COUNTS["clean_and_jerk"] == 8
+        assert EXERCISE_PHASE_COUNTS["clean_and_jerk"] == 5
+
+    def test_gait_phases(self) -> None:
+        assert EXERCISE_PHASE_COUNTS["gait"] == 8
+
+    def test_sit_to_stand_phases(self) -> None:
+        assert EXERCISE_PHASE_COUNTS["sit_to_stand"] == 6
 
     def test_all_exercises_present(self) -> None:
-        required = {"back_squat", "deadlift", "bench_press", "snatch", "clean_and_jerk"}
+        required = {
+            "back_squat",
+            "deadlift",
+            "bench_press",
+            "snatch",
+            "clean_and_jerk",
+            "gait",
+            "sit_to_stand",
+        }
         assert required <= set(EXERCISE_PHASE_COUNTS.keys())
 
 

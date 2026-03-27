@@ -13,6 +13,7 @@ from drake_models.shared.utils.sdf_helpers import (
     add_virtual_link,
     make_box_geometry,
     make_cylinder_geometry,
+    make_cylinder_geometry_y,
     make_sphere_geometry,
     pose_str,
     serialize_model,
@@ -61,6 +62,24 @@ class TestMakeGeometry:
         box = geom.find("box")  # type: ignore
         assert box is not None
         assert "1.000000" in box.find("size").text  # type: ignore
+
+    def test_cylinder_y_has_radius_and_length(self) -> None:
+        geom = make_cylinder_geometry_y(0.25, 1.5)
+        assert geom.tag == "geometry"
+        cyl = geom.find("cylinder")  # type: ignore
+        assert cyl is not None
+        assert "0.250000" in cyl.find("radius").text  # type: ignore
+        assert "1.500000" in cyl.find("length").text  # type: ignore
+
+    def test_cylinder_y_has_pose_with_roll(self) -> None:
+        import math
+
+        geom = make_cylinder_geometry_y(0.1, 0.5)
+        pose = geom.find("pose")  # type: ignore
+        assert pose is not None
+        parts = pose.text.strip().split()  # type: ignore
+        roll = float(parts[3])
+        assert roll == pytest.approx(math.pi / 2, rel=1e-4)
 
     def test_sphere_has_radius(self) -> None:
         geom = make_sphere_geometry(0.25)

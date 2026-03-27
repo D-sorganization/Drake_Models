@@ -7,6 +7,7 @@ import pytest
 
 from drake_models.shared.utils.geometry import (
     cylinder_inertia,
+    hollow_cylinder_inertia,
     parallel_axis_shift,
     rectangular_prism_inertia,
     rotation_matrix_x,
@@ -58,6 +59,60 @@ class TestCylinderInertia:
 
     def test_triangle_inequality(self) -> None:
         ixx, iyy, izz = cylinder_inertia(2.0, 0.3, 0.8)
+        assert ixx + iyy >= izz
+        assert ixx + izz >= iyy
+        assert iyy + izz >= ixx
+
+
+class TestHollowCylinderInertia:
+    def test_known_values(self) -> None:
+        mass, r_in, r_out, length = 10.0, 0.2, 0.5, 2.0
+        ixx, iyy, izz = hollow_cylinder_inertia(mass, r_in, r_out, length)
+        r_sq_sum = r_in**2 + r_out**2
+        expected_izz = 0.5 * mass * r_sq_sum
+        expected_ixx = (1.0 / 12.0) * mass * (3.0 * r_sq_sum + length**2)
+        assert izz == pytest.approx(expected_izz)
+        assert ixx == pytest.approx(expected_ixx)
+        assert iyy == pytest.approx(expected_ixx)
+
+    def test_symmetry(self) -> None:
+        ixx, iyy, izz = hollow_cylinder_inertia(5.0, 0.05, 0.1, 1.0)
+        assert ixx == pytest.approx(iyy)
+
+    def test_reduces_to_solid_when_inner_radius_tiny(self) -> None:
+        """When inner radius approaches zero, should approximate solid cylinder."""
+        mass, r_out, length = 10.0, 0.5, 2.0
+        solid_ixx, solid_iyy, solid_izz = cylinder_inertia(mass, r_out, length)
+        hollow_ixx, hollow_iyy, hollow_izz = hollow_cylinder_inertia(
+            mass, 1e-6, r_out, length
+        )
+        assert hollow_izz == pytest.approx(solid_izz, rel=1e-4)
+        assert hollow_ixx == pytest.approx(solid_ixx, rel=1e-4)
+
+    def test_rejects_zero_mass(self) -> None:
+        with pytest.raises(ValueError, match="mass"):
+            hollow_cylinder_inertia(0.0, 0.1, 0.5, 1.0)
+
+    def test_rejects_inner_ge_outer(self) -> None:
+        with pytest.raises(ValueError, match="inner_radius"):
+            hollow_cylinder_inertia(1.0, 0.5, 0.5, 1.0)
+
+    def test_rejects_inner_greater_than_outer(self) -> None:
+        with pytest.raises(ValueError, match="inner_radius"):
+            hollow_cylinder_inertia(1.0, 0.6, 0.5, 1.0)
+
+    def test_rejects_zero_length(self) -> None:
+        with pytest.raises(ValueError, match="length"):
+            hollow_cylinder_inertia(1.0, 0.1, 0.5, 0.0)
+
+    def test_all_positive(self) -> None:
+        ixx, iyy, izz = hollow_cylinder_inertia(1.0, 0.05, 0.1, 0.5)
+        assert ixx > 0
+        assert iyy > 0
+        assert izz > 0
+
+    def test_triangle_inequality(self) -> None:
+        ixx, iyy, izz = hollow_cylinder_inertia(2.0, 0.1, 0.3, 0.8)
         assert ixx + iyy >= izz
         assert ixx + izz >= iyy
         assert iyy + izz >= ixx
