@@ -121,6 +121,29 @@ def make_sphere_geometry(radius: float) -> ET.Element:
     return geometry
 
 
+def add_virtual_link(
+    model: ET.Element,
+    *,
+    name: str,
+) -> ET.Element:
+    """Append a zero-mass virtual link for compound joint chains.
+
+    SDF requires a tree topology: compound (multi-DOF) joints are built by
+    chaining revolute joints through intermediate "virtual" links that carry
+    negligible mass and inertia.  This helper creates such a link with
+    mass = 1e-6 kg and principal inertia moments of 1e-6 each.
+    """
+    return add_link(
+        model,
+        name=name,
+        mass=1e-6,
+        mass_center=(0, 0, 0),
+        inertia_xx=1e-6,
+        inertia_yy=1e-6,
+        inertia_zz=1e-6,
+    )
+
+
 def add_revolute_joint(
     model: ET.Element,
     *,

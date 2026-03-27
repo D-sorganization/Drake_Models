@@ -76,17 +76,20 @@ class SnatchModelBuilder(ExerciseModelBuilder):
 
         The lifter is in the first-pull position with significant hip and
         knee flexion and arms reaching down to the wide-grip bar.
+        Shoulder abduction for the overhead catch position.
         """
         self._write_initial_pose(
             model,
             "first_pull",
             {
-                "hip_l": SNATCH_INITIAL_HIP_ANGLE,
-                "hip_r": SNATCH_INITIAL_HIP_ANGLE,
+                "hip_l_flex": SNATCH_INITIAL_HIP_ANGLE,
+                "hip_r_flex": SNATCH_INITIAL_HIP_ANGLE,
                 "knee_l": SNATCH_INITIAL_KNEE_ANGLE,
                 "knee_r": SNATCH_INITIAL_KNEE_ANGLE,
-                "shoulder_l": SNATCH_INITIAL_SHOULDER_ANGLE,
-                "shoulder_r": SNATCH_INITIAL_SHOULDER_ANGLE,
+                "shoulder_l_flex": SNATCH_INITIAL_SHOULDER_ANGLE,
+                "shoulder_r_flex": SNATCH_INITIAL_SHOULDER_ANGLE,
+                "shoulder_l_adduct": 0.5236,  # ~30 deg abduction for wide grip
+                "shoulder_r_adduct": 0.5236,
             },
         )
 

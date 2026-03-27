@@ -74,11 +74,11 @@ class DeadliftModelBuilder(ExerciseModelBuilder):
             model,
             "setup",
             {
-                "hip_l": DEADLIFT_INITIAL_HIP_ANGLE,
-                "hip_r": DEADLIFT_INITIAL_HIP_ANGLE,
+                "hip_l_flex": DEADLIFT_INITIAL_HIP_ANGLE,
+                "hip_r_flex": DEADLIFT_INITIAL_HIP_ANGLE,
                 "knee_l": DEADLIFT_INITIAL_KNEE_ANGLE,
                 "knee_r": DEADLIFT_INITIAL_KNEE_ANGLE,
-                "lumbar": DEADLIFT_INITIAL_LUMBAR_ANGLE,
+                "lumbar_flex": DEADLIFT_INITIAL_LUMBAR_ANGLE,
             },
         )
 

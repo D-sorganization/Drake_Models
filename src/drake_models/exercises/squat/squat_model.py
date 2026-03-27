@@ -86,14 +86,17 @@ class SquatModelBuilder(ExerciseModelBuilder):
         """Set standing unrack position: slight hip/knee flexion.
 
         Hip flexion ~5 degrees, knee flexion ~5 degrees for a natural
-        standing position after unracking the bar.
+        standing position after unracking the bar.  Hip external rotation
+        ~10 degrees for natural stance width.
         """
         self._write_initial_pose(
             model,
             "unrack",
             {
-                "hip_l": SQUAT_INITIAL_HIP_ANGLE,
-                "hip_r": SQUAT_INITIAL_HIP_ANGLE,
+                "hip_l_flex": SQUAT_INITIAL_HIP_ANGLE,
+                "hip_r_flex": SQUAT_INITIAL_HIP_ANGLE,
+                "hip_l_rotate": 0.17,  # ~10 degrees external rotation
+                "hip_r_rotate": 0.17,
                 "knee_l": SQUAT_INITIAL_KNEE_ANGLE,
                 "knee_r": SQUAT_INITIAL_KNEE_ANGLE,
             },

@@ -103,11 +103,11 @@ class TestAllExercisesBuild:
         ids=[n for n, _ in ALL_BUILDERS],  # type: ignore
     )
     def test_minimum_link_count(self, name: Any, builder: Any) -> None:
-        """Every exercise should have at least 18 links (15 body + 3 barbell)."""
+        """Every exercise should have at least 32 links (15 body + 14 virtual + 3 barbell)."""
         xml_str = builder()
         root = ET.fromstring(xml_str)
         links = root.findall(".//link")  # type: ignore
-        assert len(links) >= 18
+        assert len(links) >= 32
 
     @pytest.mark.parametrize(
         "name,builder",

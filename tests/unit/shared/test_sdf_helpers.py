@@ -10,6 +10,7 @@ from drake_models.shared.utils.sdf_helpers import (
     add_floating_joint,
     add_link,
     add_revolute_joint,
+    add_virtual_link,
     make_box_geometry,
     make_cylinder_geometry,
     make_sphere_geometry,
@@ -181,6 +182,34 @@ class TestAddLink:
         assert "0.100000" in pose.text  # type: ignore
         assert "0.200000" in pose.text  # type: ignore
         assert "0.300000" in pose.text  # type: ignore
+
+
+class TestAddVirtualLink:
+    @pytest.fixture()
+    def model(self) -> ET.Element:
+        return ET.Element("model", name="test")
+
+    def test_creates_link_with_name(self, model: Any) -> None:
+        link = add_virtual_link(model, name="hip_l_virtual_1")
+        assert link.tag == "link"
+        assert link.get("name") == "hip_l_virtual_1"  # type: ignore
+
+    def test_zero_mass(self, model: Any) -> None:
+        link = add_virtual_link(model, name="v1")
+        mass_el = link.find("inertial/mass")  # type: ignore
+        assert float(mass_el.text) == pytest.approx(1e-6)  # type: ignore
+
+    def test_minimal_inertia(self, model: Any) -> None:
+        link = add_virtual_link(model, name="v1")
+        inertia = link.find("inertial/inertia")  # type: ignore
+        assert float(inertia.find("ixx").text) == pytest.approx(1e-6)  # type: ignore
+        assert float(inertia.find("iyy").text) == pytest.approx(1e-6)  # type: ignore
+        assert float(inertia.find("izz").text) == pytest.approx(1e-6)  # type: ignore
+
+    def test_no_visual_or_collision(self, model: Any) -> None:
+        link = add_virtual_link(model, name="v1")
+        assert link.find("visual") is None  # type: ignore
+        assert link.find("collision") is None  # type: ignore
 
 
 class TestAddRevoluteJoint:
