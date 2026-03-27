@@ -6,6 +6,7 @@ import math
 
 
 def _rad(deg: float) -> float:
+    """Convert degrees to radians (used internally by JOINT_LIMITS)."""
     return math.radians(deg)
 
 
@@ -62,10 +63,12 @@ MENS_BARBELL = {
 FOOT_CONTACT_DIMS = {"length": 0.26, "width": 0.10, "height": 0.02}
 GROUND_FRICTION = {"static": 0.8, "dynamic": 0.6}
 EXERCISE_PHASE_COUNTS = {
-    "back_squat": 5,
-    "deadlift": 5,
-    "bench_press": 5,
-    "snatch": 6,
-    "clean_and_jerk": 8,
+    "back_squat": 3,
+    "deadlift": 3,
+    "bench_press": 3,
+    "snatch": 5,
+    "clean_and_jerk": 5,
+    "gait": 8,
+    "sit_to_stand": 6,
 }
 GRAVITY = (0.0, 0.0, -9.80665)

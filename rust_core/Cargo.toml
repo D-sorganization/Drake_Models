@@ -1,0 +1,15 @@
+[package]
+name = "drake_models_core"
+version = "0.1.0"
+edition = "2021"
+description = "Rust/rayon accelerator for Drake Models batch dynamics"
+
+[lib]
+name = "drake_models_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.22", features = ["extension-module"] }
+numpy = "0.22"
+ndarray = "0.16"
+rayon = "1.10"

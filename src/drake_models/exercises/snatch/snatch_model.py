@@ -35,9 +35,10 @@ from drake_models.shared.body import BodyModelSpec
 logger = logging.getLogger(__name__)
 
 # Initial joint angles for the first-pull setup position (radians).
-SNATCH_INITIAL_HIP_ANGLE = 1.3963  # ~80 degrees hip flexion
-SNATCH_INITIAL_KNEE_ANGLE = -math.pi / 3  # ~60 degrees knee flexion
-SNATCH_INITIAL_SHOULDER_ANGLE = math.pi / 6  # ~30 degrees shoulder flexion
+SNATCH_INITIAL_HIP_ANGLE = math.radians(80)  # 80 degrees hip flexion
+SNATCH_INITIAL_KNEE_ANGLE = math.radians(-60)  # 60 degrees knee flexion
+SNATCH_INITIAL_SHOULDER_ANGLE = math.radians(30)  # 30 degrees shoulder flexion
+SNATCH_INITIAL_SHOULDER_ABD = math.radians(30)  # 30 degrees abduction for wide grip
 
 # Grip offset from barbell center to each hand (meters).
 # Snatch grip is ~1.5x shoulder width (approx 0.55-0.60 m from center).
@@ -54,6 +55,7 @@ class SnatchModelBuilder(ExerciseModelBuilder):
 
     @property
     def exercise_name(self) -> str:
+        """Return the canonical exercise name for the snatch model."""
         return "snatch"
 
     def attach_barbell(
@@ -88,8 +90,8 @@ class SnatchModelBuilder(ExerciseModelBuilder):
                 "knee_r": SNATCH_INITIAL_KNEE_ANGLE,
                 "shoulder_l_flex": SNATCH_INITIAL_SHOULDER_ANGLE,
                 "shoulder_r_flex": SNATCH_INITIAL_SHOULDER_ANGLE,
-                "shoulder_l_adduct": 0.5236,  # ~30 deg abduction for wide grip
-                "shoulder_r_adduct": 0.5236,
+                "shoulder_l_adduct": SNATCH_INITIAL_SHOULDER_ABD,
+                "shoulder_r_adduct": SNATCH_INITIAL_SHOULDER_ABD,
             },
         )
 

@@ -39,9 +39,9 @@ from drake_models.shared.body import BodyModelSpec
 logger = logging.getLogger(__name__)
 
 # Initial joint angles for the clean setup position (radians).
-CLEAN_INITIAL_HIP_ANGLE = math.pi * 70 / 180  # ~70 degrees hip flexion
-CLEAN_INITIAL_KNEE_ANGLE = -math.pi / 3  # ~60 degrees knee flexion
-CLEAN_INITIAL_LUMBAR_ANGLE = math.pi * 10 / 180  # ~10 degrees lumbar flexion
+CLEAN_INITIAL_HIP_ANGLE = math.radians(70)  # 70 degrees hip flexion
+CLEAN_INITIAL_KNEE_ANGLE = math.radians(-60)  # 60 degrees knee flexion
+CLEAN_INITIAL_LUMBAR_ANGLE = math.radians(10)  # 10 degrees lumbar flexion
 
 # Grip offset from barbell center to each hand (meters).
 # Clean grip is approximately shoulder width (~0.25 m from center).
@@ -61,6 +61,7 @@ class CleanAndJerkModelBuilder(ExerciseModelBuilder):
 
     @property
     def exercise_name(self) -> str:
+        """Return the canonical exercise name for the clean and jerk model."""
         return "clean_and_jerk"
 
     def attach_barbell(

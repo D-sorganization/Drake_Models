@@ -25,8 +25,9 @@ from drake_models.shared.utils.sdf_helpers import add_fixed_joint
 logger = logging.getLogger(__name__)
 
 # Initial joint angles for the unrack position (radians).
-SQUAT_INITIAL_HIP_ANGLE = math.pi * 5 / 180  # ~5 degrees flexion
-SQUAT_INITIAL_KNEE_ANGLE = -math.pi * 5 / 180  # ~5 degrees flexion
+SQUAT_INITIAL_HIP_ANGLE = math.radians(5)  # 5 degrees flexion
+SQUAT_INITIAL_KNEE_ANGLE = math.radians(-5)  # 5 degrees flexion
+SQUAT_INITIAL_HIP_ROTATION = math.radians(10)  # 10 degrees external rotation
 
 # Torso length as a fraction of body height (Winter 2009 segment table).
 # Matches the "torso" length_frac entry in body_model._SEGMENT_TABLE.
@@ -52,6 +53,7 @@ class SquatModelBuilder(ExerciseModelBuilder):
 
     @property
     def exercise_name(self) -> str:
+        """Return the canonical exercise name for the back squat model."""
         return "back_squat"
 
     def attach_barbell(
@@ -95,8 +97,8 @@ class SquatModelBuilder(ExerciseModelBuilder):
             {
                 "hip_l_flex": SQUAT_INITIAL_HIP_ANGLE,
                 "hip_r_flex": SQUAT_INITIAL_HIP_ANGLE,
-                "hip_l_rotate": 0.17,  # ~10 degrees external rotation
-                "hip_r_rotate": 0.17,
+                "hip_l_rotate": SQUAT_INITIAL_HIP_ROTATION,
+                "hip_r_rotate": SQUAT_INITIAL_HIP_ROTATION,
                 "knee_l": SQUAT_INITIAL_KNEE_ANGLE,
                 "knee_r": SQUAT_INITIAL_KNEE_ANGLE,
             },
