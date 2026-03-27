@@ -46,7 +46,7 @@ BENCH_PAD_MASS = 30.0
 # Grip offset from barbell center (meters) — approximately shoulder width.
 # Standard competition bench press grip is ~0.81 m between index fingers;
 # modelled here as offset from shaft center to each hand attachment point.
-GRIP_OFFSET = 0.20  # meters from barbell center to each hand
+GRIP_OFFSET = 0.40  # meters from barbell center to each hand
 
 # Supine pelvis orientation: pitched -90 degrees about Y so body lies flat.
 # Drake Z-up / X-forward convention: SDF pose format is "x y z roll pitch yaw".

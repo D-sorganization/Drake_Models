@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 GRIP_OFFSET = 0.22
 
 # Initial joint angles for the setup position (radians).
-DEADLIFT_INITIAL_HIP_ANGLE = math.pi / 3  # ~60 degrees hip flexion
+DEADLIFT_INITIAL_HIP_ANGLE = 1.3963  # ~80 degrees hip flexion
 DEADLIFT_INITIAL_KNEE_ANGLE = -math.pi * 70 / 180  # ~70 degrees knee flexion
 DEADLIFT_INITIAL_LUMBAR_ANGLE = math.pi * 15 / 180  # ~15 degrees lumbar flexion
 
