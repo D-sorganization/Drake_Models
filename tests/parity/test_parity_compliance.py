@@ -39,7 +39,8 @@ class TestAnthropometrics:
         """Bilateral segments are listed once; doubled they should approximate 1.0."""
         bilateral = {"upper_arm", "forearm", "hand", "thigh", "shank", "foot"}
         total = sum(
-            frac * 2 if name in bilateral else frac for name, frac in SEGMENT_MASS_FRACTIONS.items()
+            frac * 2 if name in bilateral else frac
+            for name, frac in SEGMENT_MASS_FRACTIONS.items()
         )
         assert abs(total - 1.0) < 0.02, f"Mass fractions sum to {total}, expected ~1.0"
 
@@ -119,7 +120,13 @@ class TestBarbell:
         assert MENS_BARBELL["shaft_diameter"] == pytest.approx(0.028)
 
     def test_required_keys(self) -> None:
-        required = {"total_length", "shaft_length", "shaft_diameter", "sleeve_diameter", "bar_mass"}
+        required = {
+            "total_length",
+            "shaft_length",
+            "shaft_diameter",
+            "sleeve_diameter",
+            "bar_mass",
+        }
         assert required <= set(MENS_BARBELL.keys())
 
 
