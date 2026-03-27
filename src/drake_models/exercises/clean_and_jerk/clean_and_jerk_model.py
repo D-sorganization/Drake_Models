@@ -61,6 +61,7 @@ class CleanAndJerkModelBuilder(ExerciseModelBuilder):
 
     @property
     def exercise_name(self) -> str:
+        """Return the canonical exercise name for the clean and jerk model."""
         return "clean_and_jerk"
 
     def attach_barbell(

@@ -55,6 +55,7 @@ class SnatchModelBuilder(ExerciseModelBuilder):
 
     @property
     def exercise_name(self) -> str:
+        """Return the canonical exercise name for the snatch model."""
         return "snatch"
 
     def attach_barbell(
