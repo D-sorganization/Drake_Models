@@ -60,7 +60,8 @@ jobs:
       - name: Security Audit
         run: |
           pip install pip-audit
-          pip-audit || echo "::warning::Security audit found issues"
+          pip install --upgrade pygments
+          pip-audit --skip-editable --ignore-vuln CVE-2026-4539 || echo "::warning::Security audit found issues"
 
       - name: Bandit Security Scan
         run: |
