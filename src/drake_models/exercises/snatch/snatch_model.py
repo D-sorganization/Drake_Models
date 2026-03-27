@@ -35,7 +35,7 @@ from drake_models.shared.body import BodyModelSpec
 logger = logging.getLogger(__name__)
 
 # Initial joint angles for the first-pull setup position (radians).
-SNATCH_INITIAL_HIP_ANGLE = math.pi / 3  # ~60 degrees hip flexion
+SNATCH_INITIAL_HIP_ANGLE = 1.3963  # ~80 degrees hip flexion
 SNATCH_INITIAL_KNEE_ANGLE = -math.pi / 3  # ~60 degrees knee flexion
 SNATCH_INITIAL_SHOULDER_ANGLE = math.pi / 6  # ~30 degrees shoulder flexion
 

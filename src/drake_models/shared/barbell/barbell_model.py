@@ -37,7 +37,10 @@ from drake_models.shared.contracts.preconditions import (
     require_non_negative,
     require_positive,
 )
-from drake_models.shared.utils.geometry import cylinder_inertia
+from drake_models.shared.utils.geometry import (
+    cylinder_inertia,
+    hollow_cylinder_inertia,
+)
 from drake_models.shared.utils.sdf_helpers import (
     add_fixed_joint,
     add_link,
@@ -139,6 +142,19 @@ def _cylinder_inertia_y_axis(
     return (ixx_t, izz_axial, iyy_t)
 
 
+def _hollow_cylinder_inertia_y_axis(
+    mass: float, inner_radius: float, outer_radius: float, length: float
+) -> tuple[float, float, float]:
+    """Principal inertias (Ixx, Iyy, Izz) for a hollow cylinder aligned along Y.
+
+    Same axis swap as ``_cylinder_inertia_y_axis`` but for a hollow cylinder.
+    """
+    ixx_t, iyy_t, izz_axial = hollow_cylinder_inertia(
+        mass, inner_radius, outer_radius, length
+    )
+    return (ixx_t, izz_axial, iyy_t)
+
+
 def create_barbell_links(
     model: ET.Element,
     spec: BarbellSpec,
@@ -165,10 +181,27 @@ def create_barbell_links(
         spec.shaft_mass, spec.shaft_radius, spec.shaft_length
     )
 
-    sleeve_total_mass = spec.sleeve_mass + spec.plate_mass_per_side
+    # Compute bare sleeve inertia
     sleeve_inertia = _cylinder_inertia_y_axis(
-        sleeve_total_mass, spec.sleeve_radius, spec.sleeve_length
+        spec.sleeve_mass, spec.sleeve_radius, spec.sleeve_length
     )
+
+    # Add plate inertia using correct plate radius (0.225 m), not sleeve radius
+    if spec.plate_mass_per_side > 0:
+        plate_thickness = max(0.01, spec.plate_mass_per_side * 0.002)
+        plate_inertia = _hollow_cylinder_inertia_y_axis(
+            spec.plate_mass_per_side,
+            inner_radius=spec.sleeve_radius,
+            outer_radius=0.225,
+            length=plate_thickness,
+        )
+        sleeve_inertia = (
+            sleeve_inertia[0] + plate_inertia[0],
+            sleeve_inertia[1] + plate_inertia[1],
+            sleeve_inertia[2] + plate_inertia[2],
+        )
+
+    sleeve_total_mass = spec.sleeve_mass + spec.plate_mass_per_side
 
     shaft_name = f"{prefix}_shaft"
     left_name = f"{prefix}_left_sleeve"

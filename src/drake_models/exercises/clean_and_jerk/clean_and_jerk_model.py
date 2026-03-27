@@ -39,7 +39,7 @@ from drake_models.shared.body import BodyModelSpec
 logger = logging.getLogger(__name__)
 
 # Initial joint angles for the clean setup position (radians).
-CLEAN_INITIAL_HIP_ANGLE = math.pi * 50 / 180  # ~50 degrees hip flexion
+CLEAN_INITIAL_HIP_ANGLE = math.pi * 70 / 180  # ~70 degrees hip flexion
 CLEAN_INITIAL_KNEE_ANGLE = -math.pi / 3  # ~60 degrees knee flexion
 CLEAN_INITIAL_LUMBAR_ANGLE = math.pi * 10 / 180  # ~10 degrees lumbar flexion
 
