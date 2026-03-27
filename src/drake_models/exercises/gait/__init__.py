@@ -1,0 +1,1 @@
+"""Gait (walking) exercise model."""

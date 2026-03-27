@@ -3,7 +3,7 @@
 Usage:
     python3 -m drake_models <exercise> [--mass MASS] [--height HEIGHT] [--plates PLATES]
 
-Exercises: squat, deadlift, bench_press, snatch, clean_and_jerk
+Exercises: squat, deadlift, bench_press, snatch, clean_and_jerk, gait, sit_to_stand
 """
 
 from __future__ import annotations
@@ -20,6 +20,8 @@ EXERCISES = {
     "bench_press": "drake_models.exercises.bench_press.bench_press_model",
     "snatch": "drake_models.exercises.snatch.snatch_model",
     "clean_and_jerk": "drake_models.exercises.clean_and_jerk.clean_and_jerk_model",
+    "gait": "drake_models.exercises.gait.gait_model",
+    "sit_to_stand": "drake_models.exercises.sit_to_stand.sit_to_stand_model",
 }
 
 BUILDER_FUNCTIONS = {
@@ -28,6 +30,8 @@ BUILDER_FUNCTIONS = {
     "bench_press": "build_bench_press_model",
     "snatch": "build_snatch_model",
     "clean_and_jerk": "build_clean_and_jerk_model",
+    "gait": "build_gait_model",
+    "sit_to_stand": "build_sit_to_stand_model",
 }
 
 

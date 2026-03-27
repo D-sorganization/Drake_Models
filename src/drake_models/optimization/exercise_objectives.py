@@ -476,6 +476,192 @@ CLEAN_AND_JERK = ExerciseObjective(
     ),
 )
 
+# ---- GAIT ----------------------------------------------------------------
+GAIT = ExerciseObjective(
+    exercise_name="gait",
+    bar_path="none",
+    balance_mode=BalanceMode.STANDING,
+    phases=(
+        ExercisePhase(
+            name="heel_strike",
+            time_fraction=0.0,
+            joint_angles={
+                "hip_l_flex": _deg(20),
+                "hip_r_flex": _deg(-15),
+                "knee_l": _deg(-5),
+                "knee_r": _deg(-40),
+                "ankle_l_flex": _deg(5),
+                "ankle_r_flex": _deg(-15),
+            },
+        ),
+        ExercisePhase(
+            name="loading_response",
+            time_fraction=0.10,
+            joint_angles={
+                "hip_l_flex": _deg(20),
+                "hip_r_flex": _deg(-10),
+                "knee_l": _deg(-15),
+                "knee_r": _deg(-30),
+                "ankle_l_flex": _deg(-5),
+                "ankle_r_flex": _deg(-10),
+            },
+        ),
+        ExercisePhase(
+            name="mid_stance",
+            time_fraction=0.30,
+            joint_angles={
+                "hip_l_flex": _deg(5),
+                "hip_r_flex": _deg(0),
+                "knee_l": _deg(-5),
+                "knee_r": _deg(-5),
+                "ankle_l_flex": _deg(10),
+                "ankle_r_flex": _deg(0),
+            },
+        ),
+        ExercisePhase(
+            name="terminal_stance",
+            time_fraction=0.50,
+            joint_angles={
+                "hip_l_flex": _deg(-10),
+                "hip_r_flex": _deg(15),
+                "knee_l": _deg(-5),
+                "knee_r": _deg(-5),
+                "ankle_l_flex": _deg(-20),
+                "ankle_r_flex": _deg(5),
+            },
+        ),
+        ExercisePhase(
+            name="pre_swing",
+            time_fraction=0.60,
+            joint_angles={
+                "hip_l_flex": _deg(-10),
+                "hip_r_flex": _deg(20),
+                "knee_l": _deg(-35),
+                "knee_r": _deg(-5),
+                "ankle_l_flex": _deg(-20),
+                "ankle_r_flex": _deg(5),
+            },
+        ),
+        ExercisePhase(
+            name="initial_swing",
+            time_fraction=0.73,
+            joint_angles={
+                "hip_l_flex": _deg(15),
+                "hip_r_flex": _deg(5),
+                "knee_l": _deg(-60),
+                "knee_r": _deg(-5),
+                "ankle_l_flex": _deg(0),
+                "ankle_r_flex": _deg(10),
+            },
+        ),
+        ExercisePhase(
+            name="mid_swing",
+            time_fraction=0.87,
+            joint_angles={
+                "hip_l_flex": _deg(25),
+                "hip_r_flex": _deg(-5),
+                "knee_l": _deg(-30),
+                "knee_r": _deg(-5),
+                "ankle_l_flex": _deg(5),
+                "ankle_r_flex": _deg(10),
+            },
+        ),
+        ExercisePhase(
+            name="terminal_swing",
+            time_fraction=1.0,
+            joint_angles={
+                "hip_l_flex": _deg(20),
+                "hip_r_flex": _deg(-15),
+                "knee_l": _deg(-5),
+                "knee_r": _deg(-40),
+                "ankle_l_flex": _deg(5),
+                "ankle_r_flex": _deg(-15),
+            },
+        ),
+    ),
+)
+
+# ---- SIT-TO-STAND --------------------------------------------------------
+SIT_TO_STAND = ExerciseObjective(
+    exercise_name="sit_to_stand",
+    bar_path="none",
+    balance_mode=BalanceMode.STANDING,
+    phases=(
+        ExercisePhase(
+            name="seated",
+            time_fraction=0.0,
+            joint_angles={
+                "hip_l_flex": _deg(90),
+                "hip_r_flex": _deg(90),
+                "knee_l": _deg(-90),
+                "knee_r": _deg(-90),
+                "ankle_l_flex": _deg(0),
+                "ankle_r_flex": _deg(0),
+            },
+        ),
+        ExercisePhase(
+            name="forward_lean",
+            time_fraction=0.20,
+            joint_angles={
+                "hip_l_flex": _deg(100),
+                "hip_r_flex": _deg(100),
+                "knee_l": _deg(-90),
+                "knee_r": _deg(-90),
+                "ankle_l_flex": _deg(15),
+                "ankle_r_flex": _deg(15),
+            },
+        ),
+        ExercisePhase(
+            name="momentum",
+            time_fraction=0.35,
+            joint_angles={
+                "hip_l_flex": _deg(80),
+                "hip_r_flex": _deg(80),
+                "knee_l": _deg(-85),
+                "knee_r": _deg(-85),
+                "ankle_l_flex": _deg(20),
+                "ankle_r_flex": _deg(20),
+            },
+        ),
+        ExercisePhase(
+            name="seat_off",
+            time_fraction=0.50,
+            joint_angles={
+                "hip_l_flex": _deg(60),
+                "hip_r_flex": _deg(60),
+                "knee_l": _deg(-75),
+                "knee_r": _deg(-75),
+                "ankle_l_flex": _deg(20),
+                "ankle_r_flex": _deg(20),
+            },
+        ),
+        ExercisePhase(
+            name="rising",
+            time_fraction=0.75,
+            joint_angles={
+                "hip_l_flex": _deg(30),
+                "hip_r_flex": _deg(30),
+                "knee_l": _deg(-40),
+                "knee_r": _deg(-40),
+                "ankle_l_flex": _deg(10),
+                "ankle_r_flex": _deg(10),
+            },
+        ),
+        ExercisePhase(
+            name="standing",
+            time_fraction=1.0,
+            joint_angles={
+                "hip_l_flex": _deg(5),
+                "hip_r_flex": _deg(5),
+                "knee_l": _deg(-5),
+                "knee_r": _deg(-5),
+                "ankle_l_flex": _deg(0),
+                "ankle_r_flex": _deg(0),
+            },
+        ),
+    ),
+)
+
 # Registry for lookup by name
 _OBJECTIVES: dict[str, ExerciseObjective] = {
     "back_squat": SQUAT,
@@ -483,6 +669,8 @@ _OBJECTIVES: dict[str, ExerciseObjective] = {
     "bench_press": BENCH_PRESS,
     "snatch": SNATCH,
     "clean_and_jerk": CLEAN_AND_JERK,
+    "gait": GAIT,
+    "sit_to_stand": SIT_TO_STAND,
 }
 
 
