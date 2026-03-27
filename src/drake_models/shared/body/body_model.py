@@ -46,6 +46,7 @@ from drake_models.shared.utils.geometry import (
     rectangular_prism_inertia,
 )
 from drake_models.shared.utils.sdf_helpers import (
+    add_contact_geometry,
     add_floating_joint,
     add_link,
     add_revolute_joint,
@@ -113,6 +114,11 @@ ANKLE_FLEX_LOWER: float = -0.3491  # -20 degrees
 ANKLE_FLEX_UPPER: float = 0.8727  # +50 degrees
 ANKLE_INVERT_LOWER: float = -0.3491  # -20 degrees
 ANKLE_INVERT_UPPER: float = 0.3491  # +20 degrees
+
+# Foot sole contact geometry dimensions (meters).
+FOOT_CONTACT_LENGTH: float = 0.26  # along X (anterior-posterior)
+FOOT_CONTACT_WIDTH: float = 0.10  # along Y (medial-lateral)
+FOOT_CONTACT_HEIGHT: float = 0.02  # along Z (thickness)
 
 
 @dataclass(frozen=True)
@@ -595,5 +601,21 @@ def create_full_body(
             second_label="invert",
         )
     )
+
+    # --- Foot sole contact geometry (hydroelastic) ---
+    _ft_mass, ft_len, _ft_rad = _seg(spec, "foot")
+    for side in ("l", "r"):
+        foot_link = links[f"foot_{side}"]
+        add_contact_geometry(
+            foot_link,
+            name=f"foot_{side}_contact",
+            geometry=make_box_geometry(
+                FOOT_CONTACT_LENGTH,
+                FOOT_CONTACT_WIDTH,
+                FOOT_CONTACT_HEIGHT,
+            ),
+            pose=(0, 0, -ft_len - FOOT_CONTACT_HEIGHT / 2.0, 0, 0, 0),
+        )
+    logger.debug("Added foot sole contact geometry (both sides)")
 
     return links

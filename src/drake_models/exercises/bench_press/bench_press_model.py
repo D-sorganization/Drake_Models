@@ -26,6 +26,7 @@ from drake_models.shared.barbell import BarbellSpec
 from drake_models.shared.body import BodyModelSpec
 from drake_models.shared.utils.geometry import rectangular_prism_inertia
 from drake_models.shared.utils.sdf_helpers import (
+    add_contact_geometry,
     add_fixed_joint,
     add_link,
     make_box_geometry,
@@ -112,6 +113,20 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
             child="bench_pad",
             pose=(0, 0, pad_z_center, 0, 0, 0),
         )
+
+        # Contact geometry on top surface of bench pad
+        add_contact_geometry(
+            bench_link,
+            name="bench_pad_contact",
+            geometry=make_box_geometry(
+                BENCH_PAD_LENGTH,
+                BENCH_PAD_WIDTH,
+                BENCH_PAD_THICKNESS,
+            ),
+            pose=(0, 0, 0, 0, 0, 0),
+            hydroelastic_modulus=1e8,
+        )
+
         logger.debug("Added bench pad welded to world at z=%.3f m", pad_z_center)
         return bench_link
 

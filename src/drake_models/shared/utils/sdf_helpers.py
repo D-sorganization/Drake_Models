@@ -12,7 +12,18 @@ import logging
 import math
 import xml.etree.ElementTree as ET
 
+# Register Drake's XML namespace so that elements with the ``drake:`` prefix
+# serialize correctly.  The URI follows the convention used by Drake's own SDF
+# extensions (see drake.mit.edu).
+DRAKE_NS = "drake.mit.edu"
+ET.register_namespace("drake", DRAKE_NS)
+
 logger = logging.getLogger(__name__)
+
+
+def _drake_tag(local: str) -> str:
+    """Return a fully-qualified tag name in the Drake namespace."""
+    return f"{{{DRAKE_NS}}}{local}"
 
 
 def vec3_str(x: float, y: float, z: float) -> str:
@@ -204,6 +215,136 @@ def add_fixed_joint(
     ET.SubElement(joint, "child").text = child
     ET.SubElement(joint, "pose").text = pose_str(*pose)
     return joint
+
+
+def add_contact_geometry(
+    link: ET.Element,
+    *,
+    name: str,
+    geometry: ET.Element,
+    pose: tuple[float, float, float, float, float, float] = (0, 0, 0, 0, 0, 0),
+    mu_static: float = 0.8,
+    mu_dynamic: float = 0.6,
+    hydroelastic_modulus: float = 1e7,
+    hunt_crossley_dissipation: float = 1.0,
+) -> ET.Element:
+    """Append a <collision> with Drake hydroelastic proximity properties to *link*.
+
+    Creates a collision element with ``<drake:proximity_properties>`` containing
+    compliant hydroelastic contact parameters, friction coefficients, and
+    Hunt-Crossley dissipation.
+
+    Args:
+        link: The SDF link element to append the collision to.
+        name: Name for the collision element.
+        geometry: SDF ``<geometry>`` element (e.g. from ``make_box_geometry``).
+        pose: 6-tuple (x, y, z, roll, pitch, yaw) for collision pose.
+        mu_static: Static friction coefficient.
+        mu_dynamic: Dynamic friction coefficient.
+        hydroelastic_modulus: Hydroelastic modulus in Pa.
+        hunt_crossley_dissipation: Hunt-Crossley dissipation coefficient.
+
+    Returns:
+        The created ``<collision>`` element.
+    """
+    collision = ET.SubElement(link, "collision", name=name)
+    ET.SubElement(collision, "pose").text = pose_str(*pose)
+    collision.append(geometry)
+
+    prox = ET.SubElement(collision, _drake_tag("proximity_properties"))
+    ET.SubElement(prox, _drake_tag("compliant_hydroelastic"))
+    ET.SubElement(
+        prox, _drake_tag("hydroelastic_modulus")
+    ).text = f"{hydroelastic_modulus:.0f}"
+    ET.SubElement(
+        prox, _drake_tag("hunt_crossley_dissipation")
+    ).text = f"{hunt_crossley_dissipation:.1f}"
+    ET.SubElement(prox, _drake_tag("mu_static")).text = f"{mu_static:.1f}"
+    ET.SubElement(prox, _drake_tag("mu_dynamic")).text = f"{mu_dynamic:.1f}"
+
+    return collision
+
+
+def add_ground_plane_contact(
+    model: ET.Element,
+    *,
+    mu_static: float = 0.8,
+    mu_dynamic: float = 0.6,
+) -> ET.Element:
+    """Add an infinite half-space ground plane with rigid hydroelastic contact.
+
+    Creates a ``ground_plane`` link welded to world at Z=0. The collision
+    uses ``<drake:rigid_hydroelastic/>`` (the ground is infinitely stiff)
+    and a large box to approximate the half-space.
+
+    Args:
+        model: SDF model element to append to.
+        mu_static: Static friction coefficient.
+        mu_dynamic: Dynamic friction coefficient.
+
+    Returns:
+        The created ground plane link element.
+    """
+    ground_link = add_link(
+        model,
+        name="ground_plane",
+        mass=1e-6,
+        mass_center=(0, 0, 0),
+        inertia_xx=1e-6,
+        inertia_yy=1e-6,
+        inertia_zz=1e-6,
+    )
+
+    # Large box approximating infinite half-space (100m x 100m x 0.1m)
+    collision = ET.SubElement(ground_link, "collision", name="ground_plane_collision")
+    ET.SubElement(collision, "pose").text = pose_str(0, 0, -0.05, 0, 0, 0)
+    geom = ET.SubElement(collision, "geometry")
+    box = ET.SubElement(geom, "box")
+    ET.SubElement(box, "size").text = vec3_str(100, 100, 0.1)
+
+    prox = ET.SubElement(collision, _drake_tag("proximity_properties"))
+    ET.SubElement(prox, _drake_tag("rigid_hydroelastic"))
+    ET.SubElement(prox, _drake_tag("mu_static")).text = f"{mu_static:.1f}"
+    ET.SubElement(prox, _drake_tag("mu_dynamic")).text = f"{mu_dynamic:.1f}"
+
+    # Weld ground plane to world at Z=0
+    add_fixed_joint(
+        model,
+        name="ground_plane_weld",
+        parent="world",
+        child="ground_plane",
+        pose=(0, 0, 0, 0, 0, 0),
+    )
+
+    logger.debug("Added ground plane with rigid hydroelastic contact")
+    return ground_link
+
+
+def add_collision_filter_group(
+    model: ET.Element,
+    *,
+    name: str,
+    members: list[str],
+) -> ET.Element:
+    """Add a Drake collision filter group to exclude self-collision.
+
+    Creates a ``<drake:collision_filter_group>`` that ignores collisions
+    between all members of the group.
+
+    Args:
+        model: SDF model element to append to.
+        name: Name of the collision filter group.
+        members: List of link names to include in the group.
+
+    Returns:
+        The created filter group element.
+    """
+    group = ET.SubElement(model, _drake_tag("collision_filter_group"), name=name)
+    for member in members:
+        ET.SubElement(group, _drake_tag("member")).text = member
+    ET.SubElement(group, _drake_tag("ignored_collision_filter_group")).text = name
+
+    return group
 
 
 def serialize_model(root: ET.Element) -> str:
