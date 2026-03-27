@@ -19,7 +19,12 @@ from dataclasses import dataclass, field
 from drake_models.shared.barbell import BarbellSpec, create_barbell_links
 from drake_models.shared.body import BodyModelSpec, create_full_body
 from drake_models.shared.contracts.postconditions import ensure_valid_xml
-from drake_models.shared.utils.sdf_helpers import serialize_model, vec3_str
+from drake_models.shared.utils.sdf_helpers import (
+    add_collision_filter_group,
+    add_ground_plane_contact,
+    serialize_model,
+    vec3_str,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +150,70 @@ class ExerciseModelBuilder(ABC):
             grip_offset,
         )
 
+    @staticmethod
+    def _add_collision_filters(model: ET.Element) -> None:
+        """Add collision exclusion filters for adjacent body segments.
+
+        Drake uses ``<drake:collision_filter_group>`` to prevent collision
+        detection between segments that are connected by joints. Without
+        these filters, adjacent links would interpenetrate at joint limits.
+        """
+        # Adjacent segment pairs that should not collide
+        adjacent_pairs = [
+            ("torso_pelvis", ["pelvis", "torso"]),
+            ("torso_head", ["torso", "head"]),
+        ]
+        for side in ("l", "r"):
+            adjacent_pairs.extend(
+                [
+                    (
+                        f"hip_{side}",
+                        [
+                            "pelvis",
+                            f"thigh_{side}",
+                            f"hip_{side}_virtual_1",
+                            f"hip_{side}_virtual_2",
+                        ],
+                    ),
+                    (
+                        f"knee_{side}",
+                        [f"thigh_{side}", f"shank_{side}"],
+                    ),
+                    (
+                        f"ankle_{side}",
+                        [
+                            f"shank_{side}",
+                            f"foot_{side}",
+                            f"ankle_{side}_virtual_1",
+                        ],
+                    ),
+                    (
+                        f"shoulder_{side}",
+                        [
+                            "torso",
+                            f"upper_arm_{side}",
+                            f"shoulder_{side}_virtual_1",
+                            f"shoulder_{side}_virtual_2",
+                        ],
+                    ),
+                    (
+                        f"elbow_{side}",
+                        [f"upper_arm_{side}", f"forearm_{side}"],
+                    ),
+                    (
+                        f"wrist_{side}",
+                        [
+                            f"forearm_{side}",
+                            f"hand_{side}",
+                            f"wrist_{side}_virtual_1",
+                        ],
+                    ),
+                ]
+            )
+        for group_name, members in adjacent_pairs:
+            add_collision_filter_group(model, name=group_name, members=members)
+        logger.debug("Added %d collision filter groups", len(adjacent_pairs))
+
     def build(self) -> str:
         """Build the complete SDF model XML and return as string.
 
@@ -162,6 +231,9 @@ class ExerciseModelBuilder(ABC):
         # Static flag (false — this is a dynamic model)
         ET.SubElement(model, "static").text = "false"
 
+        # Ground plane with hydroelastic contact
+        add_ground_plane_contact(model)
+
         # Build body
         body_links = create_full_body(
             model, self.config.body_spec, pelvis_joint_type=self.pelvis_joint_type
@@ -175,6 +247,9 @@ class ExerciseModelBuilder(ABC):
 
         # Exercise-specific initial pose
         self.set_initial_pose(model)
+
+        # Collision exclusion filters for adjacent body segments
+        self._add_collision_filters(model)
 
         xml_str = serialize_model(root)
 
