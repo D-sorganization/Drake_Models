@@ -1,0 +1,27 @@
+"""Cross-repo parity alignment — shared biomechanical standards."""
+
+from .standard import (
+    EXERCISE_PHASE_COUNTS,
+    FOOT_CONTACT_DIMS,
+    GRAVITY,
+    GROUND_FRICTION,
+    JOINT_LIMITS,
+    MENS_BARBELL,
+    SEGMENT_LENGTH_FRACTIONS,
+    SEGMENT_MASS_FRACTIONS,
+    STANDARD_BODY_MASS,
+    STANDARD_HEIGHT,
+)
+
+__all__ = [
+    "EXERCISE_PHASE_COUNTS",
+    "FOOT_CONTACT_DIMS",
+    "GRAVITY",
+    "GROUND_FRICTION",
+    "JOINT_LIMITS",
+    "MENS_BARBELL",
+    "SEGMENT_LENGTH_FRACTIONS",
+    "SEGMENT_MASS_FRACTIONS",
+    "STANDARD_BODY_MASS",
+    "STANDARD_HEIGHT",
+]
