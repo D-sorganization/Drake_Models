@@ -5,16 +5,23 @@ Segments (bilateral where noted):
   upper_arm_{l,r}, forearm_{l,r}, hand_{l,r},
   thigh_{l,r}, shank_{l,r}, foot_{l,r}
 
-Joints:
+Virtual links (zero-mass, for compound joint chains):
+  hip_{l,r}_virtual_1, hip_{l,r}_virtual_2,
+  shoulder_{l,r}_virtual_1, shoulder_{l,r}_virtual_2,
+  lumbar_virtual_1, lumbar_virtual_2,
+  ankle_{l,r}_virtual_1,
+  wrist_{l,r}_virtual_1
+
+Joints (multi-DOF via compound revolute chains):
   ground_pelvis (floating — 6 DOF),
-  lumbar (revolute — flexion/extension),
+  lumbar_flex, lumbar_lateral, lumbar_rotate (3-DOF),
   neck (revolute),
-  shoulder_{l,r} (revolute — simplified, flexion only for v0.1),
+  shoulder_{l,r}_flex, shoulder_{l,r}_adduct, shoulder_{l,r}_rotate (3-DOF),
   elbow_{l,r} (revolute),
-  wrist_{l,r} (revolute),
-  hip_{l,r} (revolute — flexion/extension),
+  wrist_{l,r}_flex, wrist_{l,r}_deviate (2-DOF),
+  hip_{l,r}_flex, hip_{l,r}_adduct, hip_{l,r}_rotate (3-DOF),
   knee_{l,r} (revolute),
-  ankle_{l,r} (revolute)
+  ankle_{l,r}_flex, ankle_{l,r}_invert (2-DOF)
 
 Drake convention: Z-up, X-forward. Gravity = (0, 0, -9.80665).
 
@@ -42,6 +49,7 @@ from drake_models.shared.utils.sdf_helpers import (
     add_floating_joint,
     add_link,
     add_revolute_joint,
+    add_virtual_link,
     make_box_geometry,
     make_cylinder_geometry,
 )
@@ -61,31 +69,50 @@ SHOULDER_LATERAL_MULTIPLIER: float = 1.2
 # Lateral hip offset as a multiplier of pelvis radius.
 HIP_LATERAL_MULTIPLIER: float = 0.6
 
-# Lumbar joint range of motion (radians): extension, flexion.
-LUMBAR_EXTENSION_LIMIT: float = -0.5236  # -30 degrees
-LUMBAR_FLEXION_LIMIT: float = 0.7854  # +45 degrees
+# Lumbar joint range of motion (radians) — 3-DOF compound.
+LUMBAR_FLEX_LOWER: float = -0.5236  # -30 degrees extension
+LUMBAR_FLEX_UPPER: float = 0.7854  # +45 degrees flexion
+LUMBAR_LATERAL_LOWER: float = -0.5236  # -30 degrees
+LUMBAR_LATERAL_UPPER: float = 0.5236  # +30 degrees
+LUMBAR_ROTATE_LOWER: float = -0.5236  # -30 degrees
+LUMBAR_ROTATE_UPPER: float = 0.5236  # +30 degrees
 
 # Neck joint range of motion (radians).
 NECK_RANGE_LIMIT: float = 0.5236  # +/-30 degrees
 
-# Shoulder range of motion (radians): full circle for flexion/extension.
-SHOULDER_ROM: float = 3.1416  # +/-180 degrees
+# Shoulder range of motion (radians) — 3-DOF compound.
+SHOULDER_FLEX_LOWER: float = -1.0472  # -60 degrees
+SHOULDER_FLEX_UPPER: float = 3.1416  # +180 degrees
+SHOULDER_ADDUCT_LOWER: float = -0.5236  # -30 degrees
+SHOULDER_ADDUCT_UPPER: float = 3.1416  # +180 degrees
+SHOULDER_ROTATE_LOWER: float = -1.5708  # -90 degrees
+SHOULDER_ROTATE_UPPER: float = 1.5708  # +90 degrees
 
 # Elbow range of motion (radians): 0 to 150 degrees.
 ELBOW_FLEXION_LIMIT: float = 2.618
 
-# Wrist range of motion (radians): +/-70 degrees.
-WRIST_ROM: float = 1.2217
+# Wrist range of motion (radians) — 2-DOF compound.
+WRIST_FLEX_LOWER: float = -1.2217  # -70 degrees
+WRIST_FLEX_UPPER: float = 1.2217  # +70 degrees
+WRIST_DEVIATE_LOWER: float = -0.3491  # -20 degrees
+WRIST_DEVIATE_UPPER: float = 0.5236  # +30 degrees
 
-# Hip range of motion (radians): extension to flexion.
-HIP_EXTENSION_LIMIT: float = -0.5236  # -30 degrees
-HIP_FLEXION_LIMIT: float = 2.0944  # +120 degrees
+# Hip range of motion (radians) — 3-DOF compound.
+HIP_FLEX_LOWER: float = -0.5236  # -30 degrees extension
+HIP_FLEX_UPPER: float = 2.0944  # +120 degrees flexion
+HIP_ADDUCT_LOWER: float = -0.7854  # -45 degrees
+HIP_ADDUCT_UPPER: float = 0.5236  # +30 degrees
+HIP_ROTATE_LOWER: float = -0.7854  # -45 degrees
+HIP_ROTATE_UPPER: float = 0.7854  # +45 degrees
 
 # Knee range of motion (radians): flexion to neutral.
 KNEE_FLEXION_LIMIT: float = -2.618  # -150 degrees
 
-# Ankle range of motion (radians): +/-45 degrees.
-ANKLE_ROM: float = 0.7854
+# Ankle range of motion (radians) — 2-DOF compound.
+ANKLE_FLEX_LOWER: float = -0.3491  # -20 degrees
+ANKLE_FLEX_UPPER: float = 0.8727  # +50 degrees
+ANKLE_INVERT_LOWER: float = -0.3491  # -20 degrees
+ANKLE_INVERT_UPPER: float = 0.3491  # +20 degrees
 
 
 @dataclass(frozen=True)
@@ -179,6 +206,160 @@ def _add_bilateral_limb(
     return created
 
 
+def _add_compound_3dof_bilateral(
+    model: ET.Element,
+    spec: BodyModelSpec,
+    *,
+    seg_name: str,
+    parent_name: str,
+    parent_offset_z: float,
+    parent_lateral_y: float,
+    coord_prefix: str,
+    flex_limits: tuple[float, float],
+    adduct_limits: tuple[float, float],
+    rotate_limits: tuple[float, float],
+    adduct_label: str = "adduct",
+    rotate_label: str = "rotate",
+) -> dict[str, ET.Element]:
+    """Add bilateral 3-DOF compound joints via virtual links.
+
+    Chain per side:
+      parent -> {prefix}_flex joint -> virtual_1 -> {prefix}_adduct joint
+      -> virtual_2 -> {prefix}_rotate joint -> child segment link
+    """
+    mass, length, radius = _seg(spec, seg_name)
+    inertia = cylinder_inertia(mass, radius, length)
+    created: dict[str, ET.Element] = {}
+
+    for side, sign in [("l", -1.0), ("r", 1.0)]:
+        link_name = f"{seg_name}_{side}"
+        parent_link = f"{parent_name}_{side}" if "_" in parent_name else parent_name
+        v1_name = f"{coord_prefix}_{side}_virtual_1"
+        v2_name = f"{coord_prefix}_{side}_virtual_2"
+
+        # Virtual links
+        created[v1_name] = add_virtual_link(model, name=v1_name)
+        created[v2_name] = add_virtual_link(model, name=v2_name)
+
+        # Real segment link
+        created[link_name] = add_link(
+            model,
+            name=link_name,
+            mass=mass,
+            mass_center=(0, 0, -length / 2.0),
+            inertia_xx=inertia[0],
+            inertia_yy=inertia[1],
+            inertia_zz=inertia[2],
+            visual_geometry=make_cylinder_geometry(radius, length),
+            collision_geometry=make_cylinder_geometry(radius, length),
+        )
+
+        # Joint 1: flexion (X-axis) — parent to virtual_1
+        add_revolute_joint(
+            model,
+            name=f"{coord_prefix}_{side}_flex",
+            parent=parent_link,
+            child=v1_name,
+            axis_xyz=(1, 0, 0),
+            pose=(0, sign * parent_lateral_y, parent_offset_z, 0, 0, 0),
+            lower_limit=flex_limits[0],
+            upper_limit=flex_limits[1],
+        )
+        # Joint 2: adduction (Z-axis) — virtual_1 to virtual_2
+        add_revolute_joint(
+            model,
+            name=f"{coord_prefix}_{side}_{adduct_label}",
+            parent=v1_name,
+            child=v2_name,
+            axis_xyz=(0, 0, 1),
+            pose=(0, 0, 0, 0, 0, 0),
+            lower_limit=adduct_limits[0],
+            upper_limit=adduct_limits[1],
+        )
+        # Joint 3: rotation (Y-axis) — virtual_2 to child
+        add_revolute_joint(
+            model,
+            name=f"{coord_prefix}_{side}_{rotate_label}",
+            parent=v2_name,
+            child=link_name,
+            axis_xyz=(0, 1, 0),
+            pose=(0, 0, 0, 0, 0, 0),
+            lower_limit=rotate_limits[0],
+            upper_limit=rotate_limits[1],
+        )
+
+    return created
+
+
+def _add_compound_2dof_bilateral(
+    model: ET.Element,
+    spec: BodyModelSpec,
+    *,
+    seg_name: str,
+    parent_name: str,
+    parent_offset_z: float,
+    parent_lateral_y: float,
+    coord_prefix: str,
+    flex_limits: tuple[float, float],
+    second_limits: tuple[float, float],
+    second_label: str,
+) -> dict[str, ET.Element]:
+    """Add bilateral 2-DOF compound joints via one virtual link per side.
+
+    Chain per side:
+      parent -> {prefix}_flex joint -> virtual_1 -> {prefix}_{second} joint -> child
+    """
+    mass, length, radius = _seg(spec, seg_name)
+    inertia = cylinder_inertia(mass, radius, length)
+    created: dict[str, ET.Element] = {}
+
+    for side, sign in [("l", -1.0), ("r", 1.0)]:
+        link_name = f"{seg_name}_{side}"
+        parent_link = f"{parent_name}_{side}" if "_" in parent_name else parent_name
+        v1_name = f"{coord_prefix}_{side}_virtual_1"
+
+        # Virtual link
+        created[v1_name] = add_virtual_link(model, name=v1_name)
+
+        # Real segment link
+        created[link_name] = add_link(
+            model,
+            name=link_name,
+            mass=mass,
+            mass_center=(0, 0, -length / 2.0),
+            inertia_xx=inertia[0],
+            inertia_yy=inertia[1],
+            inertia_zz=inertia[2],
+            visual_geometry=make_cylinder_geometry(radius, length),
+            collision_geometry=make_cylinder_geometry(radius, length),
+        )
+
+        # Joint 1: flexion (X-axis) — parent to virtual_1
+        add_revolute_joint(
+            model,
+            name=f"{coord_prefix}_{side}_flex",
+            parent=parent_link,
+            child=v1_name,
+            axis_xyz=(1, 0, 0),
+            pose=(0, sign * parent_lateral_y, parent_offset_z, 0, 0, 0),
+            lower_limit=flex_limits[0],
+            upper_limit=flex_limits[1],
+        )
+        # Joint 2: second DOF (Z-axis) — virtual_1 to child
+        add_revolute_joint(
+            model,
+            name=f"{coord_prefix}_{side}_{second_label}",
+            parent=v1_name,
+            child=link_name,
+            axis_xyz=(0, 0, 1),
+            pose=(0, 0, 0, 0, 0, 0),
+            lower_limit=second_limits[0],
+            upper_limit=second_limits[1],
+        )
+
+    return created
+
+
 def create_full_body(
     model: ET.Element,
     spec: BodyModelSpec | None = None,
@@ -238,9 +419,13 @@ def create_full_body(
             pose=(0, 0, PELVIS_STANDING_HEIGHT, 0, 0, 0),
         )
 
-    # --- Torso ---
+    # --- Lumbar (3-DOF compound): pelvis -> v1 -> v2 -> torso ---
     t_mass, t_len, t_rad = _seg(spec, "torso")
     t_inertia = rectangular_prism_inertia(t_mass, t_rad * 2, t_len, t_rad * 2)
+
+    links["lumbar_virtual_1"] = add_virtual_link(model, name="lumbar_virtual_1")
+    links["lumbar_virtual_2"] = add_virtual_link(model, name="lumbar_virtual_2")
+
     links["torso"] = add_link(
         model,
         name="torso",
@@ -254,13 +439,33 @@ def create_full_body(
     )
     add_revolute_joint(
         model,
-        name="lumbar",
+        name="lumbar_flex",
         parent="pelvis",
-        child="torso",
+        child="lumbar_virtual_1",
         axis_xyz=(1, 0, 0),
         pose=(0, 0, p_len / 2.0, 0, 0, 0),
-        lower_limit=LUMBAR_EXTENSION_LIMIT,
-        upper_limit=LUMBAR_FLEXION_LIMIT,
+        lower_limit=LUMBAR_FLEX_LOWER,
+        upper_limit=LUMBAR_FLEX_UPPER,
+    )
+    add_revolute_joint(
+        model,
+        name="lumbar_lateral",
+        parent="lumbar_virtual_1",
+        child="lumbar_virtual_2",
+        axis_xyz=(0, 0, 1),
+        pose=(0, 0, 0, 0, 0, 0),
+        lower_limit=LUMBAR_LATERAL_LOWER,
+        upper_limit=LUMBAR_LATERAL_UPPER,
+    )
+    add_revolute_joint(
+        model,
+        name="lumbar_rotate",
+        parent="lumbar_virtual_2",
+        child="torso",
+        axis_xyz=(0, 1, 0),
+        pose=(0, 0, 0, 0, 0, 0),
+        lower_limit=LUMBAR_ROTATE_LOWER,
+        upper_limit=LUMBAR_ROTATE_UPPER,
     )
 
     # --- Head ---
@@ -288,12 +493,12 @@ def create_full_body(
         upper_limit=NECK_RANGE_LIMIT,
     )
 
-    # --- Arms ---
+    # --- Arms: Shoulder (3-DOF compound) ---
     shoulder_z = t_len * SHOULDER_HEIGHT_FRACTION
     shoulder_y = t_rad * SHOULDER_LATERAL_MULTIPLIER
 
     links.update(
-        _add_bilateral_limb(
+        _add_compound_3dof_bilateral(
             model,
             spec,
             seg_name="upper_arm",
@@ -301,11 +506,13 @@ def create_full_body(
             parent_offset_z=shoulder_z,
             parent_lateral_y=shoulder_y,
             coord_prefix="shoulder",
-            range_min=-SHOULDER_ROM,
-            range_max=SHOULDER_ROM,
+            flex_limits=(SHOULDER_FLEX_LOWER, SHOULDER_FLEX_UPPER),
+            adduct_limits=(SHOULDER_ADDUCT_LOWER, SHOULDER_ADDUCT_UPPER),
+            rotate_limits=(SHOULDER_ROTATE_LOWER, SHOULDER_ROTATE_UPPER),
         )
     )
 
+    # --- Arms: Elbow (1-DOF, unchanged) ---
     _ua_mass, ua_len, _ua_rad = _seg(spec, "upper_arm")
     links.update(
         _add_bilateral_limb(
@@ -321,9 +528,10 @@ def create_full_body(
         )
     )
 
+    # --- Arms: Wrist (2-DOF compound) ---
     _fa_mass, fa_len, _fa_rad = _seg(spec, "forearm")
     links.update(
-        _add_bilateral_limb(
+        _add_compound_2dof_bilateral(
             model,
             spec,
             seg_name="hand",
@@ -331,16 +539,17 @@ def create_full_body(
             parent_offset_z=-fa_len,
             parent_lateral_y=0,
             coord_prefix="wrist",
-            range_min=-WRIST_ROM,
-            range_max=WRIST_ROM,
+            flex_limits=(WRIST_FLEX_LOWER, WRIST_FLEX_UPPER),
+            second_limits=(WRIST_DEVIATE_LOWER, WRIST_DEVIATE_UPPER),
+            second_label="deviate",
         )
     )
 
-    # --- Legs ---
+    # --- Legs: Hip (3-DOF compound) ---
     hip_y = p_rad * HIP_LATERAL_MULTIPLIER
 
     links.update(
-        _add_bilateral_limb(
+        _add_compound_3dof_bilateral(
             model,
             spec,
             seg_name="thigh",
@@ -348,11 +557,13 @@ def create_full_body(
             parent_offset_z=-p_len / 2.0,
             parent_lateral_y=hip_y,
             coord_prefix="hip",
-            range_min=HIP_EXTENSION_LIMIT,
-            range_max=HIP_FLEXION_LIMIT,
+            flex_limits=(HIP_FLEX_LOWER, HIP_FLEX_UPPER),
+            adduct_limits=(HIP_ADDUCT_LOWER, HIP_ADDUCT_UPPER),
+            rotate_limits=(HIP_ROTATE_LOWER, HIP_ROTATE_UPPER),
         )
     )
 
+    # --- Legs: Knee (1-DOF, unchanged) ---
     _th_mass, th_len, _th_rad = _seg(spec, "thigh")
     links.update(
         _add_bilateral_limb(
@@ -368,9 +579,10 @@ def create_full_body(
         )
     )
 
+    # --- Legs: Ankle (2-DOF compound) ---
     _sh_mass, sh_len, _sh_rad = _seg(spec, "shank")
     links.update(
-        _add_bilateral_limb(
+        _add_compound_2dof_bilateral(
             model,
             spec,
             seg_name="foot",
@@ -378,8 +590,9 @@ def create_full_body(
             parent_offset_z=-sh_len,
             parent_lateral_y=0,
             coord_prefix="ankle",
-            range_min=-ANKLE_ROM,
-            range_max=ANKLE_ROM,
+            flex_limits=(ANKLE_FLEX_LOWER, ANKLE_FLEX_UPPER),
+            second_limits=(ANKLE_INVERT_LOWER, ANKLE_INVERT_UPPER),
+            second_label="invert",
         )
     )
 

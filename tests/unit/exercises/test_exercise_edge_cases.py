@@ -178,7 +178,7 @@ class TestEdgeCaseAnthropometrics:
             root = ET.fromstring(xml_str)
             assert root.tag == "sdf"
             links = root.findall(".//link")  # type: ignore
-            assert len(links) >= 18
+            assert len(links) >= 32
             for link in links:
                 mass_el = link.find("inertial/mass")  # type: ignore
                 assert mass_el is not None

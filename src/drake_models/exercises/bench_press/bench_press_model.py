@@ -168,13 +168,16 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
         The lifter lies on the bench with arms extended vertically,
         holding the barbell at arm's length above the chest.
         Positive shoulder flexion = arms pointing toward ceiling when supine.
+        Shoulder adduction set for bench press grip width.
         """
         self._write_initial_pose(
             model,
             "lockout",
             {
-                "shoulder_l": BENCH_INITIAL_SHOULDER_ANGLE,
-                "shoulder_r": BENCH_INITIAL_SHOULDER_ANGLE,
+                "shoulder_l_flex": BENCH_INITIAL_SHOULDER_ANGLE,
+                "shoulder_r_flex": BENCH_INITIAL_SHOULDER_ANGLE,
+                "shoulder_l_adduct": 0.0,
+                "shoulder_r_adduct": 0.0,
                 "elbow_l": BENCH_INITIAL_ELBOW_ANGLE,
                 "elbow_r": BENCH_INITIAL_ELBOW_ANGLE,
             },

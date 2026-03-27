@@ -54,15 +54,19 @@ class TestCreateFullBody:
         assert "head" in links  # type: ignore
 
     def test_creates_minimum_links(self, model: Any) -> None:
-        """15 body segments: pelvis, torso, head + 6 bilateral pairs."""
+        """15 body + 18 virtual links = 33 minimum."""
         create_full_body(model)
         link_elements = model.findall("link")  # type: ignore
-        assert len(link_elements) >= 15
+        # 15 body + 2 lumbar virtual + 4 hip virtual + 4 shoulder virtual
+        # + 2 ankle virtual + 2 wrist virtual = 29
+        assert len(link_elements) >= 29
 
     def test_creates_joints(self, model: Any) -> None:
         create_full_body(model)
         joints = model.findall("joint")  # type: ignore
-        assert len(joints) >= 15
+        # 1 floating + 3 lumbar + 1 neck + 6 shoulder + 2 elbow + 4 wrist
+        # + 6 hip + 2 knee + 4 ankle = 29 joints
+        assert len(joints) >= 29
 
     def test_pelvis_has_floating_joint(self, model: Any) -> None:
         create_full_body(model)
@@ -105,17 +109,69 @@ class TestCreateFullBody:
         mass = float(pelvis.find("inertial/mass").text)  # type: ignore
         assert mass == pytest.approx(100.0 * 0.142)
 
-    def test_lumbar_joint(self, model: Any) -> None:
+    def test_lumbar_compound_joint(self, model: Any) -> None:
+        """Lumbar is now a 3-DOF compound: flex, lateral, rotate."""
         create_full_body(model)
-        lumbar = None
+        joint_names = {j.get("name") for j in model.findall("joint")}  # type: ignore
+        assert "lumbar_flex" in joint_names  # type: ignore
+        assert "lumbar_lateral" in joint_names  # type: ignore
+        assert "lumbar_rotate" in joint_names  # type: ignore
+
+        # Check chain: pelvis -> v1 -> v2 -> torso
         for j in model.findall("joint"):
-            if j.get("name") == "lumbar":  # type: ignore
-                lumbar = j
-                break
-        assert lumbar is not None
-        assert lumbar.get("type") == "revolute"  # type: ignore
-        assert lumbar.find("parent").text == "pelvis"  # type: ignore
-        assert lumbar.find("child").text == "torso"  # type: ignore
+            if j.get("name") == "lumbar_flex":  # type: ignore
+                assert j.find("parent").text == "pelvis"  # type: ignore
+                assert j.find("child").text == "lumbar_virtual_1"  # type: ignore
+            elif j.get("name") == "lumbar_rotate":  # type: ignore
+                assert j.find("child").text == "torso"  # type: ignore
+
+    def test_hip_compound_joints(self, model: Any) -> None:
+        """Hip is now a 3-DOF compound: flex, adduct, rotate (bilateral)."""
+        create_full_body(model)
+        joint_names = {j.get("name") for j in model.findall("joint")}  # type: ignore
+        for side in ("l", "r"):
+            assert f"hip_{side}_flex" in joint_names  # type: ignore
+            assert f"hip_{side}_adduct" in joint_names  # type: ignore
+            assert f"hip_{side}_rotate" in joint_names  # type: ignore
+
+    def test_shoulder_compound_joints(self, model: Any) -> None:
+        """Shoulder is now a 3-DOF compound: flex, adduct, rotate (bilateral)."""
+        create_full_body(model)
+        joint_names = {j.get("name") for j in model.findall("joint")}  # type: ignore
+        for side in ("l", "r"):
+            assert f"shoulder_{side}_flex" in joint_names  # type: ignore
+            assert f"shoulder_{side}_adduct" in joint_names  # type: ignore
+            assert f"shoulder_{side}_rotate" in joint_names  # type: ignore
+
+    def test_ankle_compound_joints(self, model: Any) -> None:
+        """Ankle is now a 2-DOF compound: flex, invert (bilateral)."""
+        create_full_body(model)
+        joint_names = {j.get("name") for j in model.findall("joint")}  # type: ignore
+        for side in ("l", "r"):
+            assert f"ankle_{side}_flex" in joint_names  # type: ignore
+            assert f"ankle_{side}_invert" in joint_names  # type: ignore
+
+    def test_wrist_compound_joints(self, model: Any) -> None:
+        """Wrist is now a 2-DOF compound: flex, deviate (bilateral)."""
+        create_full_body(model)
+        joint_names = {j.get("name") for j in model.findall("joint")}  # type: ignore
+        for side in ("l", "r"):
+            assert f"wrist_{side}_flex" in joint_names  # type: ignore
+            assert f"wrist_{side}_deviate" in joint_names  # type: ignore
+
+    def test_virtual_links_present(self, model: Any) -> None:
+        """Virtual links must exist for compound joint chains."""
+        create_full_body(model)
+        link_names = {el.get("name") for el in model.findall("link")}  # type: ignore
+        assert "lumbar_virtual_1" in link_names  # type: ignore
+        assert "lumbar_virtual_2" in link_names  # type: ignore
+        for side in ("l", "r"):
+            assert f"hip_{side}_virtual_1" in link_names  # type: ignore
+            assert f"hip_{side}_virtual_2" in link_names  # type: ignore
+            assert f"shoulder_{side}_virtual_1" in link_names  # type: ignore
+            assert f"shoulder_{side}_virtual_2" in link_names  # type: ignore
+            assert f"ankle_{side}_virtual_1" in link_names  # type: ignore
+            assert f"wrist_{side}_virtual_1" in link_names  # type: ignore
 
     def test_neck_joint(self, model: Any) -> None:
         create_full_body(model)
@@ -128,36 +184,50 @@ class TestCreateFullBody:
         assert neck.find("parent").text == "torso"  # type: ignore
         assert neck.find("child").text == "head"  # type: ignore
 
-    def test_joint_axis_is_x(self, model: Any) -> None:
-        """All revolute joints use X-axis for sagittal-plane flexion."""
+    def test_joint_axes_are_valid(self, model: Any) -> None:
+        """Revolute joints use X (flex), Z (adduct/lateral), or Y (rotate) axes."""
+        valid_axes = {
+            "1.000000 0.000000 0.000000",
+            "0.000000 0.000000 1.000000",
+            "0.000000 1.000000 0.000000",
+        }
         create_full_body(model)
         for j in model.findall("joint"):
             if j.get("type") == "revolute":  # type: ignore
-                xyz = j.find("axis/xyz").text  # type: ignore
-                assert "1.000000 0.000000 0.000000" in xyz  # type: ignore
+                xyz = j.find("axis/xyz").text.strip()  # type: ignore
+                assert xyz in valid_axes, (  # type: ignore
+                    f"Joint {j.get('name')} has unexpected axis: {xyz}"
+                )
 
     def test_links_have_visual_geometry(self, model: Any) -> None:
         create_full_body(model)
         for link in model.findall("link"):
-            assert link.find("visual") is not None, f"{link.get('name')} missing visual"  # type: ignore
+            name = link.get("name")  # type: ignore
+            if "virtual" in name:  # type: ignore
+                continue  # virtual links have no geometry
+            assert link.find("visual") is not None, f"{name} missing visual"  # type: ignore
 
     def test_links_have_collision_geometry(self, model: Any) -> None:
         create_full_body(model)
         for link in model.findall("link"):
+            name = link.get("name")  # type: ignore
+            if "virtual" in name:  # type: ignore
+                continue  # virtual links have no geometry
             assert link.find("collision") is not None, (  # type: ignore
-                f"{link.get('name')} missing collision"
+                f"{name} missing collision"
             )
 
     def test_total_mass_approximately_correct(self, model: Any) -> None:
-        """Total mass of all links must exactly equal spec.total_mass.
+        """Total mass of body links must equal spec.total_mass.
 
-        Segment fractions from the Winter (2009) table sum to 1.0 by design;
-        the 5 % tolerance previously used masked rounding drift.  Use rel=1e-9
-        to catch any future regression in the segment table or mass allocation.
+        Segment fractions from the Winter (2009) table sum to 1.0 by design.
+        Virtual links add negligible mass (1e-6 kg each), so we use abs
+        tolerance to account for them while catching real regressions.
         """
         spec = BodyModelSpec(total_mass=80.0)
         create_full_body(model, spec)
         total = sum(
             float(el.find("inertial/mass").text) for el in model.findall("link")
         )
-        assert total == pytest.approx(80.0, rel=1e-9)
+        # 14 virtual links * 1e-6 kg = 14e-6 kg added
+        assert total == pytest.approx(80.0, abs=1e-3)

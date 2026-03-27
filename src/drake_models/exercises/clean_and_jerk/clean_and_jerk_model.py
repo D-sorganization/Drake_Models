@@ -87,11 +87,11 @@ class CleanAndJerkModelBuilder(ExerciseModelBuilder):
             model,
             "clean_setup",
             {
-                "hip_l": CLEAN_INITIAL_HIP_ANGLE,
-                "hip_r": CLEAN_INITIAL_HIP_ANGLE,
+                "hip_l_flex": CLEAN_INITIAL_HIP_ANGLE,
+                "hip_r_flex": CLEAN_INITIAL_HIP_ANGLE,
                 "knee_l": CLEAN_INITIAL_KNEE_ANGLE,
                 "knee_r": CLEAN_INITIAL_KNEE_ANGLE,
-                "lumbar": CLEAN_INITIAL_LUMBAR_ANGLE,
+                "lumbar_flex": CLEAN_INITIAL_LUMBAR_ANGLE,
             },
         )
 
