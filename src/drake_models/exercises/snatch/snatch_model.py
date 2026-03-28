@@ -103,7 +103,7 @@ def build_snatch_model(
 ) -> str:
     """Convenience function to build a snatch model SDF string.
 
-    Default: 80 kg person, 120 kg total barbell (competitive 96 kg class).
+    Default: 80 kg person, 100 kg total barbell (competitive 96 kg class).
     """
     config = ExerciseConfig(
         body_spec=BodyModelSpec(total_mass=body_mass, height=height),
