@@ -21,3 +21,9 @@ venv/
 Thumbs.db
 output/
 .hypothesis/
+
+# Development artifacts
+drake_issues.json
+issues.txt
+mypy*.txt
+fix_mypy*.py
