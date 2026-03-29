@@ -1,6 +1,0 @@
-43	OPEN	[Fleet Assessment][PP-BrokenWindows] Pragmatic broken-window markers remain in active code		2026-03-24T04:54:40Z
-42	OPEN	[Fleet Assessment][PP-DRY] Pragmatic DRY violations are visible in repeated code windows		2026-03-24T04:54:39Z
-41	OPEN	[Fleet Assessment][M] Configuration is not clearly externalized		2026-03-24T04:54:39Z
-40	OPEN	[Fleet Assessment][L] Operational output is inconsistent		2026-03-24T04:54:38Z
-39	OPEN	[Fleet Assessment][B] Documentation coverage does not match repository breadth		2026-03-24T04:54:38Z
-38	OPEN	[Fleet Assessment][H] CI coverage is incomplete or absent		2026-03-24T04:54:37Z
