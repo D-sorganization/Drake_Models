@@ -305,7 +305,7 @@ def _solve_with_drake(
     This is the full-fidelity path when pydrake is installed. It sets up
     a direct transcription with MultibodyPlant dynamics constraints.
     """
-    from pydrake.all import (  # type: ignore[import-not-found]
+    from pydrake.all import (
         AddMultibodyPlantSceneGraph,
         DiagramBuilder,
         MathematicalProgram,

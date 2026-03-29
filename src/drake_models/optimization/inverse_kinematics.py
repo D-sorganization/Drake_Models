@@ -116,7 +116,7 @@ def _solve_ik_with_drake(
     Drake's IK solver to ensure kinematic feasibility within the
     multibody model's joint limits and constraints.
     """
-    from pydrake.all import (  # type: ignore[import-not-found]
+    from pydrake.all import (
         AddMultibodyPlantSceneGraph,
         DiagramBuilder,
         InverseKinematics,
