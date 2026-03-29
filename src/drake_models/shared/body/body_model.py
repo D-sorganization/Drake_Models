@@ -13,7 +13,7 @@ Virtual links (zero-mass, for compound joint chains):
   wrist_{l,r}_virtual_1
 
 Joints (multi-DOF via compound revolute chains):
-  ground_pelvis (floating — 6 DOF),
+  ground_pelvis (floating -- 6 DOF),
   lumbar_flex, lumbar_lateral, lumbar_rotate (3-DOF),
   neck (revolute),
   shoulder_{l,r}_flex, shoulder_{l,r}_adduct, shoulder_{l,r}_rotate (3-DOF),
@@ -29,7 +29,7 @@ Anthropometric defaults are for a 50th-percentile male (height=1.75 m,
 mass=80 kg) following Winter (2009) segment proportions.
 
 Law of Demeter: exercise modules call create_full_body() and receive
-link/joint elements — they never manipulate segment internals.
+link/joint elements -- they never manipulate segment internals.
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ SHOULDER_LATERAL_MULTIPLIER: float = 1.2
 # Lateral hip offset as a multiplier of pelvis radius.
 HIP_LATERAL_MULTIPLIER: float = 0.6
 
-# Lumbar joint range of motion (radians) — 3-DOF compound.
+# Lumbar joint range of motion (radians) -- 3-DOF compound.
 LUMBAR_FLEX_LOWER: float = -0.5236  # -30 degrees extension
 LUMBAR_FLEX_UPPER: float = 0.7854  # +45 degrees flexion
 LUMBAR_LATERAL_LOWER: float = -0.5236  # -30 degrees
@@ -81,7 +81,7 @@ LUMBAR_ROTATE_UPPER: float = 0.5236  # +30 degrees
 # Neck joint range of motion (radians).
 NECK_RANGE_LIMIT: float = 0.5236  # +/-30 degrees
 
-# Shoulder range of motion (radians) — 3-DOF compound.
+# Shoulder range of motion (radians) -- 3-DOF compound.
 SHOULDER_FLEX_LOWER: float = -1.0472  # -60 degrees
 SHOULDER_FLEX_UPPER: float = 3.1416  # +180 degrees
 SHOULDER_ADDUCT_LOWER: float = -0.5236  # -30 degrees
@@ -92,13 +92,13 @@ SHOULDER_ROTATE_UPPER: float = 1.5708  # +90 degrees
 # Elbow range of motion (radians): 0 to 150 degrees.
 ELBOW_FLEXION_LIMIT: float = 2.618
 
-# Wrist range of motion (radians) — 2-DOF compound.
+# Wrist range of motion (radians) -- 2-DOF compound.
 WRIST_FLEX_LOWER: float = -1.2217  # -70 degrees
 WRIST_FLEX_UPPER: float = 1.2217  # +70 degrees
 WRIST_DEVIATE_LOWER: float = -0.3491  # -20 degrees
 WRIST_DEVIATE_UPPER: float = 0.5236  # +30 degrees
 
-# Hip range of motion (radians) — 3-DOF compound.
+# Hip range of motion (radians) -- 3-DOF compound.
 HIP_FLEX_LOWER: float = -0.5236  # -30 degrees extension
 HIP_FLEX_UPPER: float = 2.0944  # +120 degrees flexion
 HIP_ADDUCT_LOWER: float = -0.7854  # -45 degrees
@@ -109,7 +109,7 @@ HIP_ROTATE_UPPER: float = 0.7854  # +45 degrees
 # Knee range of motion (radians): flexion to neutral.
 KNEE_FLEXION_LIMIT: float = -2.618  # -150 degrees
 
-# Ankle range of motion (radians) — 2-DOF compound.
+# Ankle range of motion (radians) -- 2-DOF compound.
 ANKLE_FLEX_LOWER: float = -0.3491  # -20 degrees
 ANKLE_FLEX_UPPER: float = 0.8727  # +50 degrees
 ANKLE_INVERT_LOWER: float = -0.3491  # -20 degrees
@@ -260,7 +260,7 @@ def _add_compound_3dof_bilateral(
             collision_geometry=make_cylinder_geometry(radius, length),
         )
 
-        # Joint 1: flexion (X-axis) — parent to virtual_1
+        # Joint 1: flexion (X-axis) -- parent to virtual_1
         add_revolute_joint(
             model,
             name=f"{coord_prefix}_{side}_flex",
@@ -271,7 +271,7 @@ def _add_compound_3dof_bilateral(
             lower_limit=flex_limits[0],
             upper_limit=flex_limits[1],
         )
-        # Joint 2: adduction (Z-axis) — virtual_1 to virtual_2
+        # Joint 2: adduction (Z-axis) -- virtual_1 to virtual_2
         add_revolute_joint(
             model,
             name=f"{coord_prefix}_{side}_{adduct_label}",
@@ -282,7 +282,7 @@ def _add_compound_3dof_bilateral(
             lower_limit=adduct_limits[0],
             upper_limit=adduct_limits[1],
         )
-        # Joint 3: rotation (Y-axis) — virtual_2 to child
+        # Joint 3: rotation (Y-axis) -- virtual_2 to child
         add_revolute_joint(
             model,
             name=f"{coord_prefix}_{side}_{rotate_label}",
@@ -340,7 +340,7 @@ def _add_compound_2dof_bilateral(
             collision_geometry=make_cylinder_geometry(radius, length),
         )
 
-        # Joint 1: flexion (X-axis) — parent to virtual_1
+        # Joint 1: flexion (X-axis) -- parent to virtual_1
         add_revolute_joint(
             model,
             name=f"{coord_prefix}_{side}_flex",
@@ -351,7 +351,7 @@ def _add_compound_2dof_bilateral(
             lower_limit=flex_limits[0],
             upper_limit=flex_limits[1],
         )
-        # Joint 2: second DOF (Z-axis) — virtual_1 to child
+        # Joint 2: second DOF (Z-axis) -- virtual_1 to child
         add_revolute_joint(
             model,
             name=f"{coord_prefix}_{side}_{second_label}",
@@ -366,36 +366,21 @@ def _add_compound_2dof_bilateral(
     return created
 
 
-def create_full_body(
+# ---------------------------------------------------------------------------
+# Staged builder methods for create_full_body (issue #77)
+# ---------------------------------------------------------------------------
+
+
+def _build_pelvis(
     model: ET.Element,
-    spec: BodyModelSpec | None = None,
-    *,
-    pelvis_joint_type: str = "floating",
+    spec: BodyModelSpec,
+    pelvis_joint_type: str,
 ) -> dict[str, ET.Element]:
-    """Build the full-body model and append links/joints to the SDF model.
+    """Stage 1: Create pelvis link and optional world joint.
 
-    Args:
-        model: SDF model element to append to.
-        spec: Anthropometric specification (defaults to 50th-percentile male).
-        pelvis_joint_type: Joint type for the world-to-pelvis connection.
-            Use ``"floating"`` (default) for unconstrained 6-DOF motion, or
-            ``"fixed"`` when the exercise constrains the pelvis externally
-            (e.g. bench press weld through the bench pad).
-
-    Returns dict of link name -> ET.Element for all created links.
+    Returns dict with the 'pelvis' link element.
     """
-    if spec is None:
-        spec = BodyModelSpec()
-
-    logger.info(
-        "Building full-body model: mass=%.1f kg, height=%.2f m",
-        spec.total_mass,
-        spec.height,
-    )
-
     links: dict[str, ET.Element] = {}
-
-    # --- Pelvis (connected to world) ---
     p_mass, p_len, p_rad = _seg(spec, "pelvis")
     p_inertia = rectangular_prism_inertia(p_mass, p_rad * 2, p_len, p_rad * 2)
     links["pelvis"] = add_link(
@@ -410,9 +395,6 @@ def create_full_body(
         collision_geometry=make_box_geometry(p_rad * 2, p_rad * 2, p_len),
     )
     if pelvis_joint_type == "fixed":
-        # Exercise constrains the pelvis via an external body (e.g. bench pad).
-        # No world->pelvis joint is created here; the exercise builder adds
-        # the weld joint (external_body -> pelvis) after this function returns.
         logger.debug(
             "Skipping world->pelvis joint; exercise builder will weld pelvis externally"
         )
@@ -424,8 +406,20 @@ def create_full_body(
             child="pelvis",
             pose=(0, 0, PELVIS_STANDING_HEIGHT, 0, 0, 0),
         )
+    return links
 
-    # --- Lumbar (3-DOF compound): pelvis -> v1 -> v2 -> torso ---
+
+def _build_spine_and_head(
+    model: ET.Element,
+    spec: BodyModelSpec,
+) -> dict[str, ET.Element]:
+    """Stage 2: Create lumbar 3-DOF compound joint, torso, neck, and head.
+
+    Returns dict with torso, head, and lumbar virtual link elements.
+    """
+    links: dict[str, ET.Element] = {}
+
+    p_mass, p_len, p_rad = _seg(spec, "pelvis")
     t_mass, t_len, t_rad = _seg(spec, "torso")
     t_inertia = rectangular_prism_inertia(t_mass, t_rad * 2, t_len, t_rad * 2)
 
@@ -474,7 +468,7 @@ def create_full_body(
         upper_limit=LUMBAR_ROTATE_UPPER,
     )
 
-    # --- Head ---
+    # Head
     h_mass, h_len, h_rad = _seg(spec, "head")
     h_inertia = cylinder_inertia(h_mass, h_rad, h_len)
     links["head"] = add_link(
@@ -498,11 +492,23 @@ def create_full_body(
         lower_limit=-NECK_RANGE_LIMIT,
         upper_limit=NECK_RANGE_LIMIT,
     )
+    return links
 
-    # --- Arms: Shoulder (3-DOF compound) ---
+
+def _build_upper_limbs(
+    model: ET.Element,
+    spec: BodyModelSpec,
+) -> dict[str, ET.Element]:
+    """Stage 3: Create bilateral shoulders (3-DOF), elbows (1-DOF), wrists (2-DOF).
+
+    Returns dict with upper_arm, forearm, hand, and virtual link elements.
+    """
+    links: dict[str, ET.Element] = {}
+    _t_mass, t_len, t_rad = _seg(spec, "torso")
+
+    # Shoulder (3-DOF compound)
     shoulder_z = t_len * SHOULDER_HEIGHT_FRACTION
     shoulder_y = t_rad * SHOULDER_LATERAL_MULTIPLIER
-
     links.update(
         _add_compound_3dof_bilateral(
             model,
@@ -518,7 +524,7 @@ def create_full_body(
         )
     )
 
-    # --- Arms: Elbow (1-DOF, unchanged) ---
+    # Elbow (1-DOF)
     _ua_mass, ua_len, _ua_rad = _seg(spec, "upper_arm")
     links.update(
         _add_bilateral_limb(
@@ -534,7 +540,7 @@ def create_full_body(
         )
     )
 
-    # --- Arms: Wrist (2-DOF compound) ---
+    # Wrist (2-DOF compound)
     _fa_mass, fa_len, _fa_rad = _seg(spec, "forearm")
     links.update(
         _add_compound_2dof_bilateral(
@@ -550,10 +556,22 @@ def create_full_body(
             second_label="deviate",
         )
     )
+    return links
 
-    # --- Legs: Hip (3-DOF compound) ---
+
+def _build_lower_limbs(
+    model: ET.Element,
+    spec: BodyModelSpec,
+) -> dict[str, ET.Element]:
+    """Stage 4: Create bilateral hips (3-DOF), knees (1-DOF), ankles (2-DOF).
+
+    Returns dict with thigh, shank, foot, and virtual link elements.
+    """
+    links: dict[str, ET.Element] = {}
+    _p_mass, p_len, p_rad = _seg(spec, "pelvis")
+
+    # Hip (3-DOF compound)
     hip_y = p_rad * HIP_LATERAL_MULTIPLIER
-
     links.update(
         _add_compound_3dof_bilateral(
             model,
@@ -569,7 +587,7 @@ def create_full_body(
         )
     )
 
-    # --- Legs: Knee (1-DOF, unchanged) ---
+    # Knee (1-DOF)
     _th_mass, th_len, _th_rad = _seg(spec, "thigh")
     links.update(
         _add_bilateral_limb(
@@ -585,7 +603,7 @@ def create_full_body(
         )
     )
 
-    # --- Legs: Ankle (2-DOF compound) ---
+    # Ankle (2-DOF compound)
     _sh_mass, sh_len, _sh_rad = _seg(spec, "shank")
     links.update(
         _add_compound_2dof_bilateral(
@@ -601,8 +619,15 @@ def create_full_body(
             second_label="invert",
         )
     )
+    return links
 
-    # --- Foot sole contact geometry (hydroelastic) ---
+
+def _build_foot_contacts(
+    model: ET.Element,
+    spec: BodyModelSpec,
+    links: dict[str, ET.Element],
+) -> None:
+    """Stage 5: Add foot sole hydroelastic contact geometry to both feet."""
     _ft_mass, ft_len, _ft_rad = _seg(spec, "foot")
     for side in ("l", "r"):
         foot_link = links[f"foot_{side}"]
@@ -617,5 +642,57 @@ def create_full_body(
             pose=(0, 0, -ft_len - FOOT_CONTACT_HEIGHT / 2.0, 0, 0, 0),
         )
     logger.debug("Added foot sole contact geometry (both sides)")
+
+
+def create_full_body(
+    model: ET.Element,
+    spec: BodyModelSpec | None = None,
+    *,
+    pelvis_joint_type: str = "floating",
+) -> dict[str, ET.Element]:
+    """Build the full-body model and append links/joints to the SDF model.
+
+    The build proceeds in five staged steps (issue #77):
+      1. Pelvis and world joint
+      2. Spine (lumbar 3-DOF), torso, neck, head
+      3. Upper limbs (shoulders, elbows, wrists)
+      4. Lower limbs (hips, knees, ankles)
+      5. Foot sole contact geometry
+
+    Args:
+        model: SDF model element to append to.
+        spec: Anthropometric specification (defaults to 50th-percentile male).
+        pelvis_joint_type: Joint type for the world-to-pelvis connection.
+            Use ``"floating"`` (default) for unconstrained 6-DOF motion, or
+            ``"fixed"`` when the exercise constrains the pelvis externally
+            (e.g. bench press weld through the bench pad).
+
+    Returns dict of link name -> ET.Element for all created links.
+    """
+    if spec is None:
+        spec = BodyModelSpec()
+
+    logger.info(
+        "Building full-body model: mass=%.1f kg, height=%.2f m",
+        spec.total_mass,
+        spec.height,
+    )
+
+    links: dict[str, ET.Element] = {}
+
+    # Stage 1: Pelvis
+    links.update(_build_pelvis(model, spec, pelvis_joint_type))
+
+    # Stage 2: Spine and head
+    links.update(_build_spine_and_head(model, spec))
+
+    # Stage 3: Upper limbs
+    links.update(_build_upper_limbs(model, spec))
+
+    # Stage 4: Lower limbs
+    links.update(_build_lower_limbs(model, spec))
+
+    # Stage 5: Foot contacts
+    _build_foot_contacts(model, spec, links)
 
     return links
