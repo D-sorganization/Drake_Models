@@ -82,7 +82,18 @@ def _interpolate_phases(
 
     Joint angles are linearly interpolated between phase targets.
     Missing joints in a phase default to 0.0 (neutral).
+
+    Args:
+        objective: Exercise objective with ordered phase targets.
+        n_frames: Number of output keyframes (must be >= 2).
+
+    Raises:
+        ValueError: If n_frames < 2 or objective has no phases.
     """
+    if n_frames < 2:
+        raise ValueError(f"n_frames must be >= 2, got {n_frames}")
+    if not objective.phases:
+        raise ValueError("objective must have at least one phase")
     joint_names = objective.joint_names()
     n_joints = len(joint_names)
 
