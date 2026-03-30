@@ -53,6 +53,7 @@ class ExercisePhase:
     bar_height_fraction: float | None = None
 
     def __post_init__(self) -> None:
+        """Validate time_fraction and tolerance preconditions."""
         if not 0.0 <= self.time_fraction <= 1.0:
             raise ValueError(
                 f"time_fraction must be in [0, 1], got {self.time_fraction}"
@@ -84,6 +85,7 @@ class ExerciseObjective:
     n_joints: int = 20
 
     def __post_init__(self) -> None:
+        """Validate that phases are ordered and contain at least 2 entries."""
         if len(self.phases) < 2:
             raise ValueError("An exercise objective requires at least 2 phases")
         fracs = [p.time_fraction for p in self.phases]

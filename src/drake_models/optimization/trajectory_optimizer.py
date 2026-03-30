@@ -52,6 +52,7 @@ class TrajectoryConfig:
     balance_weight: float = 5.0
 
     def __post_init__(self) -> None:
+        """Validate trajectory configuration parameters."""
         if self.n_timesteps < 2:
             raise ValueError(f"n_timesteps must be >= 2, got {self.n_timesteps}")
         if self.dt <= 0:
@@ -100,6 +101,7 @@ class TrajectoryResult:
     iterations: int
 
     def __post_init__(self) -> None:
+        """Validate that all array dimensions are consistent with the time axis."""
         n = self.time.shape[0]
         if self.joint_positions.shape[0] != n:
             raise ValueError(
@@ -177,10 +179,19 @@ def interpolate_trajectory(
     This is a simplified fallback that does not require Drake. It creates
     a cubic-spline-like interpolation between the phase keyframes.
 
+    Args:
+        objective: Exercise objective containing phase targets and joint names.
+        config: Trajectory configuration with timestep and weight parameters.
+
     Returns:
         TrajectoryResult with interpolated positions, zero-initialized
         velocities and torques, and a nominal cost.
+
+    Raises:
+        ValueError: If objective has fewer than 2 phases or config is invalid.
     """
+    if not objective.phases:
+        raise ValueError("objective must have at least one phase")
     joint_names = objective.joint_names()
     n_joints = len(joint_names)
     n_steps = config.n_timesteps

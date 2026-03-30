@@ -65,6 +65,7 @@ class BarbellSpec:
     plate_mass_per_side: float = 0.0
 
     def __post_init__(self) -> None:
+        """Validate barbell specification dimensions and masses."""
         require_positive(self.total_length, "total_length")
         require_positive(self.shaft_length, "shaft_length")
         require_positive(self.shaft_diameter, "shaft_diameter")
@@ -84,10 +85,12 @@ class BarbellSpec:
 
     @property
     def shaft_radius(self) -> float:
+        """Shaft radius in meters (half the shaft diameter)."""
         return self.shaft_diameter / 2.0
 
     @property
     def sleeve_radius(self) -> float:
+        """Sleeve radius in meters (half the sleeve diameter)."""
         return self.sleeve_diameter / 2.0
 
     @property

@@ -132,6 +132,7 @@ class BodyModelSpec:
     height: float = 1.75
 
     def __post_init__(self) -> None:
+        """Validate that total_mass and height are strictly positive."""
         require_positive(self.total_mass, "total_mass")
         require_positive(self.height, "height")
 

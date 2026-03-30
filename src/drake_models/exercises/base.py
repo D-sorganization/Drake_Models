@@ -53,6 +53,13 @@ class ExerciseModelBuilder(ABC):
     """
 
     def __init__(self, config: ExerciseConfig | None = None) -> None:
+        """Initialize with an optional exercise configuration.
+
+        Args:
+            config: Exercise configuration. Uses default ``ExerciseConfig``
+                (50th-percentile male anthropometrics, men's Olympic barbell)
+                if ``None``.
+        """
         self.config = config or ExerciseConfig()
 
     @property
