@@ -86,8 +86,18 @@ class TestAddContactGeometry:
             mu_dynamic=0.6,
         )
         prox = collision.find("drake:proximity_properties", _NS)
-        assert float(prox.find("drake:mu_static", _NS).text if prox.find("drake:mu_static", _NS) is not None and prox.find("drake:mu_static", _NS).text else 0.0) == pytest.approx(0.8)
-        assert float(prox.find("drake:mu_dynamic", _NS).text if prox.find("drake:mu_dynamic", _NS) is not None and prox.find("drake:mu_dynamic", _NS).text else 0.0) == pytest.approx(0.6)
+        assert float(
+            prox.find("drake:mu_static", _NS).text
+            if prox.find("drake:mu_static", _NS) is not None
+            and prox.find("drake:mu_static", _NS).text
+            else 0.0
+        ) == pytest.approx(0.8)
+        assert float(
+            prox.find("drake:mu_dynamic", _NS).text
+            if prox.find("drake:mu_dynamic", _NS) is not None
+            and prox.find("drake:mu_dynamic", _NS).text
+            else 0.0
+        ) == pytest.approx(0.6)
 
     def test_has_dissipation(self, link: Any) -> None:
         geom = make_box_geometry(0.26, 0.10, 0.02)
@@ -126,8 +136,18 @@ class TestAddContactGeometry:
             mu_dynamic=0.9,
         )
         prox = collision.find("drake:proximity_properties", _NS)
-        assert float(prox.find("drake:mu_static", _NS).text if prox.find("drake:mu_static", _NS) is not None and prox.find("drake:mu_static", _NS).text else 0.0) == pytest.approx(1.2)
-        assert float(prox.find("drake:mu_dynamic", _NS).text if prox.find("drake:mu_dynamic", _NS) is not None and prox.find("drake:mu_dynamic", _NS).text else 0.0) == pytest.approx(0.9)
+        assert float(
+            prox.find("drake:mu_static", _NS).text
+            if prox.find("drake:mu_static", _NS) is not None
+            and prox.find("drake:mu_static", _NS).text
+            else 0.0
+        ) == pytest.approx(1.2)
+        assert float(
+            prox.find("drake:mu_dynamic", _NS).text
+            if prox.find("drake:mu_dynamic", _NS) is not None
+            and prox.find("drake:mu_dynamic", _NS).text
+            else 0.0
+        ) == pytest.approx(0.9)
 
 
 class TestAddGroundPlaneContact:
@@ -157,8 +177,18 @@ class TestAddGroundPlaneContact:
         ground = add_ground_plane_contact(model)
         collision = ground.find("collision")
         prox = collision.find("drake:proximity_properties", _NS)
-        assert float(prox.find("drake:mu_static", _NS).text if prox.find("drake:mu_static", _NS) is not None and prox.find("drake:mu_static", _NS).text else 0.0) == pytest.approx(0.8)
-        assert float(prox.find("drake:mu_dynamic", _NS).text if prox.find("drake:mu_dynamic", _NS) is not None and prox.find("drake:mu_dynamic", _NS).text else 0.0) == pytest.approx(0.6)
+        assert float(
+            prox.find("drake:mu_static", _NS).text
+            if prox.find("drake:mu_static", _NS) is not None
+            and prox.find("drake:mu_static", _NS).text
+            else 0.0
+        ) == pytest.approx(0.8)
+        assert float(
+            prox.find("drake:mu_dynamic", _NS).text
+            if prox.find("drake:mu_dynamic", _NS) is not None
+            and prox.find("drake:mu_dynamic", _NS).text
+            else 0.0
+        ) == pytest.approx(0.6)
 
     def test_welded_to_world(self, model: Any) -> None:
         add_ground_plane_contact(model)
@@ -256,7 +286,9 @@ class TestCollisionFilterGroup:
             name="knee_r",
             members=["thigh_r", "shank_r"],
         )
-        members = [m.text for m in group.findall("drake:member", _NS) if m.text is not None ]
+        members = [
+            m.text for m in group.findall("drake:member", _NS) if m.text is not None
+        ]
         assert "thigh_r" in members
         assert "shank_r" in members
 
