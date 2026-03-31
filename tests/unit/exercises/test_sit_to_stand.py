@@ -3,7 +3,7 @@
 import math
 import xml.etree.ElementTree as ET
 
-from drake_models.exercises.base import ExerciseConfig
+from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
 from drake_models.exercises.sit_to_stand.sit_to_stand_model import (
     SitToStandModelBuilder,
     build_sit_to_stand_model,
@@ -99,3 +99,52 @@ class TestSitToStandModelBuilder:
         model = root.find(".//model")  # type: ignore
         assert model is not None
         assert model.get("name") == "sit_to_stand"  # type: ignore
+
+
+class TestMakeChairSeatLink:
+    """Tests for the extracted _make_chair_seat_link and _add_chair_contact helpers."""
+
+    def test_make_chair_seat_link_creates_link(self) -> None:
+        model = ET.Element("model")
+        link = SitToStandModelBuilder._make_chair_seat_link(model)
+        assert link.tag == "link"
+        assert link.get("name") == "chair_seat"  # type: ignore
+
+    def test_make_chair_seat_link_has_geometry(self) -> None:
+        model = ET.Element("model")
+        link = SitToStandModelBuilder._make_chair_seat_link(model)
+        assert link.find("visual") is not None  # type: ignore
+        assert link.find("collision") is not None  # type: ignore
+
+    def test_add_chair_contact_attaches_collision(self) -> None:
+        model = ET.Element("model")
+        link = SitToStandModelBuilder._make_chair_seat_link(model)
+        initial_collisions = len(link.findall("collision"))  # type: ignore
+        SitToStandModelBuilder._add_chair_contact(link)
+        after_collisions = len(link.findall("collision"))  # type: ignore
+        assert after_collisions == initial_collisions + 1
+
+
+class TestBilateralCollisionPairs:
+    """Tests for the extracted _bilateral_collision_pairs helper."""
+
+    def test_returns_six_pairs_per_side(self) -> None:
+        pairs = ExerciseModelBuilder._bilateral_collision_pairs("l")
+        assert len(pairs) == 6
+
+    def test_all_pairs_have_name_and_members(self) -> None:
+        for side in ("l", "r"):
+            pairs = ExerciseModelBuilder._bilateral_collision_pairs(side)
+            for name, members in pairs:
+                assert isinstance(name, str)
+                assert len(members) >= 2
+
+    def test_left_side_uses_l_suffix(self) -> None:
+        pairs = ExerciseModelBuilder._bilateral_collision_pairs("l")
+        names = [name for name, _ in pairs]
+        assert all("_l" in name or name.startswith("torso") for name in names)
+
+    def test_right_side_uses_r_suffix(self) -> None:
+        pairs = ExerciseModelBuilder._bilateral_collision_pairs("r")
+        names = [name for name, _ in pairs]
+        assert all("_r" in name for name in names)

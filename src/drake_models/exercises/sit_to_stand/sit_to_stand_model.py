@@ -63,20 +63,24 @@ class SitToStandModelBuilder(ExerciseModelBuilder):
         """Return the canonical exercise name for the sit-to-stand model."""
         return "sit_to_stand"
 
-    def _add_chair_body(self, model: ET.Element) -> ET.Element:
-        """Add the chair seat link and weld it to the world.
+    @staticmethod
+    def _make_chair_seat_link(model: ET.Element) -> ET.Element:
+        """Create the chair seat link and return it (no joints added).
 
-        The chair seat is a box welded to the world frame so that its
-        top surface sits at CHAIR_SEAT_HEIGHT meters above ground.
+        Returns the created ``<link>`` element for further use.
         """
-        seat_z_center = CHAIR_SEAT_HEIGHT - CHAIR_SEAT_THICKNESS / 2.0
         inertia = rectangular_prism_inertia(
             CHAIR_MASS,
             CHAIR_SEAT_DEPTH,
             CHAIR_SEAT_WIDTH,
             CHAIR_SEAT_THICKNESS,
         )
-        chair_link = add_link(
+        seat_geom = make_box_geometry(
+            CHAIR_SEAT_DEPTH,
+            CHAIR_SEAT_WIDTH,
+            CHAIR_SEAT_THICKNESS,
+        )
+        return add_link(
             model,
             name="chair_seat",
             mass=CHAIR_MASS,
@@ -84,25 +88,17 @@ class SitToStandModelBuilder(ExerciseModelBuilder):
             inertia_xx=inertia[0],
             inertia_yy=inertia[1],
             inertia_zz=inertia[2],
-            visual_geometry=make_box_geometry(
-                CHAIR_SEAT_DEPTH,
-                CHAIR_SEAT_WIDTH,
-                CHAIR_SEAT_THICKNESS,
-            ),
+            visual_geometry=seat_geom,
             collision_geometry=make_box_geometry(
                 CHAIR_SEAT_DEPTH,
                 CHAIR_SEAT_WIDTH,
                 CHAIR_SEAT_THICKNESS,
             ),
         )
-        add_fixed_joint(
-            model,
-            name="chair_to_world",
-            parent="world",
-            child="chair_seat",
-            pose=(0, 0, seat_z_center, 0, 0, 0),
-        )
 
+    @staticmethod
+    def _add_chair_contact(chair_link: ET.Element) -> None:
+        """Attach hydroelastic contact geometry to the chair seat link."""
         add_contact_geometry(
             chair_link,
             name="chair_seat_contact",
@@ -115,6 +111,22 @@ class SitToStandModelBuilder(ExerciseModelBuilder):
             hydroelastic_modulus=1e8,
         )
 
+    def _add_chair_body(self, model: ET.Element) -> ET.Element:
+        """Add the chair seat link and weld it to the world.
+
+        The chair seat is a box welded to the world frame so that its
+        top surface sits at CHAIR_SEAT_HEIGHT meters above ground.
+        """
+        seat_z_center = CHAIR_SEAT_HEIGHT - CHAIR_SEAT_THICKNESS / 2.0
+        chair_link = self._make_chair_seat_link(model)
+        add_fixed_joint(
+            model,
+            name="chair_to_world",
+            parent="world",
+            child="chair_seat",
+            pose=(0, 0, seat_z_center, 0, 0, 0),
+        )
+        self._add_chair_contact(chair_link)
         logger.debug("Added chair seat welded to world at z=%.3f m", seat_z_center)
         return chair_link
 

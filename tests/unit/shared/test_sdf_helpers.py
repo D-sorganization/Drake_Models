@@ -6,8 +6,10 @@ from typing import Any
 import pytest
 
 from drake_models.shared.utils.sdf_helpers import (
+    _add_ground_contact_collision,
     add_fixed_joint,
     add_floating_joint,
+    add_ground_plane_contact,
     add_link,
     add_revolute_joint,
     add_virtual_link,
@@ -360,3 +362,57 @@ class TestSerializeModel:
         result = serialize_model(root)
         parsed = ET.fromstring(result)
         assert parsed.tag == "sdf"
+
+
+class TestAddGroundContactCollision:
+    """Tests for the extracted _add_ground_contact_collision helper."""
+
+    def _make_link(self) -> ET.Element:
+        model = ET.Element("model")
+        return add_link(
+            model,
+            name="ground_plane",
+            mass=1e-6,
+            mass_center=(0, 0, 0),
+            inertia_xx=1e-6,
+            inertia_yy=1e-6,
+            inertia_zz=1e-6,
+        )
+
+    def test_creates_collision_element(self) -> None:
+        link = self._make_link()
+        _add_ground_contact_collision(link, mu_static=0.8, mu_dynamic=0.6)
+        collision = link.find("collision[@name='ground_plane_collision']")  # type: ignore
+        assert collision is not None
+
+    def test_has_box_geometry(self) -> None:
+        link = self._make_link()
+        _add_ground_contact_collision(link, mu_static=0.8, mu_dynamic=0.6)
+        box = link.find(".//geometry/box")  # type: ignore
+        assert box is not None
+
+    def test_friction_values_written(self) -> None:
+        link = self._make_link()
+        _add_ground_contact_collision(link, mu_static=0.7, mu_dynamic=0.5)
+        xml_str = ET.tostring(link, encoding="unicode")
+        assert "0.7" in xml_str  # type: ignore
+        assert "0.5" in xml_str  # type: ignore
+
+
+class TestAddGroundPlaneContactHelper:
+    """Integration tests for add_ground_plane_contact (53-line -> 2 helpers)."""
+
+    def test_returns_link_element(self) -> None:
+        model = ET.Element("model")
+        link = add_ground_plane_contact(model)
+        assert link.tag == "link"
+        assert link.get("name") == "ground_plane"  # type: ignore
+
+    def test_weld_joint_added(self) -> None:
+        model = ET.Element("model")
+        add_ground_plane_contact(model)
+        joints = [
+            j for j in model.findall("joint") if j.get("name") == "ground_plane_weld"
+        ]  # type: ignore
+        assert len(joints) == 1
+        assert joints[0].find("parent").text == "world"  # type: ignore

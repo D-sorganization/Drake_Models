@@ -160,6 +160,33 @@ def _seg(spec: BodyModelSpec, name: str) -> tuple[float, float, float]:
     return mass, length, radius
 
 
+def _make_cylinder_segment_link(
+    model: ET.Element,
+    *,
+    name: str,
+    mass: float,
+    length: float,
+    radius: float,
+) -> ET.Element:
+    """Append a Z-aligned cylinder segment link to *model* and return it.
+
+    Mass centre is placed at the distal end (0, 0, -length/2) following
+    the Drake Z-up convention where limbs extend downward from their joint.
+    """
+    inertia = cylinder_inertia(mass, radius, length)
+    return add_link(
+        model,
+        name=name,
+        mass=mass,
+        mass_center=(0, 0, -length / 2.0),
+        inertia_xx=inertia[0],
+        inertia_yy=inertia[1],
+        inertia_zz=inertia[2],
+        visual_geometry=make_cylinder_geometry(radius, length),
+        collision_geometry=make_cylinder_geometry(radius, length),
+    )
+
+
 def _add_bilateral_limb(
     model: ET.Element,
     spec: BodyModelSpec,
@@ -181,23 +208,13 @@ def _add_bilateral_limb(
     Returns dict of created link elements keyed by name.
     """
     mass, length, radius = _seg(spec, seg_name)
-    inertia = cylinder_inertia(mass, radius, length)
     created: dict[str, ET.Element] = {}
 
     for side, sign in [("l", -1.0), ("r", 1.0)]:
         link_name = f"{seg_name}_{side}"
         parent_link = f"{parent_name}_{side}" if "_" in parent_name else parent_name
-
-        created[link_name] = add_link(
-            model,
-            name=link_name,
-            mass=mass,
-            mass_center=(0, 0, -length / 2.0),
-            inertia_xx=inertia[0],
-            inertia_yy=inertia[1],
-            inertia_zz=inertia[2],
-            visual_geometry=make_cylinder_geometry(radius, length),
-            collision_geometry=make_cylinder_geometry(radius, length),
+        created[link_name] = _make_cylinder_segment_link(
+            model, name=link_name, mass=mass, length=length, radius=radius
         )
         add_revolute_joint(
             model,
@@ -211,6 +228,85 @@ def _add_bilateral_limb(
         )
 
     return created
+
+
+def _add_flex_joint(
+    model: ET.Element,
+    name: str,
+    parent: str,
+    child: str,
+    pose: tuple[float, float, float, float, float, float],
+    limits: tuple[float, float],
+) -> None:
+    """Add a flexion revolute joint (X-axis) at the given pose."""
+    add_revolute_joint(
+        model,
+        name=name,
+        parent=parent,
+        child=child,
+        axis_xyz=(1, 0, 0),
+        pose=pose,
+        lower_limit=limits[0],
+        upper_limit=limits[1],
+    )
+
+
+def _add_3dof_joint_chain(
+    model: ET.Element,
+    *,
+    coord_prefix: str,
+    side: str,
+    sign: float,
+    parent_link: str,
+    link_name: str,
+    parent_offset_z: float,
+    parent_lateral_y: float,
+    flex_limits: tuple[float, float],
+    adduct_limits: tuple[float, float],
+    rotate_limits: tuple[float, float],
+    adduct_label: str,
+    rotate_label: str,
+) -> tuple[str, str]:
+    """Wire virtual links and joints for one side of a 3-DOF compound joint.
+
+    Creates two virtual links and three revolute joints:
+      parent -> flex (X) -> v1 -> adduct (Z) -> v2 -> rotate (Y) -> child.
+
+    Returns ``(v1_name, v2_name)`` of the two newly-created virtual links.
+    """
+    v1_name = f"{coord_prefix}_{side}_virtual_1"
+    v2_name = f"{coord_prefix}_{side}_virtual_2"
+    add_virtual_link(model, name=v1_name)
+    add_virtual_link(model, name=v2_name)
+    _add_flex_joint(
+        model,
+        f"{coord_prefix}_{side}_flex",
+        parent_link,
+        v1_name,
+        (0, sign * parent_lateral_y, parent_offset_z, 0, 0, 0),
+        flex_limits,
+    )
+    add_revolute_joint(
+        model,
+        name=f"{coord_prefix}_{side}_{adduct_label}",
+        parent=v1_name,
+        child=v2_name,
+        axis_xyz=(0, 0, 1),
+        pose=(0, 0, 0, 0, 0, 0),
+        lower_limit=adduct_limits[0],
+        upper_limit=adduct_limits[1],
+    )
+    add_revolute_joint(
+        model,
+        name=f"{coord_prefix}_{side}_{rotate_label}",
+        parent=v2_name,
+        child=link_name,
+        axis_xyz=(0, 1, 0),
+        pose=(0, 0, 0, 0, 0, 0),
+        lower_limit=rotate_limits[0],
+        upper_limit=rotate_limits[1],
+    )
+    return v1_name, v2_name
 
 
 def _add_compound_3dof_bilateral(
@@ -235,67 +331,78 @@ def _add_compound_3dof_bilateral(
       -> virtual_2 -> {prefix}_rotate joint -> child segment link
     """
     mass, length, radius = _seg(spec, seg_name)
-    inertia = cylinder_inertia(mass, radius, length)
     created: dict[str, ET.Element] = {}
 
     for side, sign in [("l", -1.0), ("r", 1.0)]:
         link_name = f"{seg_name}_{side}"
         parent_link = f"{parent_name}_{side}" if "_" in parent_name else parent_name
-        v1_name = f"{coord_prefix}_{side}_virtual_1"
-        v2_name = f"{coord_prefix}_{side}_virtual_2"
-
-        # Virtual links
-        created[v1_name] = add_virtual_link(model, name=v1_name)
-        created[v2_name] = add_virtual_link(model, name=v2_name)
-
-        # Real segment link
-        created[link_name] = add_link(
-            model,
-            name=link_name,
-            mass=mass,
-            mass_center=(0, 0, -length / 2.0),
-            inertia_xx=inertia[0],
-            inertia_yy=inertia[1],
-            inertia_zz=inertia[2],
-            visual_geometry=make_cylinder_geometry(radius, length),
-            collision_geometry=make_cylinder_geometry(radius, length),
+        created[link_name] = _make_cylinder_segment_link(
+            model, name=link_name, mass=mass, length=length, radius=radius
         )
-
-        # Joint 1: flexion (X-axis) -- parent to virtual_1
-        add_revolute_joint(
+        v1, v2 = _add_3dof_joint_chain(
             model,
-            name=f"{coord_prefix}_{side}_flex",
-            parent=parent_link,
-            child=v1_name,
-            axis_xyz=(1, 0, 0),
-            pose=(0, sign * parent_lateral_y, parent_offset_z, 0, 0, 0),
-            lower_limit=flex_limits[0],
-            upper_limit=flex_limits[1],
+            coord_prefix=coord_prefix,
+            side=side,
+            sign=sign,
+            parent_link=parent_link,
+            link_name=link_name,
+            parent_offset_z=parent_offset_z,
+            parent_lateral_y=parent_lateral_y,
+            flex_limits=flex_limits,
+            adduct_limits=adduct_limits,
+            rotate_limits=rotate_limits,
+            adduct_label=adduct_label,
+            rotate_label=rotate_label,
         )
-        # Joint 2: adduction (Z-axis) -- virtual_1 to virtual_2
-        add_revolute_joint(
-            model,
-            name=f"{coord_prefix}_{side}_{adduct_label}",
-            parent=v1_name,
-            child=v2_name,
-            axis_xyz=(0, 0, 1),
-            pose=(0, 0, 0, 0, 0, 0),
-            lower_limit=adduct_limits[0],
-            upper_limit=adduct_limits[1],
-        )
-        # Joint 3: rotation (Y-axis) -- virtual_2 to child
-        add_revolute_joint(
-            model,
-            name=f"{coord_prefix}_{side}_{rotate_label}",
-            parent=v2_name,
-            child=link_name,
-            axis_xyz=(0, 1, 0),
-            pose=(0, 0, 0, 0, 0, 0),
-            lower_limit=rotate_limits[0],
-            upper_limit=rotate_limits[1],
-        )
+        # Record the virtual links so callers can inspect / query them
+        created[v1] = model.find(f"link[@name='{v1}']")  # type: ignore[assignment]
+        created[v2] = model.find(f"link[@name='{v2}']")  # type: ignore[assignment]
 
     return created
+
+
+def _add_2dof_joint_chain(
+    model: ET.Element,
+    *,
+    coord_prefix: str,
+    side: str,
+    sign: float,
+    parent_link: str,
+    link_name: str,
+    parent_offset_z: float,
+    parent_lateral_y: float,
+    flex_limits: tuple[float, float],
+    second_limits: tuple[float, float],
+    second_label: str,
+) -> str:
+    """Wire virtual link and joints for one side of a 2-DOF compound joint.
+
+    Creates one virtual link and two revolute joints:
+      parent -> flex (X) -> v1 -> {second_label} (Z) -> child.
+
+    Returns the name of the created virtual link.
+    """
+    v1_name = f"{coord_prefix}_{side}_virtual_1"
+    add_virtual_link(model, name=v1_name)
+    _add_flex_joint(
+        model,
+        f"{coord_prefix}_{side}_flex",
+        parent_link,
+        v1_name,
+        (0, sign * parent_lateral_y, parent_offset_z, 0, 0, 0),
+        flex_limits,
+    )
+    add_revolute_joint(
+        model,
+        name=f"{coord_prefix}_{side}_{second_label}",
+        parent=v1_name,
+        child=link_name,
+        axis_xyz=(0, 0, 1),
+        pose=(0, 0, 0, 0, 0, 0),
+        lower_limit=second_limits[0],
+        upper_limit=second_limits[1],
+    )
+    return v1_name
 
 
 def _add_compound_2dof_bilateral(
@@ -317,52 +424,28 @@ def _add_compound_2dof_bilateral(
       parent -> {prefix}_flex joint -> virtual_1 -> {prefix}_{second} joint -> child
     """
     mass, length, radius = _seg(spec, seg_name)
-    inertia = cylinder_inertia(mass, radius, length)
     created: dict[str, ET.Element] = {}
 
     for side, sign in [("l", -1.0), ("r", 1.0)]:
         link_name = f"{seg_name}_{side}"
         parent_link = f"{parent_name}_{side}" if "_" in parent_name else parent_name
-        v1_name = f"{coord_prefix}_{side}_virtual_1"
-
-        # Virtual link
-        created[v1_name] = add_virtual_link(model, name=v1_name)
-
-        # Real segment link
-        created[link_name] = add_link(
-            model,
-            name=link_name,
-            mass=mass,
-            mass_center=(0, 0, -length / 2.0),
-            inertia_xx=inertia[0],
-            inertia_yy=inertia[1],
-            inertia_zz=inertia[2],
-            visual_geometry=make_cylinder_geometry(radius, length),
-            collision_geometry=make_cylinder_geometry(radius, length),
+        created[link_name] = _make_cylinder_segment_link(
+            model, name=link_name, mass=mass, length=length, radius=radius
         )
-
-        # Joint 1: flexion (X-axis) -- parent to virtual_1
-        add_revolute_joint(
+        v1 = _add_2dof_joint_chain(
             model,
-            name=f"{coord_prefix}_{side}_flex",
-            parent=parent_link,
-            child=v1_name,
-            axis_xyz=(1, 0, 0),
-            pose=(0, sign * parent_lateral_y, parent_offset_z, 0, 0, 0),
-            lower_limit=flex_limits[0],
-            upper_limit=flex_limits[1],
+            coord_prefix=coord_prefix,
+            side=side,
+            sign=sign,
+            parent_link=parent_link,
+            link_name=link_name,
+            parent_offset_z=parent_offset_z,
+            parent_lateral_y=parent_lateral_y,
+            flex_limits=flex_limits,
+            second_limits=second_limits,
+            second_label=second_label,
         )
-        # Joint 2: second DOF (Z-axis) -- virtual_1 to child
-        add_revolute_joint(
-            model,
-            name=f"{coord_prefix}_{side}_{second_label}",
-            parent=v1_name,
-            child=link_name,
-            axis_xyz=(0, 0, 1),
-            pose=(0, 0, 0, 0, 0, 0),
-            lower_limit=second_limits[0],
-            upper_limit=second_limits[1],
-        )
+        created[v1] = model.find(f"link[@name='{v1}']")  # type: ignore[assignment]
 
     return created
 
@@ -410,23 +493,25 @@ def _build_pelvis(
     return links
 
 
-def _build_spine_and_head(
+def _build_lumbar_joints(
     model: ET.Element,
     spec: BodyModelSpec,
+    t_len: float,
 ) -> dict[str, ET.Element]:
-    """Stage 2: Create lumbar 3-DOF compound joint, torso, neck, and head.
+    """Create lumbar 3-DOF compound joints and the torso link.
 
-    Returns dict with torso, head, and lumbar virtual link elements.
+    Chain: pelvis -> lumbar_flex (X) -> v1 -> lumbar_lateral (Z)
+           -> v2 -> lumbar_rotate (Y) -> torso.
+
+    Returns dict containing torso, lumbar_virtual_1, lumbar_virtual_2.
     """
     links: dict[str, ET.Element] = {}
-
-    p_mass, p_len, p_rad = _seg(spec, "pelvis")
-    t_mass, t_len, t_rad = _seg(spec, "torso")
+    _p_mass, p_len, p_rad = _seg(spec, "pelvis")
+    t_mass, _t_len, t_rad = _seg(spec, "torso")
     t_inertia = rectangular_prism_inertia(t_mass, t_rad * 2, t_len, t_rad * 2)
 
     links["lumbar_virtual_1"] = add_virtual_link(model, name="lumbar_virtual_1")
     links["lumbar_virtual_2"] = add_virtual_link(model, name="lumbar_virtual_2")
-
     links["torso"] = add_link(
         model,
         name="torso",
@@ -468,11 +553,21 @@ def _build_spine_and_head(
         lower_limit=LUMBAR_ROTATE_LOWER,
         upper_limit=LUMBAR_ROTATE_UPPER,
     )
+    return links
 
-    # Head
+
+def _build_head_link(
+    model: ET.Element,
+    spec: BodyModelSpec,
+    t_len: float,
+) -> dict[str, ET.Element]:
+    """Create the head link and neck revolute joint.
+
+    Returns dict containing the head link element.
+    """
     h_mass, h_len, h_rad = _seg(spec, "head")
     h_inertia = cylinder_inertia(h_mass, h_rad, h_len)
-    links["head"] = add_link(
+    head_link = add_link(
         model,
         name="head",
         mass=h_mass,
@@ -493,7 +588,81 @@ def _build_spine_and_head(
         lower_limit=-NECK_RANGE_LIMIT,
         upper_limit=NECK_RANGE_LIMIT,
     )
+    return {"head": head_link}
+
+
+def _build_spine_and_head(
+    model: ET.Element,
+    spec: BodyModelSpec,
+) -> dict[str, ET.Element]:
+    """Stage 2: Create lumbar 3-DOF compound joint, torso, neck, and head.
+
+    Returns dict with torso, head, and lumbar virtual link elements.
+    """
+    _t_mass, t_len, _t_rad = _seg(spec, "torso")
+    links = _build_lumbar_joints(model, spec, t_len)
+    links.update(_build_head_link(model, spec, t_len))
     return links
+
+
+def _build_shoulders(
+    model: ET.Element,
+    spec: BodyModelSpec,
+    t_len: float,
+    t_rad: float,
+) -> dict[str, ET.Element]:
+    """Create bilateral 3-DOF shoulder joints and upper_arm links."""
+    return _add_compound_3dof_bilateral(
+        model,
+        spec,
+        seg_name="upper_arm",
+        parent_name="torso",
+        parent_offset_z=t_len * SHOULDER_HEIGHT_FRACTION,
+        parent_lateral_y=t_rad * SHOULDER_LATERAL_MULTIPLIER,
+        coord_prefix="shoulder",
+        flex_limits=(SHOULDER_FLEX_LOWER, SHOULDER_FLEX_UPPER),
+        adduct_limits=(SHOULDER_ADDUCT_LOWER, SHOULDER_ADDUCT_UPPER),
+        rotate_limits=(SHOULDER_ROTATE_LOWER, SHOULDER_ROTATE_UPPER),
+    )
+
+
+def _build_elbows(
+    model: ET.Element,
+    spec: BodyModelSpec,
+) -> dict[str, ET.Element]:
+    """Create bilateral 1-DOF elbow joints and forearm links."""
+    _ua_mass, ua_len, _ua_rad = _seg(spec, "upper_arm")
+    return _add_bilateral_limb(
+        model,
+        spec,
+        seg_name="forearm",
+        parent_name="upper_arm",
+        parent_offset_z=-ua_len,
+        parent_lateral_y=0,
+        coord_prefix="elbow",
+        range_min=0,
+        range_max=ELBOW_FLEXION_LIMIT,
+    )
+
+
+def _build_wrists(
+    model: ET.Element,
+    spec: BodyModelSpec,
+) -> dict[str, ET.Element]:
+    """Create bilateral 2-DOF wrist joints and hand links."""
+    _fa_mass, fa_len, _fa_rad = _seg(spec, "forearm")
+    return _add_compound_2dof_bilateral(
+        model,
+        spec,
+        seg_name="hand",
+        parent_name="forearm",
+        parent_offset_z=-fa_len,
+        parent_lateral_y=0,
+        coord_prefix="wrist",
+        flex_limits=(WRIST_FLEX_LOWER, WRIST_FLEX_UPPER),
+        second_limits=(WRIST_DEVIATE_LOWER, WRIST_DEVIATE_UPPER),
+        second_label="deviate",
+    )
 
 
 def _build_upper_limbs(
@@ -504,60 +673,72 @@ def _build_upper_limbs(
 
     Returns dict with upper_arm, forearm, hand, and virtual link elements.
     """
-    links: dict[str, ET.Element] = {}
     _t_mass, t_len, t_rad = _seg(spec, "torso")
-
-    # Shoulder (3-DOF compound)
-    shoulder_z = t_len * SHOULDER_HEIGHT_FRACTION
-    shoulder_y = t_rad * SHOULDER_LATERAL_MULTIPLIER
-    links.update(
-        _add_compound_3dof_bilateral(
-            model,
-            spec,
-            seg_name="upper_arm",
-            parent_name="torso",
-            parent_offset_z=shoulder_z,
-            parent_lateral_y=shoulder_y,
-            coord_prefix="shoulder",
-            flex_limits=(SHOULDER_FLEX_LOWER, SHOULDER_FLEX_UPPER),
-            adduct_limits=(SHOULDER_ADDUCT_LOWER, SHOULDER_ADDUCT_UPPER),
-            rotate_limits=(SHOULDER_ROTATE_LOWER, SHOULDER_ROTATE_UPPER),
-        )
-    )
-
-    # Elbow (1-DOF)
-    _ua_mass, ua_len, _ua_rad = _seg(spec, "upper_arm")
-    links.update(
-        _add_bilateral_limb(
-            model,
-            spec,
-            seg_name="forearm",
-            parent_name="upper_arm",
-            parent_offset_z=-ua_len,
-            parent_lateral_y=0,
-            coord_prefix="elbow",
-            range_min=0,
-            range_max=ELBOW_FLEXION_LIMIT,
-        )
-    )
-
-    # Wrist (2-DOF compound)
-    _fa_mass, fa_len, _fa_rad = _seg(spec, "forearm")
-    links.update(
-        _add_compound_2dof_bilateral(
-            model,
-            spec,
-            seg_name="hand",
-            parent_name="forearm",
-            parent_offset_z=-fa_len,
-            parent_lateral_y=0,
-            coord_prefix="wrist",
-            flex_limits=(WRIST_FLEX_LOWER, WRIST_FLEX_UPPER),
-            second_limits=(WRIST_DEVIATE_LOWER, WRIST_DEVIATE_UPPER),
-            second_label="deviate",
-        )
-    )
+    links: dict[str, ET.Element] = {}
+    links.update(_build_shoulders(model, spec, t_len, t_rad))
+    links.update(_build_elbows(model, spec))
+    links.update(_build_wrists(model, spec))
     return links
+
+
+def _build_hips(
+    model: ET.Element,
+    spec: BodyModelSpec,
+    p_len: float,
+    p_rad: float,
+) -> dict[str, ET.Element]:
+    """Create bilateral 3-DOF hip joints and thigh links."""
+    return _add_compound_3dof_bilateral(
+        model,
+        spec,
+        seg_name="thigh",
+        parent_name="pelvis",
+        parent_offset_z=-p_len / 2.0,
+        parent_lateral_y=p_rad * HIP_LATERAL_MULTIPLIER,
+        coord_prefix="hip",
+        flex_limits=(HIP_FLEX_LOWER, HIP_FLEX_UPPER),
+        adduct_limits=(HIP_ADDUCT_LOWER, HIP_ADDUCT_UPPER),
+        rotate_limits=(HIP_ROTATE_LOWER, HIP_ROTATE_UPPER),
+    )
+
+
+def _build_knees(
+    model: ET.Element,
+    spec: BodyModelSpec,
+) -> dict[str, ET.Element]:
+    """Create bilateral 1-DOF knee joints and shank links."""
+    _th_mass, th_len, _th_rad = _seg(spec, "thigh")
+    return _add_bilateral_limb(
+        model,
+        spec,
+        seg_name="shank",
+        parent_name="thigh",
+        parent_offset_z=-th_len,
+        parent_lateral_y=0,
+        coord_prefix="knee",
+        range_min=KNEE_FLEXION_LIMIT,
+        range_max=0,
+    )
+
+
+def _build_ankles(
+    model: ET.Element,
+    spec: BodyModelSpec,
+) -> dict[str, ET.Element]:
+    """Create bilateral 2-DOF ankle joints and foot links."""
+    _sh_mass, sh_len, _sh_rad = _seg(spec, "shank")
+    return _add_compound_2dof_bilateral(
+        model,
+        spec,
+        seg_name="foot",
+        parent_name="shank",
+        parent_offset_z=-sh_len,
+        parent_lateral_y=0,
+        coord_prefix="ankle",
+        flex_limits=(ANKLE_FLEX_LOWER, ANKLE_FLEX_UPPER),
+        second_limits=(ANKLE_INVERT_LOWER, ANKLE_INVERT_UPPER),
+        second_label="invert",
+    )
 
 
 def _build_lower_limbs(
@@ -568,58 +749,11 @@ def _build_lower_limbs(
 
     Returns dict with thigh, shank, foot, and virtual link elements.
     """
-    links: dict[str, ET.Element] = {}
     _p_mass, p_len, p_rad = _seg(spec, "pelvis")
-
-    # Hip (3-DOF compound)
-    hip_y = p_rad * HIP_LATERAL_MULTIPLIER
-    links.update(
-        _add_compound_3dof_bilateral(
-            model,
-            spec,
-            seg_name="thigh",
-            parent_name="pelvis",
-            parent_offset_z=-p_len / 2.0,
-            parent_lateral_y=hip_y,
-            coord_prefix="hip",
-            flex_limits=(HIP_FLEX_LOWER, HIP_FLEX_UPPER),
-            adduct_limits=(HIP_ADDUCT_LOWER, HIP_ADDUCT_UPPER),
-            rotate_limits=(HIP_ROTATE_LOWER, HIP_ROTATE_UPPER),
-        )
-    )
-
-    # Knee (1-DOF)
-    _th_mass, th_len, _th_rad = _seg(spec, "thigh")
-    links.update(
-        _add_bilateral_limb(
-            model,
-            spec,
-            seg_name="shank",
-            parent_name="thigh",
-            parent_offset_z=-th_len,
-            parent_lateral_y=0,
-            coord_prefix="knee",
-            range_min=KNEE_FLEXION_LIMIT,
-            range_max=0,
-        )
-    )
-
-    # Ankle (2-DOF compound)
-    _sh_mass, sh_len, _sh_rad = _seg(spec, "shank")
-    links.update(
-        _add_compound_2dof_bilateral(
-            model,
-            spec,
-            seg_name="foot",
-            parent_name="shank",
-            parent_offset_z=-sh_len,
-            parent_lateral_y=0,
-            coord_prefix="ankle",
-            flex_limits=(ANKLE_FLEX_LOWER, ANKLE_FLEX_UPPER),
-            second_limits=(ANKLE_INVERT_LOWER, ANKLE_INVERT_UPPER),
-            second_label="invert",
-        )
-    )
+    links: dict[str, ET.Element] = {}
+    links.update(_build_hips(model, spec, p_len, p_rad))
+    links.update(_build_knees(model, spec))
+    links.update(_build_ankles(model, spec))
     return links
 
 
@@ -653,47 +787,28 @@ def create_full_body(
 ) -> dict[str, ET.Element]:
     """Build the full-body model and append links/joints to the SDF model.
 
-    The build proceeds in five staged steps (issue #77):
-      1. Pelvis and world joint
-      2. Spine (lumbar 3-DOF), torso, neck, head
-      3. Upper limbs (shoulders, elbows, wrists)
-      4. Lower limbs (hips, knees, ankles)
-      5. Foot sole contact geometry
+    Five staged steps: (1) pelvis, (2) spine+head, (3) upper limbs,
+    (4) lower limbs, (5) foot contacts.
 
     Args:
         model: SDF model element to append to.
         spec: Anthropometric specification (defaults to 50th-percentile male).
-        pelvis_joint_type: Joint type for the world-to-pelvis connection.
-            Use ``"floating"`` (default) for unconstrained 6-DOF motion, or
-            ``"fixed"`` when the exercise constrains the pelvis externally
-            (e.g. bench press weld through the bench pad).
+        pelvis_joint_type: ``"floating"`` (default, 6-DOF) or ``"fixed"``
+            when the exercise constrains the pelvis externally.
 
     Returns dict of link name -> ET.Element for all created links.
     """
     if spec is None:
         spec = BodyModelSpec()
-
     logger.info(
         "Building full-body model: mass=%.1f kg, height=%.2f m",
         spec.total_mass,
         spec.height,
     )
-
     links: dict[str, ET.Element] = {}
-
-    # Stage 1: Pelvis
     links.update(_build_pelvis(model, spec, pelvis_joint_type))
-
-    # Stage 2: Spine and head
     links.update(_build_spine_and_head(model, spec))
-
-    # Stage 3: Upper limbs
     links.update(_build_upper_limbs(model, spec))
-
-    # Stage 4: Lower limbs
     links.update(_build_lower_limbs(model, spec))
-
-    # Stage 5: Foot contacts
     _build_foot_contacts(model, spec, links)
-
     return links

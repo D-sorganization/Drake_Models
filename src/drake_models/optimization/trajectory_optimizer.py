@@ -170,68 +170,107 @@ def compute_terminal_cost(
 # ---------------------------------------------------------------------------
 
 
+def _build_phase_arrays(
+    objective: ExerciseObjective,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Extract phase time fractions and clean joint-angle arrays from *objective*.
+
+    Returns:
+        ``(phase_times, phase_angles_clean)`` where NaN values are replaced
+        with 0.0 for safe interpolation.
+    """
+    phase_times = np.array([p.time_fraction for p in objective.phases])
+    phase_angles = objective.phase_angles_array()
+    phase_angles_clean = np.where(np.isnan(phase_angles), 0.0, phase_angles)
+    return phase_times, phase_angles_clean
+
+
+def _compute_interpolated_cost(
+    positions: np.ndarray,
+    torques: np.ndarray,
+    terminal_target: np.ndarray,
+    config: TrajectoryConfig,
+) -> float:
+    """Compute the nominal cost for an interpolated (Drake-free) trajectory.
+
+    Combines quadratic control cost with terminal tracking cost.
+    """
+    total = compute_control_cost(torques, config.control_weight)
+    total += compute_terminal_cost(
+        positions[-1], terminal_target, config.terminal_weight
+    )
+    return total
+
+
+def _interpolate_joint_positions(
+    phase_times: np.ndarray,
+    phase_angles_clean: np.ndarray,
+    time_fracs: np.ndarray,
+    n_joints: int,
+) -> np.ndarray:
+    """Linearly interpolate joint angles across *time_fracs* from phase keyframes.
+
+    Returns an ``(n_steps, n_joints)`` array of interpolated positions.
+    """
+    n_steps = len(time_fracs)
+    positions = np.zeros((n_steps, n_joints))
+    for j in range(n_joints):
+        positions[:, j] = np.interp(time_fracs, phase_times, phase_angles_clean[:, j])
+    return positions
+
+
+def _finite_diff_velocities(positions: np.ndarray, dt: float) -> np.ndarray:
+    """Compute finite-difference joint velocities from *positions*.
+
+    Returns a zero-padded array of the same shape (first row is zero).
+    """
+    velocities = np.zeros_like(positions)
+    if len(positions) > 1:
+        velocities[1:] = np.diff(positions, axis=0) / dt
+    return velocities
+
+
 def interpolate_trajectory(
     objective: ExerciseObjective,
     config: TrajectoryConfig,
 ) -> TrajectoryResult:
     """Generate a smooth trajectory by interpolating between exercise phases.
 
-    This is a simplified fallback that does not require Drake. It creates
-    a cubic-spline-like interpolation between the phase keyframes.
+    Drake-free fallback. Linearly interpolates phase keyframes and returns
+    zero torques with a nominal cost.
 
     Args:
         objective: Exercise objective containing phase targets and joint names.
         config: Trajectory configuration with timestep and weight parameters.
 
     Returns:
-        TrajectoryResult with interpolated positions, zero-initialized
-        velocities and torques, and a nominal cost.
+        TrajectoryResult with interpolated positions and a nominal cost.
 
     Raises:
-        ValueError: If objective has fewer than 2 phases or config is invalid.
+        ValueError: If objective has no phases.
     """
     if not objective.phases:
         raise ValueError("objective must have at least one phase")
-    joint_names = objective.joint_names()
-    n_joints = len(joint_names)
+    n_joints = len(objective.joint_names())
     n_steps = config.n_timesteps
     time = np.linspace(0.0, config.total_time, n_steps)
     time_fracs = np.linspace(0.0, 1.0, n_steps)
 
-    # Build keyframe arrays
-    phase_times = np.array([p.time_fraction for p in objective.phases])
-    phase_angles = objective.phase_angles_array()
-
-    # Replace NaN with 0.0 for interpolation
-    phase_angles_clean = np.where(np.isnan(phase_angles), 0.0, phase_angles)
-
-    # Linear interpolation per joint
-    positions = np.zeros((n_steps, n_joints))
-    for j in range(n_joints):
-        positions[:, j] = np.interp(time_fracs, phase_times, phase_angles_clean[:, j])
-
-    # Finite-difference velocities
-    velocities = np.zeros_like(positions)
-    if n_steps > 1:
-        velocities[1:] = np.diff(positions, axis=0) / config.dt
-
-    # Zero torques (no dynamics model)
-    torques = np.zeros_like(positions)
-
-    # Compute nominal cost
-    total_cost = compute_control_cost(torques, config.control_weight)
-    terminal_target = phase_angles_clean[-1]
-    total_cost += compute_terminal_cost(
-        positions[-1], terminal_target, config.terminal_weight
+    phase_times, phase_angles_clean = _build_phase_arrays(objective)
+    positions = _interpolate_joint_positions(
+        phase_times, phase_angles_clean, time_fracs, n_joints
     )
-
+    velocities = _finite_diff_velocities(positions, config.dt)
+    torques = np.zeros_like(positions)
+    total_cost = _compute_interpolated_cost(
+        positions, torques, phase_angles_clean[-1], config
+    )
     logger.info(
         "Interpolated trajectory: %d steps, %d joints, cost=%.4f",
         n_steps,
         n_joints,
         total_cost,
     )
-
     return TrajectoryResult(
         joint_positions=positions,
         joint_velocities=velocities,
@@ -248,6 +287,24 @@ def interpolate_trajectory(
 # ---------------------------------------------------------------------------
 
 
+def _try_drake_solve(
+    sdf_string: str,
+    objective: ExerciseObjective,
+    config: TrajectoryConfig,
+) -> TrajectoryResult | None:
+    """Attempt to solve with Drake; return ``None`` if pydrake is unavailable.
+
+    Returns:
+        A ``TrajectoryResult`` from Drake's MathematicalProgram, or ``None``
+        when pydrake is not installed so the caller can fall back.
+    """
+    import importlib.util
+
+    if importlib.util.find_spec("pydrake") is None:
+        return None
+    return _solve_with_drake(sdf_string, objective, config)
+
+
 def create_trajectory_optimization(
     sdf_string: str,
     exercise_name: str,
@@ -255,23 +312,13 @@ def create_trajectory_optimization(
 ) -> TrajectoryResult:
     """Create and solve a trajectory optimization for the given exercise.
 
-    Uses Drake's mathematical programming when available to solve:
-
-        min  sum_k [ control_weight * ||u_k||^2
-                    + state_weight * ||x_k - x_target_k||^2 ]
-             + terminal_weight * ||x_T - x_final||^2
-
-        s.t. dynamics constraints (MultibodyPlant)
-             joint limit constraints
-             contact constraints (foot on ground)
-             balance constraint (CoM over BoS)
-
-    When Drake is not installed, falls back to phase interpolation.
+    Uses Drake's MathematicalProgram when pydrake is installed; otherwise
+    falls back to phase interpolation via ``interpolate_trajectory``.
 
     Args:
-        sdf_string: Complete SDF model XML string.
+        sdf_string: Complete SDF model XML string (non-empty).
         exercise_name: Name matching a registered ExerciseObjective.
-        config: Solver configuration. Uses defaults if ``None``.
+        config: Solver configuration; uses defaults if ``None``.
 
     Returns:
         TrajectoryResult with optimized (or interpolated) trajectory.
@@ -286,24 +333,85 @@ def create_trajectory_optimization(
     config = config or TrajectoryConfig()
     objective = get_objective(exercise_name)
 
-    # Try Drake-based optimization
-    try:
-        import importlib.util
-
-        if importlib.util.find_spec("pydrake") is None:
-            raise ImportError("pydrake not installed")
-
+    drake_result = _try_drake_solve(sdf_string, objective, config)
+    if drake_result is not None:
         logger.info(
-            "Drake available — using mathematical programming for %s",
-            exercise_name,
+            "Drake available — using mathematical programming for %s", exercise_name
         )
-        return _solve_with_drake(sdf_string, objective, config)
-    except ImportError:
-        logger.info(
-            "Drake not available — falling back to phase interpolation for %s",
-            exercise_name,
+        return drake_result
+
+    logger.info(
+        "Drake not available — falling back to phase interpolation for %s",
+        exercise_name,
+    )
+    return interpolate_trajectory(objective, config)
+
+
+def _build_drake_plant(sdf_string: str, dt: float) -> object:
+    """Load *sdf_string* into a finalised Drake MultibodyPlant.
+
+    Returns the finalized plant object.  Callers must have pydrake available.
+    """
+    from pydrake.all import (
+        AddMultibodyPlantSceneGraph,
+        DiagramBuilder,
+        Parser,
+    )
+
+    builder = DiagramBuilder()
+    plant, _scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=dt)
+    parser = Parser(plant)
+    parser.AddModelsFromString(sdf_string, "sdf")
+    plant.Finalize()
+    return plant
+
+
+def _add_control_costs(prog: object, u: object, n_steps: int, weight: float) -> None:
+    """Add per-timestep quadratic control costs to *prog*.
+
+    Minimises ``weight * ||u_k||^2`` at each knot point.
+    """
+    import numpy as np
+    from pydrake.all import MathematicalProgram  # noqa: F401 (type check guard)
+
+    n_u = u.shape[1]  # type: ignore[attr-defined]
+    for k in range(n_steps):
+        prog.AddQuadraticCost(  # type: ignore[attr-defined]
+            weight * np.eye(n_u),
+            np.zeros(n_u),
+            u[k],  # type: ignore[index]
         )
-        return interpolate_trajectory(objective, config)
+
+
+def _add_phase_tracking_costs(
+    prog: object,
+    q: object,
+    objective: ExerciseObjective,
+    n_q: int,
+    n_steps: int,
+    state_weight: float,
+    terminal_weight: float,
+) -> None:
+    """Add phase-tracking quadratic costs to *prog*.
+
+    Each exercise phase maps to a knot-point index via its time fraction.
+    The final phase uses *terminal_weight*; all others use *state_weight*.
+    """
+    joint_names = objective.joint_names()
+    for phase in objective.phases:
+        k = int(phase.time_fraction * (n_steps - 1))
+        target = np.zeros(n_q)
+        for jname, angle in phase.joint_angles.items():
+            if jname in joint_names:
+                idx = joint_names.index(jname)
+                if idx < n_q:
+                    target[idx] = angle
+        w = terminal_weight if phase is objective.phases[-1] else state_weight
+        prog.AddQuadraticCost(  # type: ignore[attr-defined]
+            w * np.eye(n_q),
+            -w * target,
+            q[k],  # type: ignore[index]
+        )
 
 
 def _solve_with_drake(
@@ -316,61 +424,31 @@ def _solve_with_drake(
     This is the full-fidelity path when pydrake is installed. It sets up
     a direct transcription with MultibodyPlant dynamics constraints.
     """
-    from pydrake.all import (
-        AddMultibodyPlantSceneGraph,
-        DiagramBuilder,
-        MathematicalProgram,
-        Parser,
-        Solve,
-    )
+    from pydrake.all import MathematicalProgram, Solve
 
-    # Build plant
-    builder = DiagramBuilder()
-    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=config.dt)
-    parser = Parser(plant)
-    parser.AddModelsFromString(sdf_string, "sdf")
-    plant.Finalize()
-
-    n_q = plant.num_positions()
-    n_v = plant.num_velocities()
-    n_u = plant.num_actuators()
+    plant = _build_drake_plant(sdf_string, config.dt)
+    n_q = plant.num_positions()  # type: ignore[attr-defined]
+    n_v = plant.num_velocities()  # type: ignore[attr-defined]
+    n_u = plant.num_actuators()  # type: ignore[attr-defined]
     n_steps = config.n_timesteps
 
-    # Direct transcription
     prog = MathematicalProgram()
-
-    # Decision variables
     q = prog.NewContinuousVariables(n_steps, n_q, "q")
     v = prog.NewContinuousVariables(n_steps, n_v, "v")
     u = prog.NewContinuousVariables(n_steps, n_u, "u")
 
-    # Control cost
-    for k in range(n_steps):
-        prog.AddQuadraticCost(
-            config.control_weight * np.eye(n_u),
-            np.zeros(n_u),
-            u[k],
-        )
-
-    # Phase tracking costs
-    joint_names = objective.joint_names()
-    for phase in objective.phases:
-        k = int(phase.time_fraction * (n_steps - 1))
-        target = np.zeros(n_q)
-        for jname, angle in phase.joint_angles.items():
-            if jname in joint_names:
-                idx = joint_names.index(jname)
-                if idx < n_q:
-                    target[idx] = angle
-        w = (
-            config.terminal_weight
-            if phase is objective.phases[-1]
-            else config.state_weight
-        )
-        prog.AddQuadraticCost(w * np.eye(n_q), -w * target, q[k])
+    _add_control_costs(prog, u, n_steps, config.control_weight)
+    _add_phase_tracking_costs(
+        prog,
+        q,
+        objective,
+        n_q,
+        n_steps,
+        config.state_weight,
+        config.terminal_weight,
+    )
 
     result = Solve(prog)
-
     positions = result.GetSolution(q)
     velocities = result.GetSolution(v)
     torques = result.GetSolution(u)

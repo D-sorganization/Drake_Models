@@ -265,6 +265,26 @@ def add_contact_geometry(
     return collision
 
 
+def _add_ground_contact_collision(
+    ground_link: ET.Element,
+    mu_static: float,
+    mu_dynamic: float,
+) -> None:
+    """Attach a rigid hydroelastic box collision to *ground_link*.
+
+    The box (100 m x 100 m x 0.1 m) approximates an infinite half-space.
+    """
+    collision = ET.SubElement(ground_link, "collision", name="ground_plane_collision")
+    ET.SubElement(collision, "pose").text = pose_str(0, 0, -0.05, 0, 0, 0)
+    geom = ET.SubElement(collision, "geometry")
+    box = ET.SubElement(geom, "box")
+    ET.SubElement(box, "size").text = vec3_str(100, 100, 0.1)
+    prox = ET.SubElement(collision, _drake_tag("proximity_properties"))
+    ET.SubElement(prox, _drake_tag("rigid_hydroelastic"))
+    ET.SubElement(prox, _drake_tag("mu_static")).text = f"{mu_static:.1f}"
+    ET.SubElement(prox, _drake_tag("mu_dynamic")).text = f"{mu_dynamic:.1f}"
+
+
 def add_ground_plane_contact(
     model: ET.Element,
     *,
@@ -273,9 +293,8 @@ def add_ground_plane_contact(
 ) -> ET.Element:
     """Add an infinite half-space ground plane with rigid hydroelastic contact.
 
-    Creates a ``ground_plane`` link welded to world at Z=0. The collision
-    uses ``<drake:rigid_hydroelastic/>`` (the ground is infinitely stiff)
-    and a large box to approximate the half-space.
+    Creates a ``ground_plane`` link welded to world at Z=0. Uses
+    ``<drake:rigid_hydroelastic/>`` (infinitely stiff ground).
 
     Args:
         model: SDF model element to append to.
@@ -294,20 +313,7 @@ def add_ground_plane_contact(
         inertia_yy=1e-6,
         inertia_zz=1e-6,
     )
-
-    # Large box approximating infinite half-space (100m x 100m x 0.1m)
-    collision = ET.SubElement(ground_link, "collision", name="ground_plane_collision")
-    ET.SubElement(collision, "pose").text = pose_str(0, 0, -0.05, 0, 0, 0)
-    geom = ET.SubElement(collision, "geometry")
-    box = ET.SubElement(geom, "box")
-    ET.SubElement(box, "size").text = vec3_str(100, 100, 0.1)
-
-    prox = ET.SubElement(collision, _drake_tag("proximity_properties"))
-    ET.SubElement(prox, _drake_tag("rigid_hydroelastic"))
-    ET.SubElement(prox, _drake_tag("mu_static")).text = f"{mu_static:.1f}"
-    ET.SubElement(prox, _drake_tag("mu_dynamic")).text = f"{mu_dynamic:.1f}"
-
-    # Weld ground plane to world at Z=0
+    _add_ground_contact_collision(ground_link, mu_static, mu_dynamic)
     add_fixed_joint(
         model,
         name="ground_plane_weld",
@@ -315,7 +321,6 @@ def add_ground_plane_contact(
         child="ground_plane",
         pose=(0, 0, 0, 0, 0, 0),
     )
-
     logger.debug("Added ground plane with rigid hydroelastic contact")
     return ground_link
 
