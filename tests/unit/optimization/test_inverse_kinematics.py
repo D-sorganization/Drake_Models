@@ -4,7 +4,40 @@ import numpy as np
 import pytest
 
 from drake_models.optimization.exercise_objectives import SQUAT, get_objective
-from drake_models.optimization.inverse_kinematics import solve_ik_keyframes
+from drake_models.optimization.inverse_kinematics import (
+    _interpolate_phases,
+    _pydrake_available,
+    solve_ik_keyframes,
+)
+
+
+class TestPydrakeAvailable:
+    """Tests for the extracted _pydrake_available helper."""
+
+    def test_returns_bool(self) -> None:
+        result = _pydrake_available()
+        assert isinstance(result, bool)
+
+    def test_false_without_pydrake(self) -> None:
+        # In the test environment pydrake is not installed.
+        assert _pydrake_available() is False
+
+
+class TestInterpolatePhases:
+    """Tests for the _interpolate_phases helper."""
+
+    def test_output_shape(self) -> None:
+        keyframes = _interpolate_phases(SQUAT, n_frames=20)
+        n_joints = len(SQUAT.joint_names())
+        assert keyframes.shape == (20, n_joints)
+
+    def test_all_finite(self) -> None:
+        keyframes = _interpolate_phases(SQUAT, n_frames=15)
+        assert np.all(np.isfinite(keyframes))
+
+    def test_n_frames_too_small(self) -> None:
+        with pytest.raises(ValueError, match="n_frames"):
+            _interpolate_phases(SQUAT, n_frames=1)
 
 
 class TestSolveIkKeyframes:

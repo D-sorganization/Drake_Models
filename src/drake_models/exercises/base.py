@@ -158,6 +158,47 @@ class ExerciseModelBuilder(ABC):
         )
 
     @staticmethod
+    def _bilateral_collision_pairs(side: str) -> list[tuple[str, list[str]]]:
+        """Return collision filter group definitions for one body side.
+
+        Args:
+            side: ``'l'`` or ``'r'``.
+
+        Returns:
+            List of ``(group_name, [member_links])`` tuples for the given side.
+        """
+        return [
+            (
+                f"hip_{side}",
+                [
+                    "pelvis",
+                    f"thigh_{side}",
+                    f"hip_{side}_virtual_1",
+                    f"hip_{side}_virtual_2",
+                ],
+            ),
+            (f"knee_{side}", [f"thigh_{side}", f"shank_{side}"]),
+            (
+                f"ankle_{side}",
+                [f"shank_{side}", f"foot_{side}", f"ankle_{side}_virtual_1"],
+            ),
+            (
+                f"shoulder_{side}",
+                [
+                    "torso",
+                    f"upper_arm_{side}",
+                    f"shoulder_{side}_virtual_1",
+                    f"shoulder_{side}_virtual_2",
+                ],
+            ),
+            (f"elbow_{side}", [f"upper_arm_{side}", f"forearm_{side}"]),
+            (
+                f"wrist_{side}",
+                [f"forearm_{side}", f"hand_{side}", f"wrist_{side}_virtual_1"],
+            ),
+        ]
+
+    @staticmethod
     def _add_collision_filters(model: ET.Element) -> None:
         """Add collision exclusion filters for adjacent body segments.
 
@@ -165,58 +206,12 @@ class ExerciseModelBuilder(ABC):
         detection between segments that are connected by joints. Without
         these filters, adjacent links would interpenetrate at joint limits.
         """
-        # Adjacent segment pairs that should not collide
-        adjacent_pairs = [
+        adjacent_pairs: list[tuple[str, list[str]]] = [
             ("torso_pelvis", ["pelvis", "torso"]),
             ("torso_head", ["torso", "head"]),
         ]
         for side in ("l", "r"):
-            adjacent_pairs.extend(
-                [
-                    (
-                        f"hip_{side}",
-                        [
-                            "pelvis",
-                            f"thigh_{side}",
-                            f"hip_{side}_virtual_1",
-                            f"hip_{side}_virtual_2",
-                        ],
-                    ),
-                    (
-                        f"knee_{side}",
-                        [f"thigh_{side}", f"shank_{side}"],
-                    ),
-                    (
-                        f"ankle_{side}",
-                        [
-                            f"shank_{side}",
-                            f"foot_{side}",
-                            f"ankle_{side}_virtual_1",
-                        ],
-                    ),
-                    (
-                        f"shoulder_{side}",
-                        [
-                            "torso",
-                            f"upper_arm_{side}",
-                            f"shoulder_{side}_virtual_1",
-                            f"shoulder_{side}_virtual_2",
-                        ],
-                    ),
-                    (
-                        f"elbow_{side}",
-                        [f"upper_arm_{side}", f"forearm_{side}"],
-                    ),
-                    (
-                        f"wrist_{side}",
-                        [
-                            f"forearm_{side}",
-                            f"hand_{side}",
-                            f"wrist_{side}_virtual_1",
-                        ],
-                    ),
-                ]
-            )
+            adjacent_pairs.extend(ExerciseModelBuilder._bilateral_collision_pairs(side))
         for group_name, members in adjacent_pairs:
             add_collision_filter_group(model, name=group_name, members=members)
         logger.debug("Added %d collision filter groups", len(adjacent_pairs))

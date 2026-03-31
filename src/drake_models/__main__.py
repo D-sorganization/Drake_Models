@@ -35,8 +35,8 @@ BUILDER_FUNCTIONS = {
 }
 
 
-def main(argv: list[str] | None = None) -> None:
-    """Generate a Drake SDF model for a barbell exercise."""
+def _build_arg_parser() -> argparse.ArgumentParser:
+    """Construct and return the CLI argument parser."""
     parser = argparse.ArgumentParser(
         prog="drake-models",
         description="Generate Drake SDF models for barbell exercises.",
@@ -77,16 +77,36 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Enable verbose logging.",
     )
+    return parser
 
-    args = parser.parse_args(argv)
 
-    # DbC: validate numeric CLI arguments
+def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """Validate numeric CLI arguments; call parser.error on failure (DbC)."""
     if args.mass <= 0:
         parser.error(f"--mass must be positive, got {args.mass}")
     if args.height <= 0:
         parser.error(f"--height must be positive, got {args.height}")
     if args.plates < 0:
         parser.error(f"--plates must be non-negative, got {args.plates}")
+
+
+def _write_output(xml_str: str, output_path: str | None) -> None:
+    """Write *xml_str* to *output_path* or stdout when path is ``None``."""
+    if output_path:
+        with open(output_path, "w") as f:
+            f.write(xml_str)
+        logger.info("Wrote model to %s", output_path)
+    else:
+        stdout = sys.stdout
+        stdout.write(xml_str)
+        stdout.write("\n")
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Generate a Drake SDF model for a barbell exercise."""
+    parser = _build_arg_parser()
+    args = parser.parse_args(argv)
+    _validate_args(parser, args)
 
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.WARNING,
@@ -103,15 +123,7 @@ def main(argv: list[str] | None = None) -> None:
         height=args.height,
         plate_mass_per_side=args.plates,
     )
-
-    if args.output:
-        with open(args.output, "w") as f:
-            f.write(xml_str)
-        logger.info("Wrote model to %s", args.output)
-    else:
-        stdout = sys.stdout
-        stdout.write(xml_str)
-        stdout.write("\n")
+    _write_output(xml_str, args.output)
 
 
 if __name__ == "__main__":

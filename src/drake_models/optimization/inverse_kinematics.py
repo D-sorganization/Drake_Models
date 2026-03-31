@@ -21,6 +21,13 @@ from drake_models.optimization.exercise_objectives import (
 logger = logging.getLogger(__name__)
 
 
+def _pydrake_available() -> bool:
+    """Return ``True`` if pydrake is installed and importable."""
+    import importlib.util
+
+    return importlib.util.find_spec("pydrake") is not None
+
+
 def solve_ik_keyframes(
     sdf_string: str,
     exercise_name: str,
@@ -55,23 +62,18 @@ def solve_ik_keyframes(
 
     objective = get_objective(exercise_name)
 
-    try:
-        import importlib.util
-
-        if importlib.util.find_spec("pydrake") is None:
-            raise ImportError("pydrake not installed")
-
+    if _pydrake_available():
         logger.info(
             "Drake available — using IK solver for %s keyframes",
             exercise_name,
         )
         return _solve_ik_with_drake(sdf_string, objective, n_frames)
-    except ImportError:
-        logger.info(
-            "Drake not available — using phase interpolation for %s keyframes",
-            exercise_name,
-        )
-        return _interpolate_phases(objective, n_frames)
+
+    logger.info(
+        "Drake not available — using phase interpolation for %s keyframes",
+        exercise_name,
+    )
+    return _interpolate_phases(objective, n_frames)
 
 
 def _interpolate_phases(
@@ -116,6 +118,52 @@ def _interpolate_phases(
     return keyframes
 
 
+def _build_ik_plant(sdf_string: str) -> object:
+    """Load *sdf_string* into a finalised Drake MultibodyPlant for IK.
+
+    Returns the plant.  Callers must have pydrake available.
+    """
+    from pydrake.all import AddMultibodyPlantSceneGraph, DiagramBuilder, Parser
+
+    builder = DiagramBuilder()
+    plant, _scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.0)
+    parser = Parser(plant)
+    parser.AddModelsFromString(sdf_string, "sdf")
+    plant.Finalize()
+    return plant
+
+
+def _refine_keyframe(
+    plant: object,
+    initial_guess: np.ndarray,
+    n_q: int,
+    n_joints: int,
+    frame_index: int,
+) -> np.ndarray:
+    """Refine one keyframe via Drake's InverseKinematics solver.
+
+    Returns the refined joint angles (length *n_joints*).  Falls back to
+    *initial_guess* if the IK solve fails.
+    """
+    from pydrake.all import InverseKinematics, Solve
+
+    ik = InverseKinematics(plant)  # type: ignore[arg-type]
+    q_vars = ik.q()
+    prog = ik.get_mutable_prog()
+
+    q_init = np.zeros(n_q)
+    for j in range(min(n_joints, n_q)):
+        q_init[j] = initial_guess[j]
+    prog.SetInitialGuess(q_vars, q_init)
+
+    result = Solve(prog)
+    if result.is_success():
+        return result.GetSolution(q_vars)[:n_joints]
+
+    logger.warning("IK failed for keyframe %d, using interpolation", frame_index)
+    return initial_guess
+
+
 def _solve_ik_with_drake(
     sdf_string: str,
     objective: ExerciseObjective,
@@ -127,47 +175,16 @@ def _solve_ik_with_drake(
     Drake's IK solver to ensure kinematic feasibility within the
     multibody model's joint limits and constraints.
     """
-    from pydrake.all import (
-        AddMultibodyPlantSceneGraph,
-        DiagramBuilder,
-        InverseKinematics,
-        Parser,
-        Solve,
-    )
-
-    # Build plant
-    builder = DiagramBuilder()
-    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.0)
-    parser = Parser(plant)
-    parser.AddModelsFromString(sdf_string, "sdf")
-    plant.Finalize()
-
-    # Get initial interpolation
+    plant = _build_ik_plant(sdf_string)
     initial_keyframes = _interpolate_phases(objective, n_frames)
-    n_q = plant.num_positions()
+    n_q = plant.num_positions()  # type: ignore[attr-defined]
     n_joints = initial_keyframes.shape[1]
 
     refined = np.zeros((n_frames, n_joints))
-
     for i in range(n_frames):
-        ik = InverseKinematics(plant)
-        q_vars = ik.q()
-
-        # Set initial guess from interpolation
-        prog = ik.get_mutable_prog()
-        q_init = np.zeros(n_q)
-        for j in range(min(n_joints, n_q)):
-            q_init[j] = initial_keyframes[i, j]
-        prog.SetInitialGuess(q_vars, q_init)
-
-        result = Solve(prog)
-        if result.is_success():
-            q_sol = result.GetSolution(q_vars)
-            refined[i, :] = q_sol[:n_joints]
-        else:
-            # Fall back to interpolated values
-            refined[i, :] = initial_keyframes[i, :]
-            logger.warning("IK failed for keyframe %d, using interpolation", i)
+        refined[i, :] = _refine_keyframe(
+            plant, initial_keyframes[i, :], n_q, n_joints, i
+        )
 
     logger.info(
         "Generated %d IK-refined keyframes for %s",

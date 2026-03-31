@@ -158,38 +158,19 @@ def _hollow_cylinder_inertia_y_axis(
     return (ixx_t, izz_axial, iyy_t)
 
 
-def create_barbell_links(
-    model: ET.Element,
+def _compute_sleeve_inertia(
     spec: BarbellSpec,
-    *,
-    prefix: str = "barbell",
-) -> dict[str, ET.Element]:
-    """Add barbell links and fixed joints to an SDF model element.
+) -> tuple[tuple[float, float, float], float]:
+    """Compute combined sleeve+plate inertia and total sleeve mass.
 
-    Returns dict of created link elements keyed by name.
-
-    The barbell shaft center is at the local origin. Sleeves extend
-    symmetrically along the Y-axis (left = -Y, right = +Y) in the
-    Drake Z-up convention.  All cylinder geometries are pre-rotated
-    with roll=π/2 so their long axes align with Y.
+    Returns:
+        ``(sleeve_inertia, sleeve_total_mass)`` where *sleeve_inertia* is a
+        ``(Ixx, Iyy, Izz)`` tuple for a Y-aligned cylinder and
+        *sleeve_total_mass* = bare sleeve mass + plate mass per side.
     """
-    logger.info(
-        "Building barbell: total_mass=%.1f kg, length=%.2f m",
-        spec.total_mass,
-        spec.total_length,
-    )
-
-    # Inertia for Y-aligned cylinders (axial moment is about Y)
-    shaft_inertia = _cylinder_inertia_y_axis(
-        spec.shaft_mass, spec.shaft_radius, spec.shaft_length
-    )
-
-    # Compute bare sleeve inertia
     sleeve_inertia = _cylinder_inertia_y_axis(
         spec.sleeve_mass, spec.sleeve_radius, spec.sleeve_length
     )
-
-    # Add plate inertia using correct plate radius (0.225 m), not sleeve radius
     if spec.plate_mass_per_side > 0:
         plate_thickness = max(0.01, spec.plate_mass_per_side * 0.002)
         plate_inertia = _hollow_cylinder_inertia_y_axis(
@@ -203,62 +184,65 @@ def create_barbell_links(
             sleeve_inertia[1] + plate_inertia[1],
             sleeve_inertia[2] + plate_inertia[2],
         )
-
     sleeve_total_mass = spec.sleeve_mass + spec.plate_mass_per_side
+    return sleeve_inertia, sleeve_total_mass
 
-    shaft_name = f"{prefix}_shaft"
-    left_name = f"{prefix}_left_sleeve"
-    right_name = f"{prefix}_right_sleeve"
 
-    shaft_link = add_link(
+def _make_sleeve_link(
+    model: ET.Element,
+    name: str,
+    mass: float,
+    inertia: tuple[float, float, float],
+    radius: float,
+    length: float,
+) -> ET.Element:
+    """Append a Y-aligned cylinder sleeve link to *model* and return it."""
+    geom = make_cylinder_geometry_y(radius, length)
+    return add_link(
         model,
-        name=shaft_name,
+        name=name,
+        mass=mass,
+        mass_center=(0, 0, 0),
+        inertia_xx=inertia[0],
+        inertia_yy=inertia[1],
+        inertia_zz=inertia[2],
+        visual_geometry=geom,
+        collision_geometry=make_cylinder_geometry_y(radius, length),
+    )
+
+
+def _make_shaft_link(
+    model: ET.Element,
+    name: str,
+    spec: BarbellSpec,
+    inertia: tuple[float, float, float],
+) -> ET.Element:
+    """Append the barbell shaft link to *model* and return it."""
+    return add_link(
+        model,
+        name=name,
         mass=spec.shaft_mass,
         mass_center=(0, 0, 0),
-        inertia_xx=shaft_inertia[0],
-        inertia_yy=shaft_inertia[1],
-        inertia_zz=shaft_inertia[2],
+        inertia_xx=inertia[0],
+        inertia_yy=inertia[1],
+        inertia_zz=inertia[2],
         visual_geometry=make_cylinder_geometry_y(spec.shaft_radius, spec.shaft_length),
         collision_geometry=make_cylinder_geometry_y(
             spec.shaft_radius, spec.shaft_length
         ),
     )
 
-    left_link = add_link(
-        model,
-        name=left_name,
-        mass=sleeve_total_mass,
-        mass_center=(0, 0, 0),
-        inertia_xx=sleeve_inertia[0],
-        inertia_yy=sleeve_inertia[1],
-        inertia_zz=sleeve_inertia[2],
-        visual_geometry=make_cylinder_geometry_y(
-            spec.sleeve_radius, spec.sleeve_length
-        ),
-        collision_geometry=make_cylinder_geometry_y(
-            spec.sleeve_radius, spec.sleeve_length
-        ),
-    )
 
-    right_link = add_link(
-        model,
-        name=right_name,
-        mass=sleeve_total_mass,
-        mass_center=(0, 0, 0),
-        inertia_xx=sleeve_inertia[0],
-        inertia_yy=sleeve_inertia[1],
-        inertia_zz=sleeve_inertia[2],
-        visual_geometry=make_cylinder_geometry_y(
-            spec.sleeve_radius, spec.sleeve_length
-        ),
-        collision_geometry=make_cylinder_geometry_y(
-            spec.sleeve_radius, spec.sleeve_length
-        ),
-    )
-
-    half_shaft = spec.shaft_length / 2.0
-    half_sleeve = spec.sleeve_length / 2.0
-
+def _weld_sleeves(
+    model: ET.Element,
+    prefix: str,
+    shaft_name: str,
+    left_name: str,
+    right_name: str,
+    half_shaft: float,
+    half_sleeve: float,
+) -> None:
+    """Weld the left and right sleeves to the shaft at symmetric Y offsets."""
     add_fixed_joint(
         model,
         name=f"{prefix}_left_weld",
@@ -266,7 +250,6 @@ def create_barbell_links(
         child=left_name,
         pose=(0, -half_shaft - half_sleeve, 0, 0, 0, 0),
     )
-
     add_fixed_joint(
         model,
         name=f"{prefix}_right_weld",
@@ -275,8 +258,56 @@ def create_barbell_links(
         pose=(0, half_shaft + half_sleeve, 0, 0, 0, 0),
     )
 
-    return {
-        shaft_name: shaft_link,
-        left_name: left_link,
-        right_name: right_link,
-    }
+
+def create_barbell_links(
+    model: ET.Element,
+    spec: BarbellSpec,
+    *,
+    prefix: str = "barbell",
+) -> dict[str, ET.Element]:
+    """Add barbell links and fixed joints to an SDF model element.
+
+    Returns dict of created link elements keyed by name.  The shaft centre is
+    at the local origin; sleeves extend along ±Y (Drake Z-up convention).
+    """
+    logger.info(
+        "Building barbell: total_mass=%.1f kg, length=%.2f m",
+        spec.total_mass,
+        spec.total_length,
+    )
+    shaft_inertia = _cylinder_inertia_y_axis(
+        spec.shaft_mass, spec.shaft_radius, spec.shaft_length
+    )
+    sleeve_inertia, sleeve_total_mass = _compute_sleeve_inertia(spec)
+
+    shaft_name = f"{prefix}_shaft"
+    left_name = f"{prefix}_left_sleeve"
+    right_name = f"{prefix}_right_sleeve"
+
+    shaft_link = _make_shaft_link(model, shaft_name, spec, shaft_inertia)
+    left_link = _make_sleeve_link(
+        model,
+        left_name,
+        sleeve_total_mass,
+        sleeve_inertia,
+        spec.sleeve_radius,
+        spec.sleeve_length,
+    )
+    right_link = _make_sleeve_link(
+        model,
+        right_name,
+        sleeve_total_mass,
+        sleeve_inertia,
+        spec.sleeve_radius,
+        spec.sleeve_length,
+    )
+    _weld_sleeves(
+        model,
+        prefix,
+        shaft_name,
+        left_name,
+        right_name,
+        spec.shaft_length / 2.0,
+        spec.sleeve_length / 2.0,
+    )
+    return {shaft_name: shaft_link, left_name: left_link, right_name: right_link}

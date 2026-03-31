@@ -6,6 +6,17 @@ from typing import Any
 import pytest
 
 from drake_models.shared.body import BodyModelSpec, create_full_body
+from drake_models.shared.body.body_model import (
+    _build_ankles,
+    _build_elbows,
+    _build_head_link,
+    _build_hips,
+    _build_knees,
+    _build_lumbar_joints,
+    _build_shoulders,
+    _build_wrists,
+    _make_cylinder_segment_link,
+)
 
 
 class TestBodyModelSpec:
@@ -231,3 +242,140 @@ class TestCreateFullBody:
         )
         # 14 virtual links * 1e-6 kg = 14e-6 kg added
         assert total == pytest.approx(80.0, abs=1e-3)
+
+
+class TestMakeCylinderSegmentLink:
+    """Tests for the extracted _make_cylinder_segment_link helper."""
+
+    def test_creates_link_element(self) -> None:
+        model = ET.Element("model")
+        link = _make_cylinder_segment_link(
+            model, name="thigh_l", mass=8.0, length=0.42, radius=0.06
+        )
+        assert link.tag == "link"
+        assert link.get("name") == "thigh_l"  # type: ignore
+
+    def test_has_inertial_block(self) -> None:
+        model = ET.Element("model")
+        link = _make_cylinder_segment_link(
+            model, name="shank_r", mass=3.76, length=0.43, radius=0.044
+        )
+        inertial = link.find("inertial")  # type: ignore
+        assert inertial is not None
+
+    def test_mass_center_at_minus_half_length(self) -> None:
+        model = ET.Element("model")
+        length = 0.40
+        link = _make_cylinder_segment_link(
+            model, name="thigh_l", mass=8.0, length=length, radius=0.06
+        )
+        pose = link.find("inertial/pose")  # type: ignore
+        assert pose is not None
+        z_val = float(pose.text.split()[2])  # type: ignore
+        assert z_val == pytest.approx(-length / 2.0)
+
+    def test_has_visual_geometry(self) -> None:
+        model = ET.Element("model")
+        link = _make_cylinder_segment_link(
+            model, name="upper_arm_l", mass=2.24, length=0.33, radius=0.04
+        )
+        assert link.find("visual") is not None  # type: ignore
+
+    def test_has_collision_geometry(self) -> None:
+        model = ET.Element("model")
+        link = _make_cylinder_segment_link(
+            model, name="upper_arm_r", mass=2.24, length=0.33, radius=0.04
+        )
+        assert link.find("collision") is not None  # type: ignore
+
+
+class TestBuildStagedHelpers:
+    """Tests for the staged body-model builder helpers (extracted from issue #92)."""
+
+    @pytest.fixture()
+    def model_and_spec(self) -> tuple[ET.Element, BodyModelSpec]:
+        model = ET.Element("model", name="test")
+        spec = BodyModelSpec()
+        return model, spec
+
+    def test_build_shoulders_creates_upper_arm_links(self, model_and_spec: Any) -> None:
+        model, spec = model_and_spec
+        from drake_models.shared.body.body_model import _seg
+
+        _t_mass, t_len, t_rad = _seg(spec, "torso")
+        links = _build_shoulders(model, spec, t_len, t_rad)
+        assert "upper_arm_l" in links  # type: ignore
+        assert "upper_arm_r" in links  # type: ignore
+
+    def test_build_elbows_creates_forearm_links(self, model_and_spec: Any) -> None:
+        model, spec = model_and_spec
+        # elbows need upper_arm links first for chain validation-free test
+        links = _build_elbows(model, spec)
+        assert "forearm_l" in links  # type: ignore
+        assert "forearm_r" in links  # type: ignore
+
+    def test_build_wrists_creates_hand_links(self, model_and_spec: Any) -> None:
+        model, spec = model_and_spec
+        links = _build_wrists(model, spec)
+        assert "hand_l" in links  # type: ignore
+        assert "hand_r" in links  # type: ignore
+
+    def test_build_hips_creates_thigh_links(self, model_and_spec: Any) -> None:
+        model, spec = model_and_spec
+        from drake_models.shared.body.body_model import _seg
+
+        _p_mass, p_len, p_rad = _seg(spec, "pelvis")
+        links = _build_hips(model, spec, p_len, p_rad)
+        assert "thigh_l" in links  # type: ignore
+        assert "thigh_r" in links  # type: ignore
+
+    def test_build_knees_creates_shank_links(self, model_and_spec: Any) -> None:
+        model, spec = model_and_spec
+        links = _build_knees(model, spec)
+        assert "shank_l" in links  # type: ignore
+        assert "shank_r" in links  # type: ignore
+
+    def test_build_ankles_creates_foot_links(self, model_and_spec: Any) -> None:
+        model, spec = model_and_spec
+        links = _build_ankles(model, spec)
+        assert "foot_l" in links  # type: ignore
+        assert "foot_r" in links  # type: ignore
+
+    def test_build_lumbar_joints_creates_torso(self, model_and_spec: Any) -> None:
+        model, spec = model_and_spec
+        from drake_models.shared.body.body_model import _seg
+
+        _t_mass, t_len, _t_rad = _seg(spec, "torso")
+        links = _build_lumbar_joints(model, spec, t_len)
+        assert "torso" in links  # type: ignore
+        assert "lumbar_virtual_1" in links  # type: ignore
+        assert "lumbar_virtual_2" in links  # type: ignore
+
+    def test_build_lumbar_joints_adds_three_joints(self, model_and_spec: Any) -> None:
+        model, spec = model_and_spec
+        from drake_models.shared.body.body_model import _seg
+
+        _t_mass, t_len, _t_rad = _seg(spec, "torso")
+        _build_lumbar_joints(model, spec, t_len)
+        joint_names = {j.get("name") for j in model.findall("joint")}  # type: ignore
+        assert "lumbar_flex" in joint_names  # type: ignore
+        assert "lumbar_lateral" in joint_names  # type: ignore
+        assert "lumbar_rotate" in joint_names  # type: ignore
+
+    def test_build_head_link_creates_head(self, model_and_spec: Any) -> None:
+        model, spec = model_and_spec
+        # Build torso first so neck joint can reference it
+        from drake_models.shared.body.body_model import _seg
+
+        _t_mass, t_len, _t_rad = _seg(spec, "torso")
+        links = _build_head_link(model, spec, t_len)
+        assert "head" in links  # type: ignore
+
+    def test_build_head_link_adds_neck_joint(self, model_and_spec: Any) -> None:
+        model, spec = model_and_spec
+        from drake_models.shared.body.body_model import _seg
+
+        _t_mass, t_len, _t_rad = _seg(spec, "torso")
+        _build_head_link(model, spec, t_len)
+        joint_names = {j.get("name") for j in model.findall("joint")}  # type: ignore
+        assert "neck" in joint_names  # type: ignore

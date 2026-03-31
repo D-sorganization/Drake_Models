@@ -7,6 +7,10 @@ from drake_models.optimization.exercise_objectives import SQUAT, get_objective
 from drake_models.optimization.trajectory_optimizer import (
     TrajectoryConfig,
     TrajectoryResult,
+    _build_phase_arrays,
+    _compute_interpolated_cost,
+    _finite_diff_velocities,
+    _interpolate_joint_positions,
     compute_control_cost,
     compute_state_cost,
     compute_terminal_cost,
@@ -247,6 +251,92 @@ class TestInterpolateTrajectory:
             result = interpolate_trajectory(obj, cfg)
             assert result.converged
             assert result.joint_positions.shape[0] == 20
+
+
+class TestBuildPhaseArrays:
+    """Tests for the extracted _build_phase_arrays helper."""
+
+    def test_returns_tuple_of_arrays(self) -> None:
+        phase_times, phase_angles = _build_phase_arrays(SQUAT)
+        assert phase_times.shape[0] == len(SQUAT.phases)
+        assert phase_angles.shape[0] == len(SQUAT.phases)
+
+    def test_no_nans_in_clean_angles(self) -> None:
+        _phase_times, phase_angles = _build_phase_arrays(SQUAT)
+        assert not np.any(np.isnan(phase_angles))
+
+    def test_phase_times_sorted(self) -> None:
+        phase_times, _ = _build_phase_arrays(SQUAT)
+        assert np.all(np.diff(phase_times) >= 0)
+
+
+class TestInterpolateJointPositions:
+    """Tests for the extracted _interpolate_joint_positions helper."""
+
+    def test_output_shape(self) -> None:
+        phase_times, phase_angles = _build_phase_arrays(SQUAT)
+        n_joints = phase_angles.shape[1]
+        time_fracs = np.linspace(0.0, 1.0, 30)
+        positions = _interpolate_joint_positions(
+            phase_times, phase_angles, time_fracs, n_joints
+        )
+        assert positions.shape == (30, n_joints)
+
+    def test_all_finite(self) -> None:
+        phase_times, phase_angles = _build_phase_arrays(SQUAT)
+        n_joints = phase_angles.shape[1]
+        time_fracs = np.linspace(0.0, 1.0, 20)
+        positions = _interpolate_joint_positions(
+            phase_times, phase_angles, time_fracs, n_joints
+        )
+        assert np.all(np.isfinite(positions))
+
+
+class TestFiniteDiffVelocities:
+    """Tests for the extracted _finite_diff_velocities helper."""
+
+    def test_first_row_is_zero(self) -> None:
+        positions = np.ones((10, 4))
+        velocities = _finite_diff_velocities(positions, dt=0.01)
+        assert np.all(velocities[0] == 0.0)
+
+    def test_constant_positions_give_zero_velocities(self) -> None:
+        positions = np.ones((10, 4))
+        velocities = _finite_diff_velocities(positions, dt=0.01)
+        assert np.all(velocities[1:] == 0.0)
+
+    def test_linear_positions_give_constant_velocity(self) -> None:
+        dt = 0.1
+        positions = np.outer(np.arange(10), np.ones(4))  # each col = 0,1,...,9
+        velocities = _finite_diff_velocities(positions, dt=dt)
+        # expected velocity = 1/dt everywhere (except row 0)
+        assert np.allclose(velocities[1:], 1.0 / dt)
+
+    def test_output_shape_matches_input(self) -> None:
+        positions = np.zeros((15, 6))
+        velocities = _finite_diff_velocities(positions, dt=0.05)
+        assert velocities.shape == (15, 6)
+
+
+class TestComputeInterpolatedCost:
+    """Tests for the extracted _compute_interpolated_cost helper."""
+
+    def test_zero_cost_for_zero_torques_at_target(self) -> None:
+        cfg = TrajectoryConfig(n_timesteps=10, dt=0.01)
+        positions = np.zeros((10, 3))
+        torques = np.zeros((10, 3))
+        terminal_target = np.zeros(3)
+        cost = _compute_interpolated_cost(positions, torques, terminal_target, cfg)
+        assert cost == pytest.approx(0.0)
+
+    def test_nonzero_terminal_cost(self) -> None:
+        cfg = TrajectoryConfig(n_timesteps=10, dt=0.01, terminal_weight=1.0)
+        positions = np.zeros((10, 1))
+        positions[-1, 0] = 1.0  # final position deviates
+        torques = np.zeros((10, 1))
+        terminal_target = np.zeros(1)
+        cost = _compute_interpolated_cost(positions, torques, terminal_target, cfg)
+        assert cost > 0.0
 
 
 class TestCreateTrajectoryOptimization:
