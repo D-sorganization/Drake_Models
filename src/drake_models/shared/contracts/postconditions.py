@@ -8,14 +8,17 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 
+import defusedxml.ElementTree as DefusedET
+
 
 def ensure_valid_xml(xml_string: str) -> ET.Element:
     """Parse *xml_string* and return the root element.
 
     Raises ValueError if the string is not well-formed XML.
+    Uses defusedxml to prevent XML entity expansion attacks.
     """
     try:
-        return ET.fromstring(xml_string)
+        return DefusedET.fromstring(xml_string)
     except ET.ParseError as exc:
         raise ValueError(f"Generated XML is not well-formed: {exc}") from exc
 

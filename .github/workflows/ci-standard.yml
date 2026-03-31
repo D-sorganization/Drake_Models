@@ -61,11 +61,10 @@ jobs:
         run: |
           pip install pip-audit
           pip install --upgrade pygments
-          pip-audit --skip-editable --ignore-vuln CVE-2026-4539 || echo "::warning::Security audit found issues"
+          pip-audit --skip-editable
 
       - name: Bandit Security Scan
-        run: |
-          bandit -r src/ -ll -ii --format txt 2>&1 || echo "::warning::Bandit found issues"
+        run: bandit -r src/ -ll -ii --format txt
 
   tests:
     needs: quality-gate
