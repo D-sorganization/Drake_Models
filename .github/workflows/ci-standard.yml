@@ -24,15 +24,26 @@ permissions:
   contents: read
 
 jobs:
-  quality-gate:
+  pick-runner:
     runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      runner: ${{ steps.check.outputs.runner }}
+    steps:
+      - name: Check for self-hosted runner
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.RUNNER_CHECK_TOKEN }}
+        run: "ONLINE=$(gh api /orgs/${{ github.repository_owner }}/actions/runners \\\n  --jq '[.runners[] | select(.status == \"online\") | select(.labels[].name == \"d-sorg-fleet\")] | length' \\\n  2>/dev/null || echo \"0\")\nif [[ \"$ONLINE\" -gt 0 ]]; then\n  echo \"runner=d-sorg-fleet\" >> $GITHUB_OUTPUT\n  echo \"Self-hosted runner online — routing locally\"\nelse\n  echo \"runner=ubuntu-latest\" >> $GITHUB_OUTPUT\n  echo \"No self-hosted runner — using GitHub-hosted\"\nfi"
+  quality-gate:
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v6
-        with: { python-version: "3.11" }
+        with: {python-version: "3.11"}
       - run: pip install "ruff==0.14.10" "mypy==1.13.0" "bandit==1.7.7"
 
       - name: Lint
@@ -67,9 +78,12 @@ jobs:
         run: |
           bandit -r src/ -ll -ii --format txt 2>&1 || echo "::warning::Bandit found issues"
 
+    needs: pick-runner
   tests:
-    needs: quality-gate
-    runs-on: ubuntu-latest
+    needs:
+      - pick-runner
+      - quality-gate
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 15
     strategy:
       matrix:
