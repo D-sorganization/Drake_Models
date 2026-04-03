@@ -44,6 +44,7 @@ jobs:
   rust-check:
     needs: pick-runner
     runs-on: ${{ needs.pick-runner.outputs.runner }}
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: rust_core
@@ -61,8 +62,8 @@ jobs:
             rust_core/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('rust_core/Cargo.lock') }}
       - name: Check Formatting
-        run: cargo fmt -- --check
+        run: cargo fmt --check
       - name: Clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
       - name: Tests
         run: cargo test
