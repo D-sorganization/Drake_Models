@@ -30,16 +30,62 @@ mass=80 kg) following Winter (2009) segment proportions.
 
 Law of Demeter: exercise modules call create_full_body() and receive
 link/joint elements -- they never manipulate segment internals.
+
+This module is an orchestration thin-layer.  Data lives in
+:mod:`body_anthropometrics`; low-level XML helpers live in
+:mod:`body_segments`.
 """
 
 from __future__ import annotations
 
 import logging
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
 
-from drake_models.shared.contracts.preconditions import (
-    require_positive,
+from drake_models.shared.body.body_anthropometrics import (
+    ANKLE_FLEX_LOWER,
+    ANKLE_FLEX_UPPER,
+    ANKLE_INVERT_LOWER,
+    ANKLE_INVERT_UPPER,
+    ELBOW_FLEXION_LIMIT,
+    FOOT_CONTACT_HEIGHT,
+    FOOT_CONTACT_LENGTH,
+    FOOT_CONTACT_WIDTH,
+    HIP_ADDUCT_LOWER,
+    HIP_ADDUCT_UPPER,
+    HIP_FLEX_LOWER,
+    HIP_FLEX_UPPER,
+    HIP_LATERAL_MULTIPLIER,
+    HIP_ROTATE_LOWER,
+    HIP_ROTATE_UPPER,
+    KNEE_FLEXION_LIMIT,
+    LUMBAR_FLEX_LOWER,
+    LUMBAR_FLEX_UPPER,
+    LUMBAR_LATERAL_LOWER,
+    LUMBAR_LATERAL_UPPER,
+    LUMBAR_ROTATE_LOWER,
+    LUMBAR_ROTATE_UPPER,
+    NECK_RANGE_LIMIT,
+    PELVIS_STANDING_HEIGHT,
+    SHOULDER_ADDUCT_LOWER,
+    SHOULDER_ADDUCT_UPPER,
+    SHOULDER_FLEX_LOWER,
+    SHOULDER_FLEX_UPPER,
+    SHOULDER_HEIGHT_FRACTION,
+    SHOULDER_LATERAL_MULTIPLIER,
+    SHOULDER_ROTATE_LOWER,
+    SHOULDER_ROTATE_UPPER,
+    WRIST_DEVIATE_LOWER,
+    WRIST_DEVIATE_UPPER,
+    WRIST_FLEX_LOWER,
+    WRIST_FLEX_UPPER,
+    BodyModelSpec,
+    _seg,
+)
+from drake_models.shared.body.body_segments import (
+    _add_bilateral_limb,
+    _add_compound_2dof_bilateral,
+    _add_compound_3dof_bilateral,
+    _make_cylinder_segment_link,  # noqa: F401  # re-exported for API compatibility
 )
 from drake_models.shared.utils.geometry import (
     cylinder_inertia,
@@ -56,398 +102,6 @@ from drake_models.shared.utils.sdf_helpers import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-# Standing pelvis height above ground (meters) for a 50th-percentile male.
-PELVIS_STANDING_HEIGHT: float = 0.93
-
-# Shoulder attachment point as a fraction of torso length from pelvis.
-SHOULDER_HEIGHT_FRACTION: float = 0.95
-
-# Lateral shoulder offset as a multiplier of torso radius.
-SHOULDER_LATERAL_MULTIPLIER: float = 1.2
-
-# Lateral hip offset as a multiplier of pelvis radius.
-HIP_LATERAL_MULTIPLIER: float = 0.6
-
-# Lumbar joint range of motion (radians) -- 3-DOF compound.
-LUMBAR_FLEX_LOWER: float = -0.5236  # -30 degrees extension
-LUMBAR_FLEX_UPPER: float = 0.7854  # +45 degrees flexion
-LUMBAR_LATERAL_LOWER: float = -0.5236  # -30 degrees
-LUMBAR_LATERAL_UPPER: float = 0.5236  # +30 degrees
-LUMBAR_ROTATE_LOWER: float = -0.5236  # -30 degrees
-LUMBAR_ROTATE_UPPER: float = 0.5236  # +30 degrees
-
-# Neck joint range of motion (radians).
-NECK_RANGE_LIMIT: float = 0.5236  # +/-30 degrees
-
-# Shoulder range of motion (radians) -- 3-DOF compound.
-SHOULDER_FLEX_LOWER: float = -1.0472  # -60 degrees
-SHOULDER_FLEX_UPPER: float = 3.1416  # +180 degrees
-SHOULDER_ADDUCT_LOWER: float = -0.5236  # -30 degrees
-SHOULDER_ADDUCT_UPPER: float = 3.1416  # +180 degrees
-SHOULDER_ROTATE_LOWER: float = -1.5708  # -90 degrees
-SHOULDER_ROTATE_UPPER: float = 1.5708  # +90 degrees
-
-# Elbow range of motion (radians): 0 to 150 degrees.
-ELBOW_FLEXION_LIMIT: float = 2.618
-
-# Wrist range of motion (radians) -- 2-DOF compound.
-WRIST_FLEX_LOWER: float = -1.2217  # -70 degrees
-WRIST_FLEX_UPPER: float = 1.2217  # +70 degrees
-WRIST_DEVIATE_LOWER: float = -0.3491  # -20 degrees
-WRIST_DEVIATE_UPPER: float = 0.5236  # +30 degrees
-
-# Hip range of motion (radians) -- 3-DOF compound.
-HIP_FLEX_LOWER: float = -0.5236  # -30 degrees extension
-HIP_FLEX_UPPER: float = 2.0944  # +120 degrees flexion
-HIP_ADDUCT_LOWER: float = -0.7854  # -45 degrees
-HIP_ADDUCT_UPPER: float = 0.5236  # +30 degrees
-HIP_ROTATE_LOWER: float = -0.7854  # -45 degrees
-HIP_ROTATE_UPPER: float = 0.7854  # +45 degrees
-
-# Knee range of motion (radians): flexion to neutral.
-KNEE_FLEXION_LIMIT: float = -2.618  # -150 degrees
-
-# Ankle range of motion (radians) -- 2-DOF compound.
-ANKLE_FLEX_LOWER: float = -0.3491  # -20 degrees
-ANKLE_FLEX_UPPER: float = 0.8727  # +50 degrees
-ANKLE_INVERT_LOWER: float = -0.3491  # -20 degrees
-ANKLE_INVERT_UPPER: float = 0.3491  # +20 degrees
-
-# Foot sole contact geometry dimensions (meters).
-FOOT_CONTACT_LENGTH: float = 0.26  # along X (anterior-posterior)
-FOOT_CONTACT_WIDTH: float = 0.10  # along Y (medial-lateral)
-FOOT_CONTACT_HEIGHT: float = 0.02  # along Z (thickness)
-
-
-@dataclass(frozen=True)
-class BodyModelSpec:
-    """Anthropometric specification for the full-body model.
-
-    All lengths in meters, mass in kg.
-    """
-
-    total_mass: float = 80.0
-    height: float = 1.75
-
-    def __post_init__(self) -> None:
-        """Validate that total_mass and height are strictly positive."""
-        require_positive(self.total_mass, "total_mass")
-        require_positive(self.height, "height")
-
-
-# Winter (2009) segment mass fractions and length fractions of total height.
-_SEGMENT_TABLE: dict[str, dict[str, float]] = {
-    "pelvis": {"mass_frac": 0.142, "length_frac": 0.100, "radius_frac": 0.085},
-    "torso": {"mass_frac": 0.355, "length_frac": 0.288, "radius_frac": 0.080},
-    "head": {"mass_frac": 0.081, "length_frac": 0.130, "radius_frac": 0.060},
-    "upper_arm": {"mass_frac": 0.028, "length_frac": 0.186, "radius_frac": 0.023},
-    "forearm": {"mass_frac": 0.016, "length_frac": 0.146, "radius_frac": 0.018},
-    "hand": {"mass_frac": 0.006, "length_frac": 0.050, "radius_frac": 0.020},
-    "thigh": {"mass_frac": 0.100, "length_frac": 0.245, "radius_frac": 0.037},
-    "shank": {"mass_frac": 0.047, "length_frac": 0.246, "radius_frac": 0.025},
-    "foot": {"mass_frac": 0.014, "length_frac": 0.040, "radius_frac": 0.025},
-}
-
-
-def _seg(spec: BodyModelSpec, name: str) -> tuple[float, float, float]:
-    """Return (mass, length, radius) for a named segment."""
-    s = _SEGMENT_TABLE[name]
-    mass = spec.total_mass * s["mass_frac"]
-    length = spec.height * s["length_frac"]
-    radius = spec.height * s["radius_frac"]
-    return mass, length, radius
-
-
-def _make_cylinder_segment_link(
-    model: ET.Element,
-    *,
-    name: str,
-    mass: float,
-    length: float,
-    radius: float,
-) -> ET.Element:
-    """Append a Z-aligned cylinder segment link to *model* and return it.
-
-    Mass centre is placed at the distal end (0, 0, -length/2) following
-    the Drake Z-up convention where limbs extend downward from their joint.
-    """
-    inertia = cylinder_inertia(mass, radius, length)
-    return add_link(
-        model,
-        name=name,
-        mass=mass,
-        mass_center=(0, 0, -length / 2.0),
-        inertia_xx=inertia[0],
-        inertia_yy=inertia[1],
-        inertia_zz=inertia[2],
-        visual_geometry=make_cylinder_geometry(radius, length),
-        collision_geometry=make_cylinder_geometry(radius, length),
-    )
-
-
-def _add_bilateral_limb(
-    model: ET.Element,
-    spec: BodyModelSpec,
-    *,
-    seg_name: str,
-    parent_name: str,
-    parent_offset_z: float,
-    parent_lateral_y: float,
-    coord_prefix: str,
-    range_min: float,
-    range_max: float,
-) -> dict[str, ET.Element]:
-    """Add left and right limb segments with revolute joints.
-
-    Drake Z-up convention: limbs hang along -Z from their parent.
-    Lateral offset is along Y (left = -Y, right = +Y).
-    Joint axis is along X (sagittal-plane flexion/extension).
-
-    Returns dict of created link elements keyed by name.
-    """
-    mass, length, radius = _seg(spec, seg_name)
-    created: dict[str, ET.Element] = {}
-
-    for side, sign in [("l", -1.0), ("r", 1.0)]:
-        link_name = f"{seg_name}_{side}"
-        parent_link = f"{parent_name}_{side}" if "_" in parent_name else parent_name
-        created[link_name] = _make_cylinder_segment_link(
-            model, name=link_name, mass=mass, length=length, radius=radius
-        )
-        add_revolute_joint(
-            model,
-            name=f"{coord_prefix}_{side}",
-            parent=parent_link,
-            child=link_name,
-            axis_xyz=(1, 0, 0),
-            pose=(0, sign * parent_lateral_y, parent_offset_z, 0, 0, 0),
-            lower_limit=range_min,
-            upper_limit=range_max,
-        )
-
-    return created
-
-
-def _add_flex_joint(
-    model: ET.Element,
-    name: str,
-    parent: str,
-    child: str,
-    pose: tuple[float, float, float, float, float, float],
-    limits: tuple[float, float],
-) -> None:
-    """Add a flexion revolute joint (X-axis) at the given pose."""
-    add_revolute_joint(
-        model,
-        name=name,
-        parent=parent,
-        child=child,
-        axis_xyz=(1, 0, 0),
-        pose=pose,
-        lower_limit=limits[0],
-        upper_limit=limits[1],
-    )
-
-
-def _add_3dof_joint_chain(
-    model: ET.Element,
-    *,
-    coord_prefix: str,
-    side: str,
-    sign: float,
-    parent_link: str,
-    link_name: str,
-    parent_offset_z: float,
-    parent_lateral_y: float,
-    flex_limits: tuple[float, float],
-    adduct_limits: tuple[float, float],
-    rotate_limits: tuple[float, float],
-    adduct_label: str,
-    rotate_label: str,
-) -> tuple[str, str]:
-    """Wire virtual links and joints for one side of a 3-DOF compound joint.
-
-    Creates two virtual links and three revolute joints:
-      parent -> flex (X) -> v1 -> adduct (Z) -> v2 -> rotate (Y) -> child.
-
-    Returns ``(v1_name, v2_name)`` of the two newly-created virtual links.
-    """
-    v1_name = f"{coord_prefix}_{side}_virtual_1"
-    v2_name = f"{coord_prefix}_{side}_virtual_2"
-    add_virtual_link(model, name=v1_name)
-    add_virtual_link(model, name=v2_name)
-    _add_flex_joint(
-        model,
-        f"{coord_prefix}_{side}_flex",
-        parent_link,
-        v1_name,
-        (0, sign * parent_lateral_y, parent_offset_z, 0, 0, 0),
-        flex_limits,
-    )
-    add_revolute_joint(
-        model,
-        name=f"{coord_prefix}_{side}_{adduct_label}",
-        parent=v1_name,
-        child=v2_name,
-        axis_xyz=(0, 0, 1),
-        pose=(0, 0, 0, 0, 0, 0),
-        lower_limit=adduct_limits[0],
-        upper_limit=adduct_limits[1],
-    )
-    add_revolute_joint(
-        model,
-        name=f"{coord_prefix}_{side}_{rotate_label}",
-        parent=v2_name,
-        child=link_name,
-        axis_xyz=(0, 1, 0),
-        pose=(0, 0, 0, 0, 0, 0),
-        lower_limit=rotate_limits[0],
-        upper_limit=rotate_limits[1],
-    )
-    return v1_name, v2_name
-
-
-def _add_compound_3dof_bilateral(
-    model: ET.Element,
-    spec: BodyModelSpec,
-    *,
-    seg_name: str,
-    parent_name: str,
-    parent_offset_z: float,
-    parent_lateral_y: float,
-    coord_prefix: str,
-    flex_limits: tuple[float, float],
-    adduct_limits: tuple[float, float],
-    rotate_limits: tuple[float, float],
-    adduct_label: str = "adduct",
-    rotate_label: str = "rotate",
-) -> dict[str, ET.Element]:
-    """Add bilateral 3-DOF compound joints via virtual links.
-
-    Chain per side:
-      parent -> {prefix}_flex joint -> virtual_1 -> {prefix}_adduct joint
-      -> virtual_2 -> {prefix}_rotate joint -> child segment link
-    """
-    mass, length, radius = _seg(spec, seg_name)
-    created: dict[str, ET.Element] = {}
-
-    for side, sign in [("l", -1.0), ("r", 1.0)]:
-        link_name = f"{seg_name}_{side}"
-        parent_link = f"{parent_name}_{side}" if "_" in parent_name else parent_name
-        created[link_name] = _make_cylinder_segment_link(
-            model, name=link_name, mass=mass, length=length, radius=radius
-        )
-        v1, v2 = _add_3dof_joint_chain(
-            model,
-            coord_prefix=coord_prefix,
-            side=side,
-            sign=sign,
-            parent_link=parent_link,
-            link_name=link_name,
-            parent_offset_z=parent_offset_z,
-            parent_lateral_y=parent_lateral_y,
-            flex_limits=flex_limits,
-            adduct_limits=adduct_limits,
-            rotate_limits=rotate_limits,
-            adduct_label=adduct_label,
-            rotate_label=rotate_label,
-        )
-        # Record the virtual links so callers can inspect / query them
-        created[v1] = model.find(f"link[@name='{v1}']")  # type: ignore[assignment]
-        created[v2] = model.find(f"link[@name='{v2}']")  # type: ignore[assignment]
-
-    return created
-
-
-def _add_2dof_joint_chain(
-    model: ET.Element,
-    *,
-    coord_prefix: str,
-    side: str,
-    sign: float,
-    parent_link: str,
-    link_name: str,
-    parent_offset_z: float,
-    parent_lateral_y: float,
-    flex_limits: tuple[float, float],
-    second_limits: tuple[float, float],
-    second_label: str,
-) -> str:
-    """Wire virtual link and joints for one side of a 2-DOF compound joint.
-
-    Creates one virtual link and two revolute joints:
-      parent -> flex (X) -> v1 -> {second_label} (Z) -> child.
-
-    Returns the name of the created virtual link.
-    """
-    v1_name = f"{coord_prefix}_{side}_virtual_1"
-    add_virtual_link(model, name=v1_name)
-    _add_flex_joint(
-        model,
-        f"{coord_prefix}_{side}_flex",
-        parent_link,
-        v1_name,
-        (0, sign * parent_lateral_y, parent_offset_z, 0, 0, 0),
-        flex_limits,
-    )
-    add_revolute_joint(
-        model,
-        name=f"{coord_prefix}_{side}_{second_label}",
-        parent=v1_name,
-        child=link_name,
-        axis_xyz=(0, 0, 1),
-        pose=(0, 0, 0, 0, 0, 0),
-        lower_limit=second_limits[0],
-        upper_limit=second_limits[1],
-    )
-    return v1_name
-
-
-def _add_compound_2dof_bilateral(
-    model: ET.Element,
-    spec: BodyModelSpec,
-    *,
-    seg_name: str,
-    parent_name: str,
-    parent_offset_z: float,
-    parent_lateral_y: float,
-    coord_prefix: str,
-    flex_limits: tuple[float, float],
-    second_limits: tuple[float, float],
-    second_label: str,
-) -> dict[str, ET.Element]:
-    """Add bilateral 2-DOF compound joints via one virtual link per side.
-
-    Chain per side:
-      parent -> {prefix}_flex joint -> virtual_1 -> {prefix}_{second} joint -> child
-    """
-    mass, length, radius = _seg(spec, seg_name)
-    created: dict[str, ET.Element] = {}
-
-    for side, sign in [("l", -1.0), ("r", 1.0)]:
-        link_name = f"{seg_name}_{side}"
-        parent_link = f"{parent_name}_{side}" if "_" in parent_name else parent_name
-        created[link_name] = _make_cylinder_segment_link(
-            model, name=link_name, mass=mass, length=length, radius=radius
-        )
-        v1 = _add_2dof_joint_chain(
-            model,
-            coord_prefix=coord_prefix,
-            side=side,
-            sign=sign,
-            parent_link=parent_link,
-            link_name=link_name,
-            parent_offset_z=parent_offset_z,
-            parent_lateral_y=parent_lateral_y,
-            flex_limits=flex_limits,
-            second_limits=second_limits,
-            second_label=second_label,
-        )
-        created[v1] = model.find(f"link[@name='{v1}']")  # type: ignore[assignment]
-
-    return created
 
 
 # ---------------------------------------------------------------------------
