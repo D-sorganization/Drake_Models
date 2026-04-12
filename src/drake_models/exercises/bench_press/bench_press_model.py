@@ -21,9 +21,8 @@ import logging
 import math
 import xml.etree.ElementTree as ET
 
-from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
-from drake_models.shared.barbell import BarbellSpec
-from drake_models.shared.body import BodyModelSpec
+from drake_models.exercises.base import ExerciseModelBuilder
+from drake_models.exercises.factory import build_exercise_model
 from drake_models.shared.utils.geometry import rectangular_prism_inertia
 from drake_models.shared.utils.sdf_helpers import (
     add_contact_geometry,
@@ -206,8 +205,9 @@ def build_bench_press_model(
     plate_mass_per_side: float = 50.0,
 ) -> str:
     """Convenience function to build a bench press model SDF string."""
-    config = ExerciseConfig(
-        body_spec=BodyModelSpec(total_mass=body_mass, height=height),
-        barbell_spec=BarbellSpec.mens_olympic(plate_mass_per_side=plate_mass_per_side),
+    return build_exercise_model(
+        BenchPressModelBuilder,
+        body_mass=body_mass,
+        height=height,
+        plate_mass_per_side=plate_mass_per_side,
     )
-    return BenchPressModelBuilder(config).build()
