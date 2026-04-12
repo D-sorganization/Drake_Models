@@ -17,9 +17,8 @@ import logging
 import math
 import xml.etree.ElementTree as ET
 
-from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
-from drake_models.shared.barbell import BarbellSpec
-from drake_models.shared.body import BodyModelSpec
+from drake_models.exercises.base import ExerciseModelBuilder
+from drake_models.exercises.factory import build_exercise_model
 from drake_models.shared.utils.sdf_helpers import add_fixed_joint
 
 logger = logging.getLogger(__name__)
@@ -115,8 +114,9 @@ def build_squat_model(
     Default: 80 kg person, 1.75 m tall, 140 kg total barbell
     (20 kg bar + 60 kg per side).
     """
-    config = ExerciseConfig(
-        body_spec=BodyModelSpec(total_mass=body_mass, height=height),
-        barbell_spec=BarbellSpec.mens_olympic(plate_mass_per_side=plate_mass_per_side),
+    return build_exercise_model(
+        SquatModelBuilder,
+        body_mass=body_mass,
+        height=height,
+        plate_mass_per_side=plate_mass_per_side,
     )
-    return SquatModelBuilder(config).build()

@@ -21,8 +21,8 @@ import logging
 import math
 import xml.etree.ElementTree as ET
 
-from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
-from drake_models.shared.body import BodyModelSpec
+from drake_models.exercises.base import ExerciseModelBuilder
+from drake_models.exercises.factory import build_exercise_model
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,10 @@ def build_gait_model(
     The ``plate_mass_per_side`` parameter is accepted for CLI compatibility
     but ignored (barbell is present in SDF but unattached to the body).
     """
-    config = ExerciseConfig(
-        body_spec=BodyModelSpec(total_mass=body_mass, height=height),
+    del plate_mass_per_side  # accepted for CLI compatibility, unused
+    return build_exercise_model(
+        GaitModelBuilder,
+        body_mass=body_mass,
+        height=height,
+        include_barbell=False,
     )
-    return GaitModelBuilder(config).build()
