@@ -414,19 +414,17 @@ def _add_phase_tracking_costs(
         )
 
 
-def _solve_with_drake(
-    sdf_string: str,
+def _build_drake_program(
+    plant: object,
     objective: ExerciseObjective,
     config: TrajectoryConfig,
-) -> TrajectoryResult:
-    """Solve trajectory optimization using Drake's MathematicalProgram.
+) -> tuple[object, object, object, object]:
+    """Construct the MathematicalProgram with decision variables and costs.
 
-    This is the full-fidelity path when pydrake is installed. It sets up
-    a direct transcription with MultibodyPlant dynamics constraints.
+    Returns ``(prog, q, v, u)`` — the program and its state/control variables.
     """
-    from pydrake.all import MathematicalProgram, Solve
+    from pydrake.all import MathematicalProgram
 
-    plant = _build_drake_plant(sdf_string, config.dt)
     n_q = plant.num_positions()  # type: ignore[attr-defined]
     n_v = plant.num_velocities()  # type: ignore[attr-defined]
     n_u = plant.num_actuators()  # type: ignore[attr-defined]
@@ -447,17 +445,31 @@ def _solve_with_drake(
         config.state_weight,
         config.terminal_weight,
     )
+    return prog, q, v, u
+
+
+def _solve_with_drake(
+    sdf_string: str,
+    objective: ExerciseObjective,
+    config: TrajectoryConfig,
+) -> TrajectoryResult:
+    """Solve trajectory optimization using Drake's MathematicalProgram.
+
+    This is the full-fidelity path when pydrake is installed. It sets up
+    a direct transcription with MultibodyPlant dynamics constraints.
+    """
+    from pydrake.all import Solve
+
+    plant = _build_drake_plant(sdf_string, config.dt)
+    prog, q, v, u = _build_drake_program(plant, objective, config)
 
     result = Solve(prog)
-    positions = result.GetSolution(q)
-    velocities = result.GetSolution(v)
-    torques = result.GetSolution(u)
-    time = np.linspace(0.0, config.total_time, n_steps)
+    time = np.linspace(0.0, config.total_time, config.n_timesteps)
 
     return TrajectoryResult(
-        joint_positions=positions,
-        joint_velocities=velocities,
-        joint_torques=torques,
+        joint_positions=result.GetSolution(q),
+        joint_velocities=result.GetSolution(v),
+        joint_torques=result.GetSolution(u),
         time=time,
         cost=result.get_optimal_cost(),
         converged=result.is_success(),

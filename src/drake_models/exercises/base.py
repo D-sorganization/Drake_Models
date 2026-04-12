@@ -216,38 +216,41 @@ class ExerciseModelBuilder(ABC):
             add_collision_filter_group(model, name=group_name, members=members)
         logger.debug("Added %d collision filter groups", len(adjacent_pairs))
 
+    def _init_sdf_root(self) -> tuple[ET.Element, ET.Element]:
+        """Create the SDF root, model element, gravity, and static flag.
+
+        Returns ``(root, model)`` — the SDF root element and its model child.
+        """
+        root = ET.Element("sdf", version="1.8")
+        model = ET.SubElement(root, "model", name=self.exercise_name)
+
+        # Gravity
+        gravity_el = ET.SubElement(model, "gravity")
+        gravity_el.text = vec3_str(*self.config.gravity)
+
+        # Static flag (false — this is a dynamic model)
+        ET.SubElement(model, "static").text = "false"
+        return root, model
+
     def build(self) -> str:
         """Build the complete SDF model XML and return as string.
 
         Postcondition: returned string is well-formed XML.
         """
         logger.info("Building exercise model: %s", self.exercise_name)
-        root = ET.Element("sdf", version="1.8")
-        model = ET.SubElement(root, "model", name=self.exercise_name)
-
-        # Gravity
-        gravity_el = ET.SubElement(model, "gravity")
-        g = self.config.gravity
-        gravity_el.text = vec3_str(*g)
-
-        # Static flag (false — this is a dynamic model)
-        ET.SubElement(model, "static").text = "false"
+        root, model = self._init_sdf_root()
 
         # Ground plane with hydroelastic contact
         add_ground_plane_contact(model)
 
-        # Build body
+        # Build body and barbell
         body_links = create_full_body(
             model, self.config.body_spec, pelvis_joint_type=self.pelvis_joint_type
         )
-
-        # Build barbell
         barbell_links = create_barbell_links(model, self.config.barbell_spec)
 
-        # Exercise-specific attachment
+        # Exercise-specific attachment and initial pose
         self.attach_barbell(model, body_links, barbell_links)
-
-        # Exercise-specific initial pose
         self.set_initial_pose(model)
 
         # Collision exclusion filters for adjacent body segments
