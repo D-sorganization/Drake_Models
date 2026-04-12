@@ -120,6 +120,62 @@ def _add_bilateral_limb(
     return created
 
 
+def _create_3dof_virtual_links(
+    model: ET.Element,
+    *,
+    coord_prefix: str,
+    side: str,
+) -> tuple[str, str]:
+    """Create the two virtual links for a 3-DOF compound joint chain."""
+    v1_name = f"{coord_prefix}_{side}_virtual_1"
+    v2_name = f"{coord_prefix}_{side}_virtual_2"
+    add_virtual_link(model, name=v1_name)
+    add_virtual_link(model, name=v2_name)
+    return v1_name, v2_name
+
+
+def _add_adduct_joint(
+    model: ET.Element,
+    *,
+    name: str,
+    parent: str,
+    child: str,
+    limits: tuple[float, float],
+) -> None:
+    """Add the Z-axis (adduction/lateral) joint between two virtual links."""
+    add_revolute_joint(
+        model,
+        name=name,
+        parent=parent,
+        child=child,
+        axis_xyz=(0, 0, 1),
+        pose=(0, 0, 0, 0, 0, 0),
+        lower_limit=limits[0],
+        upper_limit=limits[1],
+    )
+
+
+def _add_rotate_joint(
+    model: ET.Element,
+    *,
+    name: str,
+    parent: str,
+    child: str,
+    limits: tuple[float, float],
+) -> None:
+    """Add the Y-axis (long-axis rotation) joint to the terminal child link."""
+    add_revolute_joint(
+        model,
+        name=name,
+        parent=parent,
+        child=child,
+        axis_xyz=(0, 1, 0),
+        pose=(0, 0, 0, 0, 0, 0),
+        lower_limit=limits[0],
+        upper_limit=limits[1],
+    )
+
+
 def _add_3dof_joint_chain(
     model: ET.Element,
     *,
@@ -143,10 +199,9 @@ def _add_3dof_joint_chain(
 
     Returns ``(v1_name, v2_name)`` of the two newly-created virtual links.
     """
-    v1_name = f"{coord_prefix}_{side}_virtual_1"
-    v2_name = f"{coord_prefix}_{side}_virtual_2"
-    add_virtual_link(model, name=v1_name)
-    add_virtual_link(model, name=v2_name)
+    v1_name, v2_name = _create_3dof_virtual_links(
+        model, coord_prefix=coord_prefix, side=side
+    )
     _add_flex_joint(
         model,
         f"{coord_prefix}_{side}_flex",
@@ -155,25 +210,19 @@ def _add_3dof_joint_chain(
         (0, sign * parent_lateral_y, parent_offset_z, 0, 0, 0),
         flex_limits,
     )
-    add_revolute_joint(
+    _add_adduct_joint(
         model,
         name=f"{coord_prefix}_{side}_{adduct_label}",
         parent=v1_name,
         child=v2_name,
-        axis_xyz=(0, 0, 1),
-        pose=(0, 0, 0, 0, 0, 0),
-        lower_limit=adduct_limits[0],
-        upper_limit=adduct_limits[1],
+        limits=adduct_limits,
     )
-    add_revolute_joint(
+    _add_rotate_joint(
         model,
         name=f"{coord_prefix}_{side}_{rotate_label}",
         parent=v2_name,
         child=link_name,
-        axis_xyz=(0, 1, 0),
-        pose=(0, 0, 0, 0, 0, 0),
-        lower_limit=rotate_limits[0],
-        upper_limit=rotate_limits[1],
+        limits=rotate_limits,
     )
     return v1_name, v2_name
 
