@@ -81,17 +81,13 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
         """Pelvis is welded via bench pad — no free floating joint."""
         return "fixed"
 
-    def _add_bench_body(self, model: ET.Element) -> ET.Element:
-        """Add the bench pad link and weld it to the world.
-
-        The bench pad is a box welded to the world frame at BENCH_HEIGHT so
-        that its top surface sits at exactly BENCH_HEIGHT meters above ground.
-        """
-        pad_z_center = BENCH_HEIGHT - BENCH_PAD_THICKNESS / 2.0
+    @staticmethod
+    def _create_bench_pad_link(model: ET.Element) -> ET.Element:
+        """Create the bench pad link with inertia and visual/collision geometry."""
         inertia = rectangular_prism_inertia(
             BENCH_PAD_MASS, BENCH_PAD_LENGTH, BENCH_PAD_WIDTH, BENCH_PAD_THICKNESS
         )
-        bench_link = add_link(
+        return add_link(
             model,
             name="bench_pad",
             mass=BENCH_PAD_MASS,
@@ -106,15 +102,10 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
                 BENCH_PAD_LENGTH, BENCH_PAD_WIDTH, BENCH_PAD_THICKNESS
             ),
         )
-        add_fixed_joint(
-            model,
-            name="bench_to_world",
-            parent="world",
-            child="bench_pad",
-            pose=(0, 0, pad_z_center, 0, 0, 0),
-        )
 
-        # Contact geometry on top surface of bench pad
+    @staticmethod
+    def _add_bench_pad_contact(bench_link: ET.Element) -> None:
+        """Attach hydroelastic contact geometry to the bench pad top surface."""
         add_contact_geometry(
             bench_link,
             name="bench_pad_contact",
@@ -127,6 +118,22 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
             hydroelastic_modulus=1e8,
         )
 
+    def _add_bench_body(self, model: ET.Element) -> ET.Element:
+        """Add the bench pad link and weld it to the world.
+
+        The bench pad is a box welded to the world frame at BENCH_HEIGHT so
+        that its top surface sits at exactly BENCH_HEIGHT meters above ground.
+        """
+        pad_z_center = BENCH_HEIGHT - BENCH_PAD_THICKNESS / 2.0
+        bench_link = self._create_bench_pad_link(model)
+        add_fixed_joint(
+            model,
+            name="bench_to_world",
+            parent="world",
+            child="bench_pad",
+            pose=(0, 0, pad_z_center, 0, 0, 0),
+        )
+        self._add_bench_pad_contact(bench_link)
         logger.debug("Added bench pad welded to world at z=%.3f m", pad_z_center)
         return bench_link
 
