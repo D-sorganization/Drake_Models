@@ -147,26 +147,25 @@ def _build_pelvis(
     return links
 
 
-def _build_lumbar_joints(
+def _create_lumbar_virtual_links(
+    model: ET.Element,
+) -> dict[str, ET.Element]:
+    """Create the two virtual links used by the lumbar compound joint chain."""
+    return {
+        "lumbar_virtual_1": add_virtual_link(model, name="lumbar_virtual_1"),
+        "lumbar_virtual_2": add_virtual_link(model, name="lumbar_virtual_2"),
+    }
+
+
+def _create_torso_link(
     model: ET.Element,
     spec: BodyModelSpec,
     t_len: float,
-) -> dict[str, ET.Element]:
-    """Create lumbar 3-DOF compound joints and the torso link.
-
-    Chain: pelvis -> lumbar_flex (X) -> v1 -> lumbar_lateral (Z)
-           -> v2 -> lumbar_rotate (Y) -> torso.
-
-    Returns dict containing torso, lumbar_virtual_1, lumbar_virtual_2.
-    """
-    links: dict[str, ET.Element] = {}
-    _p_mass, p_len, p_rad = _seg(spec, "pelvis")
+) -> ET.Element:
+    """Create the torso link sized from *spec* with box geometry."""
     t_mass, _t_len, t_rad = _seg(spec, "torso")
     t_inertia = rectangular_prism_inertia(t_mass, t_rad * 2, t_len, t_rad * 2)
-
-    links["lumbar_virtual_1"] = add_virtual_link(model, name="lumbar_virtual_1")
-    links["lumbar_virtual_2"] = add_virtual_link(model, name="lumbar_virtual_2")
-    links["torso"] = add_link(
+    return add_link(
         model,
         name="torso",
         mass=t_mass,
@@ -177,13 +176,21 @@ def _build_lumbar_joints(
         visual_geometry=make_box_geometry(t_rad * 2, t_rad * 2, t_len),
         collision_geometry=make_box_geometry(t_rad * 2, t_rad * 2, t_len),
     )
+
+
+def _wire_lumbar_joints(model: ET.Element, pelvis_length: float) -> None:
+    """Wire the three revolute joints that form the lumbar 3-DOF chain.
+
+    Chain: pelvis -> lumbar_flex (X) -> v1 -> lumbar_lateral (Z)
+           -> v2 -> lumbar_rotate (Y) -> torso.
+    """
     add_revolute_joint(
         model,
         name="lumbar_flex",
         parent="pelvis",
         child="lumbar_virtual_1",
         axis_xyz=(1, 0, 0),
-        pose=(0, 0, p_len / 2.0, 0, 0, 0),
+        pose=(0, 0, pelvis_length / 2.0, 0, 0, 0),
         lower_limit=LUMBAR_FLEX_LOWER,
         upper_limit=LUMBAR_FLEX_UPPER,
     )
@@ -207,6 +214,24 @@ def _build_lumbar_joints(
         lower_limit=LUMBAR_ROTATE_LOWER,
         upper_limit=LUMBAR_ROTATE_UPPER,
     )
+
+
+def _build_lumbar_joints(
+    model: ET.Element,
+    spec: BodyModelSpec,
+    t_len: float,
+) -> dict[str, ET.Element]:
+    """Create lumbar 3-DOF compound joints and the torso link.
+
+    Chain: pelvis -> lumbar_flex (X) -> v1 -> lumbar_lateral (Z)
+           -> v2 -> lumbar_rotate (Y) -> torso.
+
+    Returns dict containing torso, lumbar_virtual_1, lumbar_virtual_2.
+    """
+    _p_mass, p_len, _p_rad = _seg(spec, "pelvis")
+    links: dict[str, ET.Element] = _create_lumbar_virtual_links(model)
+    links["torso"] = _create_torso_link(model, spec, t_len)
+    _wire_lumbar_joints(model, p_len)
     return links
 
 
