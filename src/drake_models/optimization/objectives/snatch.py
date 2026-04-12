@@ -6,13 +6,12 @@ Bar path is s-curve; balance mode is standing.
 
 from __future__ import annotations
 
-import math
-
 from drake_models.optimization.objectives import (
     BalanceMode,
     ExerciseObjective,
     ExercisePhase,
 )
+from drake_models.optimization.objectives._helpers import bilateral
 
 SNATCH = ExerciseObjective(
     exercise_name="snatch",
@@ -23,12 +22,9 @@ SNATCH = ExerciseObjective(
             name="floor",
             time_fraction=0.0,
             joint_angles={
-                "hip_l_flex": math.radians(90),
-                "hip_r_flex": math.radians(90),
-                "knee_l": math.radians(-80),
-                "knee_r": math.radians(-80),
-                "shoulder_l_flex": math.radians(-10),
-                "shoulder_r_flex": math.radians(-10),
+                **bilateral("hip", 90, suffix="flex"),
+                **bilateral("knee", -80),
+                **bilateral("shoulder", -10, suffix="flex"),
                 "elbow_l": 0.0,
                 "elbow_r": 0.0,
             },
@@ -38,12 +34,9 @@ SNATCH = ExerciseObjective(
             name="knee_pass",
             time_fraction=0.25,
             joint_angles={
-                "hip_l_flex": math.radians(55),
-                "hip_r_flex": math.radians(55),
-                "knee_l": math.radians(-30),
-                "knee_r": math.radians(-30),
-                "shoulder_l_flex": math.radians(0),
-                "shoulder_r_flex": math.radians(0),
+                **bilateral("hip", 55, suffix="flex"),
+                **bilateral("knee", -30),
+                **bilateral("shoulder", 0, suffix="flex"),
                 "elbow_l": 0.0,
                 "elbow_r": 0.0,
             },
@@ -53,12 +46,9 @@ SNATCH = ExerciseObjective(
             name="power_position",
             time_fraction=0.45,
             joint_angles={
-                "hip_l_flex": math.radians(20),
-                "hip_r_flex": math.radians(20),
-                "knee_l": math.radians(-30),
-                "knee_r": math.radians(-30),
-                "shoulder_l_flex": math.radians(30),
-                "shoulder_r_flex": math.radians(30),
+                **bilateral("hip", 20, suffix="flex"),
+                **bilateral("knee", -30),
+                **bilateral("shoulder", 30, suffix="flex"),
                 "elbow_l": 0.0,
                 "elbow_r": 0.0,
             },
@@ -68,12 +58,9 @@ SNATCH = ExerciseObjective(
             name="overhead_catch",
             time_fraction=0.75,
             joint_angles={
-                "hip_l_flex": math.radians(100),
-                "hip_r_flex": math.radians(100),
-                "knee_l": math.radians(-110),
-                "knee_r": math.radians(-110),
-                "shoulder_l_flex": math.radians(170),
-                "shoulder_r_flex": math.radians(170),
+                **bilateral("hip", 100, suffix="flex"),
+                **bilateral("knee", -110),
+                **bilateral("shoulder", 170, suffix="flex"),
                 "elbow_l": 0.0,
                 "elbow_r": 0.0,
             },
@@ -83,12 +70,9 @@ SNATCH = ExerciseObjective(
             name="standing",
             time_fraction=1.0,
             joint_angles={
-                "hip_l_flex": math.radians(5),
-                "hip_r_flex": math.radians(5),
-                "knee_l": math.radians(-5),
-                "knee_r": math.radians(-5),
-                "shoulder_l_flex": math.radians(175),
-                "shoulder_r_flex": math.radians(175),
+                **bilateral("hip", 5, suffix="flex"),
+                **bilateral("knee", -5),
+                **bilateral("shoulder", 175, suffix="flex"),
                 "elbow_l": 0.0,
                 "elbow_r": 0.0,
             },

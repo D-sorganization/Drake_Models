@@ -6,13 +6,12 @@ Bar path is j-curve; balance mode is supine (body supported by bench).
 
 from __future__ import annotations
 
-import math
-
 from drake_models.optimization.objectives import (
     BalanceMode,
     ExerciseObjective,
     ExercisePhase,
 )
+from drake_models.optimization.objectives._helpers import bilateral
 
 BENCH_PRESS = ExerciseObjective(
     exercise_name="bench_press",
@@ -23,10 +22,8 @@ BENCH_PRESS = ExerciseObjective(
             name="lockout_top",
             time_fraction=0.0,
             joint_angles={
-                "shoulder_l_flex": math.radians(90),
-                "shoulder_r_flex": math.radians(90),
-                "shoulder_l_abd": math.radians(75),
-                "shoulder_r_abd": math.radians(75),
+                **bilateral("shoulder", 90, suffix="flex"),
+                **bilateral("shoulder", 75, suffix="abd"),
                 "elbow_l": 0.0,
                 "elbow_r": 0.0,
             },
@@ -36,12 +33,9 @@ BENCH_PRESS = ExerciseObjective(
             name="chest_touch",
             time_fraction=0.5,
             joint_angles={
-                "shoulder_l_flex": math.radians(45),
-                "shoulder_r_flex": math.radians(45),
-                "shoulder_l_abd": math.radians(75),
-                "shoulder_r_abd": math.radians(75),
-                "elbow_l": math.radians(-90),
-                "elbow_r": math.radians(-90),
+                **bilateral("shoulder", 45, suffix="flex"),
+                **bilateral("shoulder", 75, suffix="abd"),
+                **bilateral("elbow", -90),
             },
             bar_height_fraction=0.0,
         ),
@@ -49,10 +43,8 @@ BENCH_PRESS = ExerciseObjective(
             name="lockout_finish",
             time_fraction=1.0,
             joint_angles={
-                "shoulder_l_flex": math.radians(90),
-                "shoulder_r_flex": math.radians(90),
-                "shoulder_l_abd": math.radians(75),
-                "shoulder_r_abd": math.radians(75),
+                **bilateral("shoulder", 90, suffix="flex"),
+                **bilateral("shoulder", 75, suffix="abd"),
                 "elbow_l": 0.0,
                 "elbow_r": 0.0,
             },
