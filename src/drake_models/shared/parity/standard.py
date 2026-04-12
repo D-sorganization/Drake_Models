@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import math
 
+from drake_models.shared.body.body_anthropometrics import _SEGMENT_TABLE
+
 
 def _rad(deg: float) -> float:
     """Convert degrees to radians (used internally by JOINT_LIMITS)."""
@@ -13,27 +15,13 @@ def _rad(deg: float) -> float:
 STANDARD_BODY_MASS = 80.0
 STANDARD_HEIGHT = 1.75
 
+# Derived from the canonical Winter (2009) segment table in
+# drake_models.shared.body.body_anthropometrics to avoid duplication.
 SEGMENT_MASS_FRACTIONS = {
-    "pelvis": 0.142,
-    "torso": 0.355,
-    "head": 0.081,
-    "upper_arm": 0.028,
-    "forearm": 0.016,
-    "hand": 0.006,
-    "thigh": 0.100,
-    "shank": 0.047,
-    "foot": 0.014,
+    name: row["mass_frac"] for name, row in _SEGMENT_TABLE.items()
 }
 SEGMENT_LENGTH_FRACTIONS = {
-    "pelvis": 0.100,
-    "torso": 0.288,
-    "head": 0.130,
-    "upper_arm": 0.186,
-    "forearm": 0.146,
-    "hand": 0.050,
-    "thigh": 0.245,
-    "shank": 0.246,
-    "foot": 0.040,
+    name: row["length_frac"] for name, row in _SEGMENT_TABLE.items()
 }
 JOINT_LIMITS = {
     "hip_flex": (_rad(-30), _rad(120)),
