@@ -35,7 +35,7 @@ dev = [
     "pytest-xdist>=3.0.0",
     "ruff>=0.14.0",
     "mypy>=1.15.0",
-    "hypothesis>=6.0.0",
+    "hypothesis>=6.151.12",
 ]
 
 [project.urls]
