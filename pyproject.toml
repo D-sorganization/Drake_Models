@@ -19,7 +19,7 @@ classifiers = [
 
 dependencies = [
     "numpy>=1.26.4,<3.0.0",
-    "matplotlib>=3.7.0",
+    "matplotlib>=3.10.8",
     "defusedxml>=0.7.1",
 ]
 
