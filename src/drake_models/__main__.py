@@ -35,17 +35,17 @@ BUILDER_FUNCTIONS = {
 }
 
 
-def _build_arg_parser() -> argparse.ArgumentParser:
-    """Construct and return the CLI argument parser."""
-    parser = argparse.ArgumentParser(
-        prog="drake-models",
-        description="Generate Drake SDF models for barbell exercises.",
-    )
+def _add_exercise_argument(parser: argparse.ArgumentParser) -> None:
+    """Add the positional ``exercise`` argument to *parser*."""
     parser.add_argument(
         "exercise",
         choices=sorted(EXERCISES.keys()),
         help="Exercise to generate a model for.",
     )
+
+
+def _add_anthropometric_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add body-mass, height, and plate-mass options to *parser*."""
     parser.add_argument(
         "--mass",
         type=float,
@@ -64,6 +64,10 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         default=60.0,
         help="Plate mass per side in kg (default: 60.0).",
     )
+
+
+def _add_output_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add output-file and verbosity flags to *parser*."""
     parser.add_argument(
         "-o",
         "--output",
@@ -77,6 +81,17 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Enable verbose logging.",
     )
+
+
+def _build_arg_parser() -> argparse.ArgumentParser:
+    """Construct and return the CLI argument parser."""
+    parser = argparse.ArgumentParser(
+        prog="drake-models",
+        description="Generate Drake SDF models for barbell exercises.",
+    )
+    _add_exercise_argument(parser)
+    _add_anthropometric_arguments(parser)
+    _add_output_arguments(parser)
     return parser
 
 
