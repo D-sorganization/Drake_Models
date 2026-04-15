@@ -6,6 +6,7 @@ import pytest
 
 from drake_models.exercises.bench_press.bench_press_model import (
     BENCH_HEIGHT,
+    BENCH_PAD_THICKNESS,
     BenchPressModelBuilder,
     build_bench_press_model,
 )
@@ -52,6 +53,21 @@ class TestBenchPressModelBuilder:
 
     def test_bench_height_constant(self) -> None:
         assert pytest.approx(0.43) == BENCH_HEIGHT
+
+    def test_bench_pad_z_center_places_top_at_bench_height(self) -> None:
+        z_center = BenchPressModelBuilder._bench_pad_z_center()
+        assert z_center + (BENCH_PAD_THICKNESS / 2.0) == pytest.approx(BENCH_HEIGHT)
+
+    def test_add_bench_to_world_joint_uses_computed_height(self) -> None:
+        model = ET.Element("model")
+        BenchPressModelBuilder._add_bench_to_world_joint(model)
+        joint = model.find("joint[@name='bench_to_world']")
+        assert joint is not None
+        pose = joint.find("pose")
+        assert pose is not None
+        assert float(pose.text.split()[2]) == pytest.approx(
+            BenchPressModelBuilder._bench_pad_z_center()
+        )
 
     def test_has_gravity(self) -> None:
         xml_str = build_bench_press_model()
