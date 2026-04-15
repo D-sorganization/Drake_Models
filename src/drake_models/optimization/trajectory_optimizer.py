@@ -3,8 +3,9 @@
 This module provides a trajectory optimization pipeline that:
   1. Accepts an SDF model string and exercise name
   2. Looks up exercise-specific objectives (phase targets, balance mode)
-  3. Formulates a direct-transcription-style trajectory optimization
-  4. Solves for optimal joint trajectories that satisfy dynamics and constraints
+  3. Formulates a direct-transcription trajectory optimization with explicit
+     dynamics, integration, joint-limit, and actuator-bound constraints
+  4. Solves for optimal joint trajectories that satisfy those constraints
 
 When Drake (pydrake) is available, this uses Drake's MultibodyPlant and
 MathematicalProgram. When Drake is not installed, a simplified phase-
@@ -15,6 +16,7 @@ run without the full Drake dependency.
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -22,6 +24,11 @@ import numpy as np
 from drake_models.optimization.exercise_objectives import (
     ExerciseObjective,
     get_objective,
+)
+from drake_models.shared.contracts.preconditions import (
+    require_finite,
+    require_non_negative,
+    require_positive,
 )
 
 logger = logging.getLogger(__name__)
@@ -52,24 +59,34 @@ class TrajectoryConfig:
     balance_weight: float = 5.0
 
     def __post_init__(self) -> None:
-        """Validate trajectory configuration parameters."""
+        """Validate trajectory configuration parameters.
+
+        DbC preconditions (addresses #118): positive timestep count and
+        horizon, non-negative cost weights, finite numeric fields.
+        """
         if self.n_timesteps < 2:
             raise ValueError(f"n_timesteps must be >= 2, got {self.n_timesteps}")
-        if self.dt <= 0:
-            raise ValueError(f"dt must be positive, got {self.dt}")
+        if self.dt <= 0 or not math.isfinite(self.dt):
+            raise ValueError(f"dt must be positive and finite, got {self.dt}")
         if self.max_iterations < 1:
             raise ValueError(f"max_iterations must be >= 1, got {self.max_iterations}")
-        if self.convergence_tol <= 0:
+        if self.convergence_tol <= 0 or not math.isfinite(self.convergence_tol):
             raise ValueError(
-                f"convergence_tol must be positive, got {self.convergence_tol}"
+                f"convergence_tol must be positive and finite, "
+                f"got {self.convergence_tol}"
             )
-        if self.control_weight < 0:
+        for name, value in (
+            ("control_weight", self.control_weight),
+            ("state_weight", self.state_weight),
+            ("terminal_weight", self.terminal_weight),
+            ("balance_weight", self.balance_weight),
+        ):
+            if value < 0 or not math.isfinite(value):
+                raise ValueError(f"{name} must be non-negative and finite, got {value}")
+        if not math.isfinite(self.total_time) or self.total_time <= 0:
             raise ValueError(
-                f"control_weight must be non-negative, got {self.control_weight}"
-            )
-        if self.state_weight < 0:
-            raise ValueError(
-                f"state_weight must be non-negative, got {self.state_weight}"
+                f"total_time (n_timesteps*dt) must be positive and finite, "
+                f"got {self.total_time}"
             )
 
     @property
@@ -325,12 +342,19 @@ def create_trajectory_optimization(
 
     Raises:
         KeyError: If ``exercise_name`` has no registered objective.
-        ValueError: If ``sdf_string`` is empty.
+        ValueError: If ``sdf_string`` is empty or ``exercise_name`` is blank.
     """
     if not sdf_string or not sdf_string.strip():
         raise ValueError("sdf_string must be a non-empty XML string")
+    if not exercise_name or not exercise_name.strip():
+        raise ValueError("exercise_name must be a non-empty string")
 
     config = config or TrajectoryConfig()
+    # DbC preconditions (addresses #118): verify numeric invariants of the
+    # resolved config even if callers mutated internals via dataclass tricks.
+    require_positive(config.total_time, "config.total_time")
+    require_positive(config.dt, "config.dt")
+    require_non_negative(config.control_weight, "config.control_weight")
     objective = get_objective(exercise_name)
 
     drake_result = _try_drake_solve(sdf_string, objective, config)
@@ -352,11 +376,9 @@ def _build_drake_plant(sdf_string: str, dt: float) -> object:
 
     Returns the finalized plant object.  Callers must have pydrake available.
     """
-    from pydrake.all import (
-        AddMultibodyPlantSceneGraph,
-        DiagramBuilder,
-        Parser,
-    )
+    from pydrake.multibody.parsing import Parser
+    from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
+    from pydrake.systems.framework import DiagramBuilder
 
     builder = DiagramBuilder()
     plant, _scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=dt)
@@ -371,9 +393,6 @@ def _add_control_costs(prog: object, u: object, n_steps: int, weight: float) -> 
 
     Minimises ``weight * ||u_k||^2`` at each knot point.
     """
-    import numpy as np
-    from pydrake.all import MathematicalProgram  # noqa: F401 (type check guard)
-
     n_u = u.shape[1]  # type: ignore[attr-defined]
     for k in range(n_steps):
         prog.AddQuadraticCost(  # type: ignore[attr-defined]
@@ -381,6 +400,159 @@ def _add_control_costs(prog: object, u: object, n_steps: int, weight: float) -> 
             np.zeros(n_u),
             u[k],  # type: ignore[index]
         )
+
+
+def _add_integration_constraints(
+    prog: object,
+    q: object,
+    v: object,
+    dt: float,
+    n_steps: int,
+) -> int:
+    """Add semi-implicit Euler integration constraints on the shared-dim block.
+
+    When ``n_q == n_v`` (all joints are 1-DoF revolute/prismatic), this
+    enforces ``q[k+1] = q[k] + dt * v[k+1]`` element-wise.
+
+    When ``n_q != n_v`` (free-floating base: quaternions use 4 q coordinates
+    for 3 v coordinates), the last ``n_v`` positions correspond one-to-one
+    with the velocities in Drake's generalised coordinates, so we couple
+    those as a conservative kinematic integration constraint. The first
+    ``n_q - n_v`` positions (quaternion components) are handled by the
+    initial-state constraint and the dynamics constraint acting through
+    the plant context; we skip them in the linear-equality wiring.
+
+    Returns the number of scalar equality constraints added.
+    """
+    n_q = q.shape[1]  # type: ignore[attr-defined]
+    n_v = v.shape[1]  # type: ignore[attr-defined]
+    offset = n_q - n_v  # 0 for purely revolute, 4 for free-floating base
+    added = 0
+    for k in range(n_steps - 1):
+        for j in range(n_v):
+            prog.AddLinearEqualityConstraint(  # type: ignore[attr-defined]
+                q[k + 1, offset + j]  # type: ignore[index]
+                - q[k, offset + j]  # type: ignore[index]
+                - dt * v[k + 1, j]  # type: ignore[index]
+                == 0
+            )
+            added += 1
+    return added
+
+
+def _add_dynamics_constraints(
+    prog: object,
+    plant: object,
+    q: object,
+    v: object,
+    u: object,
+    dt: float,
+    n_steps: int,
+) -> int:
+    """Add per-knot manipulator-equation dynamics constraints to *prog*.
+
+    Enforces the semi-implicit Euler discretisation of the manipulator
+    equation ``M(q) (v[k+1]-v[k])/dt + C(q,v) v + tau_g(q) = B u`` at every
+    interior knot point.  Each constraint is a generic equality constraint
+    evaluated via ``plant.CalcMassMatrix`` / ``CalcBiasTerm`` /
+    ``CalcGravityGeneralizedForces`` on a reused plant context.
+
+    Returns the number of generic equality constraints added (``n_steps-1``).
+    """
+    from pydrake.multibody.plant import MultibodyPlant  # noqa: F401 (type guard)
+
+    n_q = q.shape[1]  # type: ignore[attr-defined]
+    n_v = v.shape[1]  # type: ignore[attr-defined]
+    n_u = u.shape[1]  # type: ignore[attr-defined]
+
+    # Reuse a single plant context for efficiency.
+    context = plant.CreateDefaultContext()  # type: ignore[attr-defined]
+    B = plant.MakeActuationMatrix()  # type: ignore[attr-defined]
+
+    def _residual(vars_flat: np.ndarray) -> np.ndarray:
+        qk = vars_flat[:n_q]
+        vk = vars_flat[n_q : n_q + n_v]
+        vkp1 = vars_flat[n_q + n_v : n_q + 2 * n_v]
+        uk = vars_flat[n_q + 2 * n_v : n_q + 2 * n_v + n_u]
+        plant.SetPositions(context, qk)  # type: ignore[attr-defined]
+        plant.SetVelocities(context, vk)  # type: ignore[attr-defined]
+        M = plant.CalcMassMatrix(context)  # type: ignore[attr-defined]
+        Cv = plant.CalcBiasTerm(context)  # type: ignore[attr-defined]
+        tau_g = plant.CalcGravityGeneralizedForces(context)  # type: ignore[attr-defined]
+        vdot = (vkp1 - vk) / dt
+        return M @ vdot + Cv - tau_g - B @ uk
+
+    added = 0
+    lb = np.zeros(n_v)
+    ub = np.zeros(n_v)
+    for k in range(n_steps - 1):
+        vars_k = np.concatenate(
+            [
+                q[k],  # type: ignore[index]
+                v[k],  # type: ignore[index]
+                v[k + 1],  # type: ignore[index]
+                u[k],  # type: ignore[index]
+            ]
+        )
+        prog.AddConstraint(_residual, lb=lb, ub=ub, vars=vars_k)  # type: ignore[attr-defined]
+        added += 1
+    return added
+
+
+def _add_initial_state_constraint(
+    prog: object,
+    q: object,
+    v: object,
+    q0: np.ndarray,
+    v0: np.ndarray,
+) -> int:
+    """Pin the first knot point to the supplied initial state.
+
+    Returns the number of scalar equalities added (``n_q + n_v``).
+    """
+    n_q = q.shape[1]  # type: ignore[attr-defined]
+    n_v = v.shape[1]  # type: ignore[attr-defined]
+    for j in range(n_q):
+        prog.AddLinearEqualityConstraint(  # type: ignore[attr-defined]
+            q[0, j] == float(q0[j])  # type: ignore[index]
+        )
+    for j in range(n_v):
+        prog.AddLinearEqualityConstraint(  # type: ignore[attr-defined]
+            v[0, j] == float(v0[j])  # type: ignore[index]
+        )
+    return n_q + n_v
+
+
+def _add_joint_and_actuator_bounds(
+    prog: object,
+    plant: object,
+    q: object,
+    u: object,
+    n_steps: int,
+) -> int:
+    """Apply per-knot position limits and actuator effort limits.
+
+    Returns the total number of bounding-box constraints added.
+    """
+    q_lower = plant.GetPositionLowerLimits()  # type: ignore[attr-defined]
+    q_upper = plant.GetPositionUpperLimits()  # type: ignore[attr-defined]
+    u_lower = plant.GetEffortLowerLimits()  # type: ignore[attr-defined]
+    u_upper = plant.GetEffortUpperLimits()  # type: ignore[attr-defined]
+
+    # Clip +/- infinity so AddBoundingBoxConstraint accepts them;
+    # Drake accepts np.inf bounds but clipping avoids overflow in custom
+    # wrappers that downstream tests may use.
+    q_lower = np.where(np.isfinite(q_lower), q_lower, -1e9)
+    q_upper = np.where(np.isfinite(q_upper), q_upper, 1e9)
+    u_lower = np.where(np.isfinite(u_lower), u_lower, -1e9)
+    u_upper = np.where(np.isfinite(u_upper), u_upper, 1e9)
+
+    added = 0
+    for k in range(n_steps):
+        prog.AddBoundingBoxConstraint(q_lower, q_upper, q[k])  # type: ignore[attr-defined,index]
+        prog.AddBoundingBoxConstraint(u_lower, u_upper, u[k])  # type: ignore[attr-defined,index]
+        added += 2
+    return added
 
 
 def _add_phase_tracking_costs(
@@ -419,11 +591,22 @@ def _build_drake_program(
     objective: ExerciseObjective,
     config: TrajectoryConfig,
 ) -> tuple[object, object, object, object]:
-    """Construct the MathematicalProgram with decision variables and costs.
+    """Construct the MathematicalProgram with decision variables, costs,
+    and direct-transcription dynamics constraints.
 
     Returns ``(prog, q, v, u)`` — the program and its state/control variables.
+
+    This function fixes issue #142: previously only decision variables and
+    costs were added, so ``Solve(prog)`` returned whatever minimised the
+    cost independent of physics. Now it also adds:
+
+    * semi-implicit Euler integration constraints (``q[k+1] = q[k] + dt v[k+1]``)
+    * manipulator-equation dynamics constraints at every knot
+    * joint position and actuator effort bounds
+    * an initial-state constraint pinning ``(q[0], v[0])`` to the plant
+      default configuration
     """
-    from pydrake.all import MathematicalProgram
+    from pydrake.solvers import MathematicalProgram
 
     n_q = plant.num_positions()  # type: ignore[attr-defined]
     n_v = plant.num_velocities()  # type: ignore[attr-defined]
@@ -445,6 +628,21 @@ def _build_drake_program(
         config.state_weight,
         config.terminal_weight,
     )
+
+    # --- Physics: this is the fix for issue #142 ---------------------------
+    _add_integration_constraints(prog, q, v, config.dt, n_steps)
+    _add_dynamics_constraints(prog, plant, q, v, u, config.dt, n_steps)
+    _add_joint_and_actuator_bounds(prog, plant, q, u, n_steps)
+
+    # Pin the initial state to the plant's default configuration. Exercise
+    # objectives currently describe target joint angles but not full initial
+    # states; using the default context gives a consistent, finite anchor
+    # so the problem is not under-determined.
+    context = plant.CreateDefaultContext()  # type: ignore[attr-defined]
+    q0 = np.asarray(plant.GetPositions(context))  # type: ignore[attr-defined]
+    v0 = np.zeros(n_v)
+    _add_initial_state_constraint(prog, q, v, q0, v0)
+
     return prog, q, v, u
 
 
@@ -455,10 +653,14 @@ def _solve_with_drake(
 ) -> TrajectoryResult:
     """Solve trajectory optimization using Drake's MathematicalProgram.
 
-    This is the full-fidelity path when pydrake is installed. It sets up
-    a direct transcription with MultibodyPlant dynamics constraints.
+    Full-fidelity direct-transcription path when pydrake is installed.
+    The program constructed in :func:`_build_drake_program` contains
+    explicit dynamics, integration, bound, and initial-state constraints
+    (see issue #142 for history on the missing-constraint bug this closes).
     """
-    from pydrake.all import Solve
+    from pydrake.solvers import Solve
+
+    require_finite(np.array([config.dt, config.total_time]), "config timing")
 
     plant = _build_drake_plant(sdf_string, config.dt)
     prog, q, v, u = _build_drake_program(plant, objective, config)
