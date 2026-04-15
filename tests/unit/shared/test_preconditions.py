@@ -17,13 +17,13 @@ class TestRequirePositive:
     def test_accepts_positive(self) -> None:
         require_positive(1.0, "val")
 
-    def test_rejects_zero(self) -> None:
-        with pytest.raises(ValueError, match="must be positive"):
-            require_positive(0.0, "val")
-
-    def test_rejects_negative(self) -> None:
-        with pytest.raises(ValueError, match="must be positive"):
-            require_positive(-1.0, "val")
+    @pytest.mark.parametrize(
+        "value",
+        [0.0, -1.0, float("nan"), float("inf"), float("-inf")],
+    )
+    def test_rejects_invalid_values(self, value: float) -> None:
+        with pytest.raises(ValueError, match="must be (finite|positive)"):
+            require_positive(value, "val")
 
     def test_error_includes_name(self) -> None:
         with pytest.raises(ValueError, match="my_param"):
@@ -41,9 +41,13 @@ class TestRequireNonNegative:
     def test_accepts_positive(self) -> None:
         require_non_negative(5.0, "val")
 
-    def test_rejects_negative(self) -> None:
-        with pytest.raises(ValueError, match="must be non-negative"):
-            require_non_negative(-0.001, "val")
+    @pytest.mark.parametrize(
+        "value",
+        [-0.001, float("nan"), float("inf"), float("-inf")],
+    )
+    def test_rejects_invalid_values(self, value: float) -> None:
+        with pytest.raises(ValueError, match="must be (finite|non-negative)"):
+            require_non_negative(value, "val")
 
 
 class TestRequireUnitVector:
