@@ -112,28 +112,41 @@ class ExerciseModelBuilder(ABC):
         return initial_pose
 
     @staticmethod
-    def _require_bilateral_grip_links(
+    def _validate_grip_preconditions(
         body_links: dict[str, ET.Element],
         barbell_links: dict[str, ET.Element],
     ) -> None:
-        """DbC precondition: verify the links required for a bilateral grip.
+        """Raise ``ValueError`` when required hand or barbell links are absent.
 
-        Raises:
-            ValueError: when ``hand_l``, ``hand_r`` (body) or
-                ``barbell_shaft`` (barbell) is missing.  Error message
-                names the missing link so the caller can diagnose.
+        Preconditions (DbC): ``'hand_l'`` and ``'hand_r'`` in *body_links*;
+        ``'barbell_shaft'`` in *barbell_links*.
         """
-        missing: list[str] = []
         if "hand_l" not in body_links:
-            missing.append("body_links['hand_l']")
+            raise ValueError("Body model missing required 'hand_l' link")
         if "hand_r" not in body_links:
-            missing.append("body_links['hand_r']")
+            raise ValueError("Body model missing required 'hand_r' link")
         if "barbell_shaft" not in barbell_links:
-            missing.append("barbell_links['barbell_shaft']")
-        if missing:
-            raise ValueError(
-                "Bilateral grip precondition failed; missing: " + ", ".join(missing)
-            )
+            raise ValueError("Barbell model missing required 'barbell_shaft' link")
+
+    @staticmethod
+    def _weld_barbell_to_left_hand(
+        model: ET.Element,
+        grip_offset: float,
+    ) -> None:
+        """Add the single fixed joint welding ``barbell_shaft`` to ``hand_l``."""
+        from drake_models.shared.utils.sdf_helpers import add_fixed_joint
+
+        add_fixed_joint(
+            model,
+            name="barbell_to_left_hand",
+            parent="hand_l",
+            child="barbell_shaft",
+            pose=(0, -grip_offset, 0, 0, 0, 0),
+        )
+        logger.debug(
+            "Attached barbell to left hand at grip offset %.3f m (SDF tree-safe)",
+            grip_offset,
+        )
 
     @staticmethod
     def _attach_bilateral_grip(
@@ -159,33 +172,12 @@ class ExerciseModelBuilder(ABC):
         Preconditions: 'hand_l', 'hand_r' in body_links;
                        'barbell_shaft' in barbell_links.
         """
-        from drake_models.shared.utils.sdf_helpers import add_fixed_joint
-
-        ExerciseModelBuilder._require_bilateral_grip_links(body_links, barbell_links)
-
-        # barbell_shaft is a child of hand_l — valid single-parent attachment
-        add_fixed_joint(
-            model,
-            name="barbell_to_left_hand",
-            parent="hand_l",
-            child="barbell_shaft",
-            pose=(0, -grip_offset, 0, 0, 0, 0),
-        )
-        logger.debug(
-            "Attached barbell to left hand at grip offset %.3f m (SDF tree-safe)",
-            grip_offset,
-        )
+        ExerciseModelBuilder._validate_grip_preconditions(body_links, barbell_links)
+        ExerciseModelBuilder._weld_barbell_to_left_hand(model, grip_offset)
 
     @staticmethod
-    def _bilateral_collision_pairs(side: str) -> list[tuple[str, list[str]]]:
-        """Return collision filter group definitions for one body side.
-
-        Args:
-            side: ``'l'`` or ``'r'``.
-
-        Returns:
-            List of ``(group_name, [member_links])`` tuples for the given side.
-        """
+    def _lower_body_collision_pairs(side: str) -> list[tuple[str, list[str]]]:
+        """Return hip, knee, and ankle collision groups for one body side."""
         return [
             (
                 f"hip_{side}",
@@ -201,6 +193,12 @@ class ExerciseModelBuilder(ABC):
                 f"ankle_{side}",
                 [f"shank_{side}", f"foot_{side}", f"ankle_{side}_virtual_1"],
             ),
+        ]
+
+    @staticmethod
+    def _upper_body_collision_pairs(side: str) -> list[tuple[str, list[str]]]:
+        """Return shoulder, elbow, and wrist collision groups for one side."""
+        return [
             (
                 f"shoulder_{side}",
                 [
@@ -215,6 +213,21 @@ class ExerciseModelBuilder(ABC):
                 f"wrist_{side}",
                 [f"forearm_{side}", f"hand_{side}", f"wrist_{side}_virtual_1"],
             ),
+        ]
+
+    @staticmethod
+    def _bilateral_collision_pairs(side: str) -> list[tuple[str, list[str]]]:
+        """Return collision filter group definitions for one body side.
+
+        Args:
+            side: ``'l'`` or ``'r'``.
+
+        Returns:
+            List of ``(group_name, [member_links])`` tuples for the given side.
+        """
+        return [
+            *ExerciseModelBuilder._lower_body_collision_pairs(side),
+            *ExerciseModelBuilder._upper_body_collision_pairs(side),
         ]
 
     @staticmethod
@@ -251,6 +264,21 @@ class ExerciseModelBuilder(ABC):
         ET.SubElement(model, "static").text = "false"
         return root, model
 
+    def _build_body_and_barbell(
+        self,
+        model: ET.Element,
+    ) -> tuple[dict[str, ET.Element], dict[str, ET.Element]]:
+        """Append the ground plane, body, and barbell links to *model*.
+
+        Returns ``(body_links, barbell_links)``.
+        """
+        add_ground_plane_contact(model)
+        body_links = create_full_body(
+            model, self.config.body_spec, pelvis_joint_type=self.pelvis_joint_type
+        )
+        barbell_links = create_barbell_links(model, self.config.barbell_spec)
+        return body_links, barbell_links
+
     def build(self) -> str:
         """Build the complete SDF model XML and return as string.
 
@@ -258,26 +286,10 @@ class ExerciseModelBuilder(ABC):
         """
         logger.info("Building exercise model: %s", self.exercise_name)
         root, model = self._init_sdf_root()
-
-        # Ground plane with hydroelastic contact
-        add_ground_plane_contact(model)
-
-        # Build body and barbell
-        body_links = create_full_body(
-            model, self.config.body_spec, pelvis_joint_type=self.pelvis_joint_type
-        )
-        barbell_links = create_barbell_links(model, self.config.barbell_spec)
-
-        # Exercise-specific attachment and initial pose
+        body_links, barbell_links = self._build_body_and_barbell(model)
         self.attach_barbell(model, body_links, barbell_links)
         self.set_initial_pose(model)
-
-        # Collision exclusion filters for adjacent body segments
         self._add_collision_filters(model)
-
         xml_str = serialize_model(root)
-
-        # Postcondition: well-formed XML
-        ensure_valid_xml(xml_str)
-
+        ensure_valid_xml(xml_str)  # postcondition: well-formed XML
         return xml_str

@@ -28,7 +28,7 @@ def _barbell_links() -> dict[str, ET.Element]:
 class TestRequireBilateralGripLinks:
     def test_accepts_fully_populated_link_dicts(self) -> None:
         # No exception = precondition satisfied
-        ExerciseModelBuilder._require_bilateral_grip_links(
+        ExerciseModelBuilder._validate_grip_preconditions(
             _hand_links(), _barbell_links()
         )
 
@@ -36,22 +36,22 @@ class TestRequireBilateralGripLinks:
         body = _hand_links()
         del body["hand_l"]
         with pytest.raises(ValueError, match="hand_l"):
-            ExerciseModelBuilder._require_bilateral_grip_links(body, _barbell_links())
+            ExerciseModelBuilder._validate_grip_preconditions(body, _barbell_links())
 
     def test_rejects_missing_right_hand(self) -> None:
         body = _hand_links()
         del body["hand_r"]
         with pytest.raises(ValueError, match="hand_r"):
-            ExerciseModelBuilder._require_bilateral_grip_links(body, _barbell_links())
+            ExerciseModelBuilder._validate_grip_preconditions(body, _barbell_links())
 
     def test_rejects_missing_barbell_shaft(self) -> None:
         with pytest.raises(ValueError, match="barbell_shaft"):
-            ExerciseModelBuilder._require_bilateral_grip_links(_hand_links(), {})
+            ExerciseModelBuilder._validate_grip_preconditions(_hand_links(), {})
 
     def test_reports_all_missing_links_in_one_message(self) -> None:
         """Caller debugging is easier when all missing keys show up at once."""
         with pytest.raises(ValueError) as exc_info:
-            ExerciseModelBuilder._require_bilateral_grip_links({}, {})
+            ExerciseModelBuilder._validate_grip_preconditions({}, {})
         msg = str(exc_info.value)
         for token in ("hand_l", "hand_r", "barbell_shaft"):
             assert token in msg
