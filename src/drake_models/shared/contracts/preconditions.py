@@ -13,12 +13,14 @@ from numpy.typing import ArrayLike
 
 def require_positive(value: float, name: str) -> None:
     """Require *value* to be strictly positive."""
+    require_finite(value, name)
     if value <= 0:
         raise ValueError(f"{name} must be positive, got {value}")
 
 
 def require_non_negative(value: float, name: str) -> None:
     """Require *value* >= 0."""
+    require_finite(value, name)
     if value < 0:
         raise ValueError(f"{name} must be non-negative, got {value}")
 
@@ -42,6 +44,7 @@ def require_finite(arr: ArrayLike, name: str) -> None:
 
 def require_in_range(value: float, low: float, high: float, name: str) -> None:
     """Require *low* <= *value* <= *high*."""
+    require_finite(value, name)
     if not (low <= value <= high):
         raise ValueError(f"{name} must be in [{low}, {high}], got {value}")
 
