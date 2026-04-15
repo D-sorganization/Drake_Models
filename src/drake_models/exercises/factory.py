@@ -18,6 +18,30 @@ from drake_models.shared.barbell import BarbellSpec
 from drake_models.shared.body import BodyModelSpec
 
 
+def _build_exercise_config(
+    body_mass: float,
+    height: float,
+    plate_mass_per_side: float,
+    *,
+    include_barbell: bool,
+) -> ExerciseConfig:
+    """Construct the shared exercise configuration for the factory.
+
+    Preconditions:
+        ``body_mass > 0``, ``height > 0``, ``plate_mass_per_side >= 0``
+        (enforced by the dataclass validators on the returned specs).
+    """
+    body_spec = BodyModelSpec(total_mass=body_mass, height=height)
+    if include_barbell:
+        return ExerciseConfig(
+            body_spec=body_spec,
+            barbell_spec=BarbellSpec.mens_olympic(
+                plate_mass_per_side=plate_mass_per_side,
+            ),
+        )
+    return ExerciseConfig(body_spec=body_spec)
+
+
 def build_exercise_model(
     builder_cls: type[ExerciseModelBuilder],
     body_mass: float = 80.0,
@@ -26,41 +50,11 @@ def build_exercise_model(
     *,
     include_barbell: bool = True,
 ) -> str:
-    """Build an exercise SDF model from a builder class and scalar parameters.
-
-    This is the generic implementation behind the per-exercise
-    ``build_*_model`` helpers. It constructs an :class:`ExerciseConfig`,
-    instantiates ``builder_cls`` with that config, and returns the SDF
-    XML string produced by ``.build()``.
-
-    Args:
-        builder_cls: Concrete :class:`ExerciseModelBuilder` subclass to
-            instantiate (e.g. ``SquatModelBuilder``).
-        body_mass: Total body mass in kilograms.
-        height: Body height in meters.
-        plate_mass_per_side: Mass of plates loaded on each side of the
-            barbell in kilograms. Ignored when ``include_barbell`` is
-            ``False`` (e.g. gait, sit-to-stand).
-        include_barbell: If ``True`` (default), pass a configured
-            :class:`BarbellSpec` to the config. If ``False``, use the
-            config default — useful for bodyweight-only exercises that
-            still accept ``plate_mass_per_side`` for CLI compatibility.
-
-    Returns:
-        SDF 1.8 XML string describing the full exercise model.
-
-    Preconditions:
-        ``body_mass > 0``, ``height > 0``, ``plate_mass_per_side >= 0``
-        (enforced downstream by :class:`BodyModelSpec` / :class:`BarbellSpec`).
-    """
-    body_spec = BodyModelSpec(total_mass=body_mass, height=height)
-    if include_barbell:
-        config = ExerciseConfig(
-            body_spec=body_spec,
-            barbell_spec=BarbellSpec.mens_olympic(
-                plate_mass_per_side=plate_mass_per_side,
-            ),
-        )
-    else:
-        config = ExerciseConfig(body_spec=body_spec)
+    """Build a model from a builder class and scalar parameters."""
+    config = _build_exercise_config(
+        body_mass,
+        height,
+        plate_mass_per_side,
+        include_barbell=include_barbell,
+    )
     return builder_cls(config).build()
