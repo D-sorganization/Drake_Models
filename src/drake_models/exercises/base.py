@@ -112,6 +112,30 @@ class ExerciseModelBuilder(ABC):
         return initial_pose
 
     @staticmethod
+    def _require_bilateral_grip_links(
+        body_links: dict[str, ET.Element],
+        barbell_links: dict[str, ET.Element],
+    ) -> None:
+        """DbC precondition: verify the links required for a bilateral grip.
+
+        Raises:
+            ValueError: when ``hand_l``, ``hand_r`` (body) or
+                ``barbell_shaft`` (barbell) is missing.  Error message
+                names the missing link so the caller can diagnose.
+        """
+        missing: list[str] = []
+        if "hand_l" not in body_links:
+            missing.append("body_links['hand_l']")
+        if "hand_r" not in body_links:
+            missing.append("body_links['hand_r']")
+        if "barbell_shaft" not in barbell_links:
+            missing.append("barbell_links['barbell_shaft']")
+        if missing:
+            raise ValueError(
+                "Bilateral grip precondition failed; missing: " + ", ".join(missing)
+            )
+
+    @staticmethod
     def _attach_bilateral_grip(
         model: ET.Element,
         body_links: dict[str, ET.Element],
@@ -137,12 +161,7 @@ class ExerciseModelBuilder(ABC):
         """
         from drake_models.shared.utils.sdf_helpers import add_fixed_joint
 
-        if "hand_l" not in body_links:
-            raise ValueError("Body model missing required 'hand_l' link")
-        if "hand_r" not in body_links:
-            raise ValueError("Body model missing required 'hand_r' link")
-        if "barbell_shaft" not in barbell_links:
-            raise ValueError("Barbell model missing required 'barbell_shaft' link")
+        ExerciseModelBuilder._require_bilateral_grip_links(body_links, barbell_links)
 
         # barbell_shaft is a child of hand_l — valid single-parent attachment
         add_fixed_joint(
