@@ -23,6 +23,7 @@ from drake_models.exercises.deadlift.deadlift_model import (
     build_deadlift_model,
 )
 from drake_models.exercises.factory import (
+    _build_body_spec,
     _build_exercise_config,
     build_exercise_model,
 )
@@ -40,6 +41,14 @@ from drake_models.exercises.squat.squat_model import (
 )
 from drake_models.shared.barbell import BarbellSpec
 from drake_models.shared.body import BodyModelSpec
+
+
+class TestBuildBodySpec:
+    """Focused tests for the body-spec helper used by config construction."""
+
+    def test_build_body_spec_carries_scalar_inputs(self) -> None:
+        body_spec = _build_body_spec(body_mass=91.0, height=1.88)
+        assert body_spec == BodyModelSpec(total_mass=91.0, height=1.88)
 
 
 class TestBuildExerciseConfig:

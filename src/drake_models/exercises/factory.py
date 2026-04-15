@@ -8,7 +8,7 @@ construct an :class:`ExerciseConfig` from ``body_mass`` / ``height`` /
 
 This module extracts that shared skeleton into one parameterized factory
 so each exercise wrapper reduces to a single call. The factory preserves
-identical numerical output — it is a pure refactor.
+identical numerical output -- it is a pure refactor.
 """
 
 from __future__ import annotations
@@ -16,6 +16,11 @@ from __future__ import annotations
 from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
 from drake_models.shared.barbell import BarbellSpec
 from drake_models.shared.body import BodyModelSpec
+
+
+def _build_body_spec(body_mass: float, height: float) -> BodyModelSpec:
+    """Construct the shared body spec used by factory-built exercise configs."""
+    return BodyModelSpec(total_mass=body_mass, height=height)
 
 
 def _build_exercise_config(
@@ -31,7 +36,7 @@ def _build_exercise_config(
         ``body_mass > 0``, ``height > 0``, ``plate_mass_per_side >= 0``
         (enforced by the dataclass validators on the returned specs).
     """
-    body_spec = BodyModelSpec(total_mass=body_mass, height=height)
+    body_spec = _build_body_spec(body_mass, height)
     if include_barbell:
         return ExerciseConfig(
             body_spec=body_spec,
