@@ -11,14 +11,22 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 
+def _require_finite_scalar(value: float, name: str) -> None:
+    """Require *value* to be finite."""
+    if not np.isfinite(value):
+        raise ValueError(f"{name} must be finite, got {value}")
+
+
 def require_positive(value: float, name: str) -> None:
     """Require *value* to be strictly positive."""
+    _require_finite_scalar(value, name)
     if value <= 0:
         raise ValueError(f"{name} must be positive, got {value}")
 
 
 def require_non_negative(value: float, name: str) -> None:
     """Require *value* >= 0."""
+    _require_finite_scalar(value, name)
     if value < 0:
         raise ValueError(f"{name} must be non-negative, got {value}")
 
