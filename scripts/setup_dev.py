@@ -52,6 +52,21 @@ def _install_vendor_ud_tools() -> None:
     )
 
 
+def _bootstrap_steps() -> tuple:
+    """Return the ordered setup steps for the developer bootstrap flow."""
+    return (
+        _require_python_version,
+        _init_submodules,
+        _install_project,
+        _install_vendor_ud_tools,
+    )
+
+
+def _report_ready() -> None:
+    """Print the final success message for humans running the script."""
+    print("[ OK ] Development environment ready!")
+
+
 def main() -> None:
     """Bootstrap the developer environment for Drake_Models.
 
@@ -62,11 +77,9 @@ def main() -> None:
         SystemExit: If the Python version is below the minimum or if
             vendor/ud-tools is not found.
     """
-    _require_python_version()
-    _init_submodules()
-    _install_project()
-    _install_vendor_ud_tools()
-    print("[ OK ] Development environment ready!")
+    for step in _bootstrap_steps():
+        step()
+    _report_ready()
 
 
 if __name__ == "__main__":
