@@ -82,6 +82,22 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
         return "fixed"
 
     @staticmethod
+    def _bench_pad_z_center() -> float:
+        """Return bench-pad center height that places the top at BENCH_HEIGHT."""
+        return BENCH_HEIGHT - BENCH_PAD_THICKNESS / 2.0
+
+    @staticmethod
+    def _add_bench_to_world_joint(model: ET.Element) -> None:
+        """Weld the bench pad to world at its computed center height."""
+        add_fixed_joint(
+            model,
+            name="bench_to_world",
+            parent="world",
+            child="bench_pad",
+            pose=(0, 0, BenchPressModelBuilder._bench_pad_z_center(), 0, 0, 0),
+        )
+
+    @staticmethod
     def _create_bench_pad_link(model: ET.Element) -> ET.Element:
         """Create the bench pad link with inertia and visual/collision geometry."""
         inertia = rectangular_prism_inertia(
@@ -124,17 +140,13 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
         The bench pad is a box welded to the world frame at BENCH_HEIGHT so
         that its top surface sits at exactly BENCH_HEIGHT meters above ground.
         """
-        pad_z_center = BENCH_HEIGHT - BENCH_PAD_THICKNESS / 2.0
         bench_link = self._create_bench_pad_link(model)
-        add_fixed_joint(
-            model,
-            name="bench_to_world",
-            parent="world",
-            child="bench_pad",
-            pose=(0, 0, pad_z_center, 0, 0, 0),
-        )
+        self._add_bench_to_world_joint(model)
         self._add_bench_pad_contact(bench_link)
-        logger.debug("Added bench pad welded to world at z=%.3f m", pad_z_center)
+        logger.debug(
+            "Added bench pad welded to world at z=%.3f m",
+            self._bench_pad_z_center(),
+        )
         return bench_link
 
     def _weld_pelvis_to_bench(self, model: ET.Element) -> None:
