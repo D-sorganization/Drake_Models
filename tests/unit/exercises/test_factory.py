@@ -22,7 +22,10 @@ from drake_models.exercises.deadlift.deadlift_model import (
     DeadliftModelBuilder,
     build_deadlift_model,
 )
-from drake_models.exercises.factory import build_exercise_model
+from drake_models.exercises.factory import (
+    _build_exercise_config,
+    build_exercise_model,
+)
 from drake_models.exercises.gait.gait_model import (
     GaitModelBuilder,
     build_gait_model,
@@ -37,6 +40,30 @@ from drake_models.exercises.squat.squat_model import (
 )
 from drake_models.shared.barbell import BarbellSpec
 from drake_models.shared.body import BodyModelSpec
+
+
+class TestBuildExerciseConfig:
+    """Focused tests for the extracted config-construction helper."""
+
+    def test_builds_barbell_config_when_enabled(self) -> None:
+        config = _build_exercise_config(
+            body_mass=82.5,
+            height=1.81,
+            plate_mass_per_side=42.0,
+            include_barbell=True,
+        )
+        assert config.body_spec == BodyModelSpec(total_mass=82.5, height=1.81)
+        assert config.barbell_spec == BarbellSpec.mens_olympic(plate_mass_per_side=42.0)
+
+    def test_uses_default_barbell_config_when_disabled(self) -> None:
+        config = _build_exercise_config(
+            body_mass=79.0,
+            height=1.74,
+            plate_mass_per_side=99.0,
+            include_barbell=False,
+        )
+        assert config.body_spec == BodyModelSpec(total_mass=79.0, height=1.74)
+        assert config.barbell_spec == ExerciseConfig().barbell_spec
 
 
 class TestBuildExerciseModelFactory:
