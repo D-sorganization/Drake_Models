@@ -1,0 +1,231 @@
+{
+  "repository": "Drake_Models",
+  "assessment_date": "2026-04-17",
+  "run_at_utc": "2026-04-17T08:01:19.6221680Z",
+  "sync_status": "pull-blocked",
+  "sync_notes": "ff-only pull failed: fatal: couldn't find remote ref codex/an-assessment-2026-04-14",
+  "overall_grade": "C",
+  "overall_score": 77,
+  "category_grades": [
+    {
+      "id": "A",
+      "name": "Architecture and Boundaries",
+      "grade": "B",
+      "score": 82,
+      "evidence": [
+        "132 tracked first-party files",
+        "52 files under source-like directories"
+      ],
+      "notes": "Assesses source organization and boundary clarity from tracked first-party layout."
+    },
+    {
+      "id": "B",
+      "name": "Build and Dependency Management",
+      "grade": "C",
+      "score": 72,
+      "evidence": [
+        "Dockerfile",
+        "pyproject.toml"
+      ],
+      "notes": "Assesses committed build, dependency, and tool configuration."
+    },
+    {
+      "id": "C",
+      "name": "Configuration and Environment Hygiene",
+      "grade": "C",
+      "score": 78,
+      "evidence": [
+        "Dockerfile",
+        "pyproject.toml"
+      ],
+      "notes": "Checks whether runtime and developer configuration is explicit."
+    },
+    {
+      "id": "D",
+      "name": "Contracts, Types, and Domain Modeling",
+      "grade": "B",
+      "score": 82,
+      "evidence": [
+        "rust_core/src/lib.rs",
+        "src/drake_models/exercises/base.py",
+        "src/drake_models/exercises/bench_press/bench_press_model.py",
+        "src/drake_models/exercises/squat/squat_model.py",
+        "src/drake_models/optimization/exercise_objectives.py",
+        "src/drake_models/optimization/inverse_kinematics.py",
+        "src/drake_models/optimization/objectives/__init__.py",
+        "src/drake_models/optimization/trajectory_optimizer.py",
+        "src/drake_models/shared/barbell/barbell_model.py",
+        "src/drake_models/shared/body/body_anthropometrics.py"
+      ],
+      "notes": "Design by Contract evidence includes validation, assertions, typed models, explicit raised errors, and invariants."
+    },
+    {
+      "id": "E",
+      "name": "Reliability and Error Handling",
+      "grade": "C",
+      "score": 76,
+      "evidence": [
+        "docs/assessments/Assessment_C_Test_Coverage.md",
+        "tests/__init__.py",
+        "tests/integration/__init__.py",
+        "tests/integration/test_all_exercises_build.py",
+        "tests/integration/test_drake_loading.py",
+        "rust_core/src/lib.rs",
+        "src/drake_models/exercises/base.py",
+        "src/drake_models/exercises/bench_press/bench_press_model.py",
+        "src/drake_models/exercises/squat/squat_model.py",
+        "src/drake_models/optimization/exercise_objectives.py"
+      ],
+      "notes": "Reliability is graded from test presence plus explicit validation/error-handling signals."
+    },
+    {
+      "id": "F",
+      "name": "Function, Module Size, and SRP",
+      "grade": "B",
+      "score": 84,
+      "evidence": [],
+      "notes": "Evaluates function size, script/module size, and single responsibility using static size signals."
+    },
+    {
+      "id": "G",
+      "name": "Testing and TDD Posture",
+      "grade": "B",
+      "score": 82,
+      "evidence": [
+        "docs/assessments/Assessment_C_Test_Coverage.md",
+        "tests/__init__.py",
+        "tests/integration/__init__.py",
+        "tests/integration/test_all_exercises_build.py",
+        "tests/integration/test_drake_loading.py",
+        "tests/parity/__init__.py",
+        "tests/parity/test_parity_compliance.py",
+        "tests/unit/__init__.py",
+        "tests/unit/exercises/__init__.py",
+        "tests/unit/exercises/test_bench_press.py",
+        "tests/unit/exercises/test_clean_and_jerk.py",
+        "tests/unit/exercises/test_deadlift.py"
+      ],
+      "notes": "TDD history cannot be confirmed statically; grade reflects committed automated test posture."
+    },
+    {
+      "id": "H",
+      "name": "CI/CD and Automation",
+      "grade": "C",
+      "score": 78,
+      "evidence": [
+        ".github/workflows/ci-standard.yml",
+        ".github/workflows/rust-ci.yml"
+      ],
+      "notes": "Checks for tracked CI/CD workflow files."
+    },
+    {
+      "id": "I",
+      "name": "Security and Secret Hygiene",
+      "grade": "B",
+      "score": 82,
+      "evidence": [],
+      "notes": "Secret scan is regex-based; findings require manual confirmation."
+    },
+    {
+      "id": "J",
+      "name": "Documentation and Onboarding",
+      "grade": "B",
+      "score": 82,
+      "evidence": [
+        "AGENTS.md",
+        "CHANGELOG.md",
+        "CLAUDE.md",
+        "CODE_OF_CONDUCT.md",
+        "CONTRIBUTING.md",
+        "Dockerfile",
+        "LICENSE",
+        "README.md",
+        "SECURITY.md",
+        "SPEC.md",
+        "docs/assessments/A-N_Assessment_2026-04-02.md",
+        "docs/assessments/A-N_Assessment_2026-04-04.md"
+      ],
+      "notes": "Checks docs, README, onboarding, and release documents."
+    },
+    {
+      "id": "K",
+      "name": "Maintainability, DRY, and Duplication",
+      "grade": "B",
+      "score": 80,
+      "evidence": [],
+      "notes": "DRY is assessed through duplicate filename clusters and TODO/FIXME density as static heuristics."
+    },
+    {
+      "id": "L",
+      "name": "API Surface and Law of Demeter",
+      "grade": "F",
+      "score": 58,
+      "evidence": [
+        "examples/generate_all_models.py",
+        "src/drake_models/__main__.py",
+        "src/drake_models/exercises/base.py",
+        "src/drake_models/exercises/bench_press/bench_press_model.py",
+        "src/drake_models/exercises/sit_to_stand/sit_to_stand_model.py",
+        "src/drake_models/exercises/squat/squat_model.py",
+        "src/drake_models/optimization/exercise_objectives.py",
+        "src/drake_models/optimization/objectives/_helpers.py",
+        "src/drake_models/optimization/objectives/bench_press.py",
+        "src/drake_models/optimization/objectives/clean_and_jerk.py"
+      ],
+      "notes": "Law of Demeter is approximated with deep member-chain hints; confirmed violations require semantic review."
+    },
+    {
+      "id": "M",
+      "name": "Observability and Operability",
+      "grade": "C",
+      "score": 74,
+      "evidence": [
+        "docs/assessments/Assessment_L_Logging.md",
+        "src/drake_models/shared/body/body_anthropometrics.py"
+      ],
+      "notes": "Checks for logging, metrics, monitoring, and operational artifacts."
+    },
+    {
+      "id": "N",
+      "name": "Governance, Licensing, and Release Hygiene",
+      "grade": "C",
+      "score": 74,
+      "evidence": [
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        "LICENSE",
+        "SECURITY.md",
+        "docs/assessments/Assessment_F_Security.md"
+      ],
+      "notes": "Checks ownership, release, contribution, security, and license metadata."
+    }
+  ],
+  "key_risks": [
+    "Deep member-chain usage may indicate Law of Demeter pressure points."
+  ],
+  "recommendations": [
+    "Review deep member chains and introduce boundary methods where object graph traversal leaks across modules."
+  ],
+  "issue_candidates": [
+    {
+      "title": "Review deep object traversal hotspots",
+      "severity": "medium",
+      "problem": "Deep member-chain hints found in: examples/generate_all_models.py; src/drake_models/__main__.py; src/drake_models/exercises/base.py; src/drake_models/exercises/bench_press/bench_press_model.py; src/drake_models/exercises/sit_to_stand/sit_to_stand_model.py; src/drake_models/exercises/squat/squat_model.py; src/drake_models/optimization/exercise_objectives.py; src/drake_models/optimization/objectives/_helpers.py",
+      "evidence": "Category L found repeated chains with three or more member hops.",
+      "impact": "Law of Demeter pressure can make APIs brittle and increase coupling.",
+      "fix": "Review hotspots and introduce boundary methods or DTOs where callers traverse object graphs.",
+      "acceptance": "Hotspots are documented, simplified, or justified; tests cover any API boundary changes.",
+      "refs": "Law of Demeter, SRP, maintainability"
+    }
+  ],
+  "coverage": {
+    "tracked_files": 132,
+    "code_files": 88,
+    "test_files": 35,
+    "ci_files": 2,
+    "config_files": 2,
+    "docs_files": 35,
+    "exclusions": "cache/build/vendor/virtualenv/temp/generated output directories excluded",
+    "static_limits": "TDD workflow history and confirmed Law of Demeter semantics require deeper review."
+  }
+}
