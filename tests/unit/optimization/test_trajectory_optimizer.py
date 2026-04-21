@@ -371,6 +371,31 @@ class TestCreateTrajectoryOptimization:
         assert result.converged is True
         assert result.joint_positions.shape[0] == 20
 
+    def test_uses_drake_result_when_solver_returns_one(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import drake_models.optimization.trajectory_optimizer as mod
+
+        expected = TrajectoryResult(
+            joint_positions=np.zeros((3, 2)),
+            joint_velocities=np.zeros((3, 2)),
+            joint_torques=np.zeros((3, 2)),
+            time=np.array([0.0, 0.1, 0.2]),
+            cost=12.0,
+            converged=True,
+            iterations=2,
+        )
+
+        monkeypatch.setattr(mod, "_try_drake_solve", lambda *a, **k: expected)
+
+        result = create_trajectory_optimization(
+            "<sdf/>",
+            "back_squat",
+            TrajectoryConfig(n_timesteps=3, dt=0.1),
+        )
+
+        assert result is expected
+
     def test_custom_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import drake_models.optimization.trajectory_optimizer as mod
 
@@ -382,6 +407,22 @@ class TestCreateTrajectoryOptimization:
     def test_blank_exercise_name_raises(self) -> None:
         with pytest.raises(ValueError, match="exercise_name"):
             create_trajectory_optimization("<sdf>ok</sdf>", "   ")
+
+    def test_try_drake_solve_returns_none_when_pydrake_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import drake_models.optimization.trajectory_optimizer as mod
+
+        monkeypatch.setattr(mod.importlib.util, "find_spec", lambda name: None)
+
+        assert (
+            mod._try_drake_solve(
+                "<sdf/>",
+                SQUAT,
+                TrajectoryConfig(n_timesteps=3, dt=0.1),
+            )
+            is None
+        )
 
 
 # ---------------------------------------------------------------------------
