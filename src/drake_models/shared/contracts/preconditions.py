@@ -7,13 +7,18 @@ accept invalid geometry or physics parameters.
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 from numpy.typing import ArrayLike
 
 
 def _require_finite_scalar(value: float, name: str) -> None:
     """Require *value* to be finite."""
-    if not np.isfinite(value):
+    # ⚡ Bolt: Using math.isfinite instead of np.isfinite for scalar validation
+    # This prevents significant dispatch and object-creation overhead from Numpy
+    # since this check is called very frequently during model generation.
+    if not math.isfinite(value):
         raise ValueError(f"{name} must be finite, got {value}")
 
 
