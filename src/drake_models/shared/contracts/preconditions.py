@@ -41,7 +41,9 @@ def require_unit_vector(vec: ArrayLike, name: str, tol: float = 1e-6) -> None:
     arr = np.asarray(vec, dtype=float)
     if arr.shape != (3,):
         raise ValueError(f"{name} must be a 3-vector, got shape {arr.shape}")
-    norm = float(np.linalg.norm(arr))
+    # ⚡ Bolt: Using math.hypot instead of np.linalg.norm for 3-vector norm
+    # This avoids significant dispatch overhead from Numpy for small arrays.
+    norm = math.hypot(arr[0], arr[1], arr[2])
     if abs(norm - 1.0) > tol:
         raise ValueError(f"{name} must be unit-length (norm={norm:.6f})")
 
