@@ -134,7 +134,8 @@ def parallel_axis_shift(
     require_positive(mass, "mass")
     d = np.asarray(displacement, dtype=float)
     dx, dy, dz = d[0], d[1], d[2]
-    d_sq = float(np.dot(d, d))
+    # ⚡ Bolt: Using explicit scalar math instead of np.dot for 3-vector dot product
+    d_sq = dx * dx + dy * dy + dz * dz
 
     ixx = inertia[0] + mass * (d_sq - dx * dx)
     iyy = inertia[1] + mass * (d_sq - dy * dy)
