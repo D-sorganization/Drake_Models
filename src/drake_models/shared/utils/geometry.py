@@ -133,6 +133,10 @@ def parallel_axis_shift(
     """
     require_positive(mass, "mass")
     d = np.asarray(displacement, dtype=float)
+    if d.shape != (3,):
+        raise ValueError(
+            f"displacement d must be a 1D array of length 3, got shape {d.shape}"
+        )
     # ⚡ Bolt: Extracting components explicitly and using manual sum-of-squares
     # avoids np.dot dispatch overhead and is ~3-4x faster for 3-vectors
     dx, dy, dz = float(d[0]), float(d[1]), float(d[2])
