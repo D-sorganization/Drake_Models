@@ -19,3 +19,7 @@
 ## 2025-05-18 - Fast shape checking without np.asarray overhead
 **Learning:** `np.asarray(arr)` introduces overhead when checking shapes of objects that are already ndarrays. A fast path that extracts the shape using `getattr(arr, "shape", None)` before falling back to `np.asarray()` yields ~10-20% speedup for NumPy arrays.
 **Action:** When enforcing shape constraints on generic array-like objects in frequently called routines, attempt to extract `.shape` directly to avoid `np.asarray` overhead.
+
+## 2025-05-18 - Loop-Invariant Hoisting in Trajectory Setup
+**Learning:** In Drake trajectory setup routines (like `_add_control_costs`), generating matrices like `weight * np.eye(n_u)` or `np.zeros(n_u)` inside the loop over `n_steps` incurs massive overhead. In our test, placing allocations inside the loop was ~70x slower than pre-computing them.
+**Action:** Always hoist loop-invariant matrix/array allocations (like `np.zeros`, `np.eye`, `np.ones`) outside the `n_steps` loops when setting up costs and constraints for mathematical programs.

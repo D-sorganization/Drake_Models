@@ -29,10 +29,14 @@ def _build_drake_plant(sdf_string: str, dt: float) -> object:
 def _add_control_costs(prog: object, u: object, n_steps: int, weight: float) -> None:
     """Add per-timestep quadratic control costs to *prog*."""
     n_u = u.shape[1]  # type: ignore[attr-defined]
+    # Optimize: pre-calculate constant Q and b matrices outside the loop
+    # to avoid allocation overhead for every knot point
+    Q = weight * np.eye(n_u)
+    b = np.zeros(n_u)
     for k in range(n_steps):
         prog.AddQuadraticCost(  # type: ignore[attr-defined]
-            weight * np.eye(n_u),
-            np.zeros(n_u),
+            Q,
+            b,
             u[k],  # type: ignore[index]
         )
 
