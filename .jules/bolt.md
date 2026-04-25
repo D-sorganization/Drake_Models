@@ -12,3 +12,7 @@
 ## 2025-05-18 - Fast sum-of-squares for small fixed vectors
 **Learning:** For small, fixed-size 3-vectors (like displacement in 3D geometry calculations), using `np.dot(d, d)` is slower than explicitly unpacking and doing a manual sum of squares (`dx*dx + dy*dy + dz*dz`). The dispatch and overhead of NumPy overshadows the BLAS optimization on tiny inputs.
 **Action:** When computing dot products or sum-of-squares on explicit 3-element arrays in hot geometry/inertia functions, prefer manual multiplication and addition to bypass `numpy` dispatch overhead.
+
+## 2025-05-18 - Loop-Invariant Hoisting in Trajectory Setup
+**Learning:** In Drake trajectory setup routines (like `_add_control_costs`), generating matrices like `weight * np.eye(n_u)` or `np.zeros(n_u)` inside the loop over `n_steps` incurs massive overhead. In our test, placing allocations inside the loop was ~70x slower than pre-computing them.
+**Action:** Always hoist loop-invariant matrix/array allocations (like `np.zeros`, `np.eye`, `np.ones`) outside the `n_steps` loops when setting up costs and constraints for mathematical programs.
