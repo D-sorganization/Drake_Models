@@ -167,6 +167,11 @@ def _add_phase_tracking_costs(
 ) -> None:
     """Add phase-tracking quadratic costs to *prog*."""
     joint_names = objective.joint_names()
+
+    # Optimize: pre-calculate constant Q matrices to avoid allocation overhead in loop
+    Q_state = state_weight * np.eye(n_q)
+    Q_terminal = terminal_weight * np.eye(n_q)
+
     for phase in objective.phases:
         k = int(phase.time_fraction * (n_steps - 1))
         target = np.zeros(n_q)
@@ -175,9 +180,12 @@ def _add_phase_tracking_costs(
                 idx = joint_names.index(jname)
                 if idx < n_q:
                     target[idx] = angle
+
         weight = terminal_weight if phase is objective.phases[-1] else state_weight
+        Q = Q_terminal if phase is objective.phases[-1] else Q_state
+
         prog.AddQuadraticCost(  # type: ignore[attr-defined]
-            weight * np.eye(n_q),
+            Q,
             -weight * target,
             q[k],  # type: ignore[index]
         )
