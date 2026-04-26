@@ -23,3 +23,6 @@
 ## 2025-05-18 - Loop-Invariant Hoisting in Trajectory Setup
 **Learning:** In Drake trajectory setup routines (like `_add_control_costs`), generating matrices like `weight * np.eye(n_u)` or `np.zeros(n_u)` inside the loop over `n_steps` incurs massive overhead. In our test, placing allocations inside the loop was ~70x slower than pre-computing them.
 **Action:** Always hoist loop-invariant matrix/array allocations (like `np.zeros`, `np.eye`, `np.ones`) outside the `n_steps` loops when setting up costs and constraints for mathematical programs.
+## 2025-05-18 - Loop-Invariant Allocation Hoisting in Phase Setup
+**Learning:** Even in loops with a smaller number of iterations (like phase setups), repeatedly generating constant dense matrices with `np.eye()` incurs unnecessary allocation overhead and time complexity. In Drake programs, these matrices can be safely precomputed and reused across multiple `AddQuadraticCost` calls.
+**Action:** Always identify identical, loop-invariant matrices (like state and terminal Q matrices) and extract their computation to before the loop.
