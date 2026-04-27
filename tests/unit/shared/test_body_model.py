@@ -82,9 +82,7 @@ class TestCreateFullBody:
     def test_pelvis_has_floating_joint(self, model: Any) -> None:
         create_full_body(model)
         floating_joints = [
-            j
-            for j in model.findall("joint")
-            if j.get("type") == "floating"
+            j for j in model.findall("joint") if j.get("type") == "floating"
         ]
         assert len(floating_joints) == 1
         assert floating_joints[0].get("name") == "ground_pelvis"
@@ -224,9 +222,7 @@ class TestCreateFullBody:
             name = link.get("name")
             if "virtual" in name:
                 continue  # virtual links have no geometry
-            assert link.find("collision") is not None, (
-                f"{name} missing collision"
-            )
+            assert link.find("collision") is not None, f"{name} missing collision"
 
     def test_total_mass_approximately_correct(self, model: Any) -> None:
         """Total mass of body links must equal spec.total_mass.
