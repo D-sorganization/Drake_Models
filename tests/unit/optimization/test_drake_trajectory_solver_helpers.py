@@ -35,8 +35,10 @@ class RecordingProgram:
     ) -> None:
         self.quadratic_costs.append((quadratic, linear, variables))
 
-    def AddLinearEqualityConstraint(self, expression: object) -> None:
-        self.linear_equalities.append(expression)
+    def AddLinearEqualityConstraint(self, *args: object) -> None:
+        # Support both form AddLinearEqualityConstraint(expression)
+        # and AddLinearEqualityConstraint(A, b, vars)
+        self.linear_equalities.append(args)
 
     def AddBoundingBoxConstraint(
         self,
@@ -125,7 +127,9 @@ def test_add_integration_constraints_counts_all_velocity_dimensions() -> None:
     added = _add_integration_constraints(prog, q, v, dt=0.02, n_steps=5)
 
     assert added == 12
-    assert len(prog.linear_equalities) == 12
+    # Because we add one constraint per timestep (matrix form),
+    # instead of one per degree-of-freedom per timestep.
+    assert len(prog.linear_equalities) == 4
 
 
 def test_add_initial_state_constraint_pins_positions_and_velocities() -> None:
@@ -142,7 +146,7 @@ def test_add_initial_state_constraint_pins_positions_and_velocities() -> None:
     )
 
     assert added == 6
-    assert len(prog.linear_equalities) == 6
+    assert len(prog.bounding_boxes) == 2
 
 
 def test_add_joint_and_actuator_bounds_replaces_infinite_limits() -> None:

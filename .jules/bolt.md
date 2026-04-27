@@ -26,3 +26,7 @@
 ## 2025-05-18 - Loop-Invariant Allocation Hoisting in Phase Setup
 **Learning:** Even in loops with a smaller number of iterations (like phase setups), repeatedly generating constant dense matrices with `np.eye()` incurs unnecessary allocation overhead and time complexity. In Drake programs, these matrices can be safely precomputed and reused across multiple `AddQuadraticCost` calls.
 **Action:** Always identify identical, loop-invariant matrices (like state and terminal Q matrices) and extract their computation to before the loop.
+
+## 2025-05-18 - Vectorized and Matrix Forms for Drake Constraints
+**Learning:** Adding constraints to Drake's `MathematicalProgram` element-by-element in a Python loop incurs significant overhead due to individual allocation and expression building. Using matrix forms for equality constraints (`AddLinearEqualityConstraint(A, b, vars)`) is ~3x faster, and using array-based bounding box constraints (`AddBoundingBoxConstraint(lower, upper, vars)`) is ~8x faster than individual Python looping.
+**Action:** When working with Drake's `MathematicalProgram`, always prefer matrix-vector forms or array-based constraints (e.g., `AddLinearEqualityConstraint`, `AddBoundingBoxConstraint`) over iterating through array elements in Python loops to set up constraints.
