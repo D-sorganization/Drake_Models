@@ -81,6 +81,7 @@ jobs:
         run: |
           pip install pip-audit
           pip install --upgrade pygments
+          # Ignore CVE-2026-3219 (false positive in dev dependencies; production unaffected)
           pip-audit --skip-editable --ignore-vuln CVE-2026-3219
 
       - name: Bandit Security Scan
