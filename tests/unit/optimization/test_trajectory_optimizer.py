@@ -354,8 +354,15 @@ class TestCreateTrajectoryOptimization:
         with pytest.raises(KeyError, match="No objective"):
             create_trajectory_optimization("<sdf/>", "bicep_curl")
 
-    def test_fallback_interpolation(self) -> None:
-        """Without Drake, should fall back to interpolation."""
+    def test_fallback_interpolation(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When Drake is unavailable, should fall back to interpolation.
+
+        Monkeypatch ``_try_drake_solve`` to simulate the no-pydrake
+        environment regardless of whether pydrake is installed locally.
+        """
+        import drake_models.optimization.trajectory_optimizer as mod
+
+        monkeypatch.setattr(mod, "_try_drake_solve", lambda *a, **k: None)
         result = create_trajectory_optimization(
             "<sdf/>",
             "back_squat",
@@ -364,7 +371,201 @@ class TestCreateTrajectoryOptimization:
         assert result.converged is True
         assert result.joint_positions.shape[0] == 20
 
-    def test_custom_config(self) -> None:
+    def test_uses_drake_result_when_solver_returns_one(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import drake_models.optimization.trajectory_optimizer as mod
+
+        expected = TrajectoryResult(
+            joint_positions=np.zeros((3, 2)),
+            joint_velocities=np.zeros((3, 2)),
+            joint_torques=np.zeros((3, 2)),
+            time=np.array([0.0, 0.1, 0.2]),
+            cost=12.0,
+            converged=True,
+            iterations=2,
+        )
+
+        monkeypatch.setattr(mod, "_try_drake_solve", lambda *a, **k: expected)
+
+        result = create_trajectory_optimization(
+            "<sdf/>",
+            "back_squat",
+            TrajectoryConfig(n_timesteps=3, dt=0.1),
+        )
+
+        assert result is expected
+
+    def test_custom_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import drake_models.optimization.trajectory_optimizer as mod
+
+        monkeypatch.setattr(mod, "_try_drake_solve", lambda *a, **k: None)
         cfg = TrajectoryConfig(n_timesteps=30, dt=0.02)
         result = create_trajectory_optimization("<sdf/>", "deadlift", cfg)
         assert result.time.shape[0] == 30
+
+    def test_blank_exercise_name_raises(self) -> None:
+        with pytest.raises(ValueError, match="exercise_name"):
+            create_trajectory_optimization("<sdf>ok</sdf>", "   ")
+
+    def test_try_drake_solve_returns_none_when_pydrake_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import drake_models.optimization.trajectory_optimizer as mod
+
+        monkeypatch.setattr(mod.importlib.util, "find_spec", lambda name: None)
+
+        assert (
+            mod._try_drake_solve(
+                "<sdf/>",
+                SQUAT,
+                TrajectoryConfig(n_timesteps=3, dt=0.1),
+            )
+            is None
+        )
+
+
+# ---------------------------------------------------------------------------
+# Drake-backed regression tests for issue #142: the trajectory optimizer
+# must actually add dynamics constraints, not silently omit them.
+# ---------------------------------------------------------------------------
+
+try:
+    import pydrake  # noqa: F401
+
+    _PYDRAKE_AVAILABLE = True
+except ImportError:
+    _PYDRAKE_AVAILABLE = False
+
+
+# A tiny revolute-joint pendulum SDF: small enough to exercise the
+# constraint wiring without requiring the full human-skeleton builders.
+_MINIMAL_SDF = """<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="pend">
+    <link name="base"/>
+    <link name="arm">
+      <inertial>
+        <mass>1.0</mass>
+        <inertia>
+          <ixx>1.0</ixx><iyy>1.0</iyy><izz>1.0</izz>
+          <ixy>0.0</ixy><ixz>0.0</ixz><iyz>0.0</iyz>
+        </inertia>
+      </inertial>
+    </link>
+    <joint name="j" type="revolute">
+      <parent>base</parent>
+      <child>arm</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-3.14</lower><upper>3.14</upper>
+          <effort>100.0</effort>
+        </limit>
+      </axis>
+    </joint>
+  </model>
+</sdf>"""
+
+
+@pytest.mark.skipif(
+    not _PYDRAKE_AVAILABLE, reason="pydrake not installed in this environment"
+)
+class TestDrakeDynamicsConstraintsPresent:
+    """Regression tests for issue #142.
+
+    Prior to the fix, ``_build_drake_program`` added only decision variables
+    and costs, so ``Solve(prog)`` returned a minimum-cost trajectory with no
+    regard for physics. These tests inspect the constructed
+    ``MathematicalProgram`` to confirm dynamics/integration/bound constraints
+    are now attached before the solver is invoked.
+    """
+
+    def _build(self, n_steps: int = 5) -> tuple:  # noqa: ANN401
+        from drake_models.optimization.exercise_objectives import SQUAT
+        from drake_models.optimization.trajectory_optimizer import (
+            _build_drake_plant,
+            _build_drake_program,
+        )
+
+        cfg = TrajectoryConfig(n_timesteps=n_steps, dt=0.01)
+        plant = _build_drake_plant(_MINIMAL_SDF, cfg.dt)
+        prog, q, v, u = _build_drake_program(plant, SQUAT, cfg)
+        return prog, q, v, u, plant
+
+    def test_program_has_linear_equality_constraints(self) -> None:
+        """Integration + initial-state constraints must be present."""
+        prog, _q, _v, _u, _plant = self._build(n_steps=5)
+        lin_eqs = prog.linear_equality_constraints()
+        assert len(lin_eqs) > 0, (
+            "No linear equality constraints: integration/initial-state "
+            "constraints are missing from the program (issue #142)."
+        )
+
+    def test_program_has_generic_dynamics_constraints(self) -> None:
+        """Manipulator-equation constraints must be attached to the program."""
+        prog, _q, _v, _u, _plant = self._build(n_steps=4)
+        generic = prog.generic_constraints()
+        assert len(generic) >= 3, (
+            f"Expected >=3 generic (dynamics) constraints, got {len(generic)}. "
+            "Dynamics constraints are missing (issue #142 regression)."
+        )
+
+    def test_program_has_bounding_box_constraints(self) -> None:
+        """Joint-limit and actuator-effort bounds must be attached."""
+        prog, _q, _v, _u, _plant = self._build(n_steps=3)
+        bbs = prog.bounding_box_constraints()
+        assert len(bbs) >= 6, f"Expected >=6 bounding-box constraints, got {len(bbs)}."
+
+    def test_total_constraint_count_is_positive(self) -> None:
+        """After the fix, the program must be meaningfully constrained.
+
+        Pre-fix: ``GetAllConstraints()`` returned an empty list — the
+        solver was unconstrained.
+        """
+        prog, _q, _v, _u, _plant = self._build(n_steps=6)
+        all_c = prog.GetAllConstraints()
+        assert len(all_c) > 0, (
+            "Program has zero constraints — the direct-transcription "
+            "optimizer is not adding any physics (issue #142)."
+        )
+
+    def test_integration_constraint_satisfied_by_consistent_trajectory(
+        self,
+    ) -> None:
+        """A trajectory that satisfies q[k+1] = q[k] + dt*v[k+1] by
+        construction must evaluate the linear-equality integration
+        constraints to approximately zero.
+
+        This is the behavioural check from issue #142: a physically
+        consistent trajectory satisfies the added kinematic constraints.
+        """
+        prog, q, v, _u, _plant = self._build(n_steps=4)
+        lin_eqs = prog.linear_equality_constraints()
+        n_q = q.shape[1]
+        n_v = v.shape[1]
+        offset = n_q - n_v
+        dt = 0.01
+
+        # Build a trajectory consistent with semi-implicit Euler on the
+        # shared-dim block; leave the leading offset (quaternion) at zero.
+        q_vals = np.zeros((4, n_q))
+        v_vals = np.full((4, n_v), 0.1)  # constant velocity
+        for k in range(3):
+            q_vals[k + 1, offset:] = q_vals[k, offset:] + dt * v_vals[k + 1]
+
+        prog.SetInitialGuess(q, q_vals)
+        prog.SetInitialGuess(v, v_vals)
+
+        residuals = []
+        for binding in lin_eqs:
+            ev = binding.evaluator()
+            vars_ = binding.variables()
+            x = np.array([prog.GetInitialGuess(var) for var in vars_])
+            residuals.append(float(np.max(np.abs(ev.Eval(x)))))
+
+        # At least one integration constraint must be satisfied exactly.
+        assert min(residuals) < 1e-9, (
+            "No integration constraint is satisfied by a consistent "
+            "trajectory — constraint wiring is wrong."
+        )

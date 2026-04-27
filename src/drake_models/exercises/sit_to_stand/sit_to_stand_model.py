@@ -23,8 +23,8 @@ import logging
 import math
 import xml.etree.ElementTree as ET
 
-from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
-from drake_models.shared.body import BodyModelSpec
+from drake_models.exercises.base import ExerciseModelBuilder
+from drake_models.exercises.factory import build_exercise_model
 from drake_models.shared.utils.geometry import rectangular_prism_inertia
 from drake_models.shared.utils.sdf_helpers import (
     add_contact_geometry,
@@ -182,7 +182,10 @@ def build_sit_to_stand_model(
     The ``plate_mass_per_side`` parameter is accepted for CLI compatibility
     but ignored (sit-to-stand is bodyweight only).
     """
-    config = ExerciseConfig(
-        body_spec=BodyModelSpec(total_mass=body_mass, height=height),
+    del plate_mass_per_side  # accepted for CLI compatibility, unused
+    return build_exercise_model(
+        SitToStandModelBuilder,
+        body_mass=body_mass,
+        height=height,
+        include_barbell=False,
     )
-    return SitToStandModelBuilder(config).build()

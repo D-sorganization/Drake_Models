@@ -21,9 +21,8 @@ import logging
 import math
 import xml.etree.ElementTree as ET
 
-from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
-from drake_models.shared.barbell import BarbellSpec
-from drake_models.shared.body import BodyModelSpec
+from drake_models.exercises.base import ExerciseModelBuilder
+from drake_models.exercises.factory import build_exercise_model
 from drake_models.shared.utils.geometry import rectangular_prism_inertia
 from drake_models.shared.utils.sdf_helpers import (
     add_contact_geometry,
@@ -82,17 +81,29 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
         """Pelvis is welded via bench pad — no free floating joint."""
         return "fixed"
 
-    def _add_bench_body(self, model: ET.Element) -> ET.Element:
-        """Add the bench pad link and weld it to the world.
+    @staticmethod
+    def _bench_pad_z_center() -> float:
+        """Return bench-pad center height that places the top at BENCH_HEIGHT."""
+        return BENCH_HEIGHT - BENCH_PAD_THICKNESS / 2.0
 
-        The bench pad is a box welded to the world frame at BENCH_HEIGHT so
-        that its top surface sits at exactly BENCH_HEIGHT meters above ground.
-        """
-        pad_z_center = BENCH_HEIGHT - BENCH_PAD_THICKNESS / 2.0
+    @staticmethod
+    def _add_bench_to_world_joint(model: ET.Element) -> None:
+        """Weld the bench pad to world at its computed center height."""
+        add_fixed_joint(
+            model,
+            name="bench_to_world",
+            parent="world",
+            child="bench_pad",
+            pose=(0, 0, BenchPressModelBuilder._bench_pad_z_center(), 0, 0, 0),
+        )
+
+    @staticmethod
+    def _create_bench_pad_link(model: ET.Element) -> ET.Element:
+        """Create the bench pad link with inertia and visual/collision geometry."""
         inertia = rectangular_prism_inertia(
             BENCH_PAD_MASS, BENCH_PAD_LENGTH, BENCH_PAD_WIDTH, BENCH_PAD_THICKNESS
         )
-        bench_link = add_link(
+        return add_link(
             model,
             name="bench_pad",
             mass=BENCH_PAD_MASS,
@@ -107,15 +118,10 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
                 BENCH_PAD_LENGTH, BENCH_PAD_WIDTH, BENCH_PAD_THICKNESS
             ),
         )
-        add_fixed_joint(
-            model,
-            name="bench_to_world",
-            parent="world",
-            child="bench_pad",
-            pose=(0, 0, pad_z_center, 0, 0, 0),
-        )
 
-        # Contact geometry on top surface of bench pad
+    @staticmethod
+    def _add_bench_pad_contact(bench_link: ET.Element) -> None:
+        """Attach hydroelastic contact geometry to the bench pad top surface."""
         add_contact_geometry(
             bench_link,
             name="bench_pad_contact",
@@ -128,7 +134,19 @@ class BenchPressModelBuilder(ExerciseModelBuilder):
             hydroelastic_modulus=1e8,
         )
 
-        logger.debug("Added bench pad welded to world at z=%.3f m", pad_z_center)
+    def _add_bench_body(self, model: ET.Element) -> ET.Element:
+        """Add the bench pad link and weld it to the world.
+
+        The bench pad is a box welded to the world frame at BENCH_HEIGHT so
+        that its top surface sits at exactly BENCH_HEIGHT meters above ground.
+        """
+        bench_link = self._create_bench_pad_link(model)
+        self._add_bench_to_world_joint(model)
+        self._add_bench_pad_contact(bench_link)
+        logger.debug(
+            "Added bench pad welded to world at z=%.3f m",
+            self._bench_pad_z_center(),
+        )
         return bench_link
 
     def _weld_pelvis_to_bench(self, model: ET.Element) -> None:
@@ -206,8 +224,9 @@ def build_bench_press_model(
     plate_mass_per_side: float = 50.0,
 ) -> str:
     """Convenience function to build a bench press model SDF string."""
-    config = ExerciseConfig(
-        body_spec=BodyModelSpec(total_mass=body_mass, height=height),
-        barbell_spec=BarbellSpec.mens_olympic(plate_mass_per_side=plate_mass_per_side),
+    return build_exercise_model(
+        BenchPressModelBuilder,
+        body_mass=body_mass,
+        height=height,
+        plate_mass_per_side=plate_mass_per_side,
     )
-    return BenchPressModelBuilder(config).build()

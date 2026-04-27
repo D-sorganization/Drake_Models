@@ -22,9 +22,8 @@ import logging
 import math
 import xml.etree.ElementTree as ET
 
-from drake_models.exercises.base import ExerciseConfig, ExerciseModelBuilder
-from drake_models.shared.barbell import BarbellSpec
-from drake_models.shared.body import BodyModelSpec
+from drake_models.exercises.base import ExerciseModelBuilder
+from drake_models.exercises.factory import build_exercise_model
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +89,9 @@ def build_deadlift_model(
     plate_mass_per_side: float = 80.0,
 ) -> str:
     """Convenience function to build a deadlift model SDF string."""
-    config = ExerciseConfig(
-        body_spec=BodyModelSpec(total_mass=body_mass, height=height),
-        barbell_spec=BarbellSpec.mens_olympic(plate_mass_per_side=plate_mass_per_side),
+    return build_exercise_model(
+        DeadliftModelBuilder,
+        body_mass=body_mass,
+        height=height,
+        plate_mass_per_side=plate_mass_per_side,
     )
-    return DeadliftModelBuilder(config).build()

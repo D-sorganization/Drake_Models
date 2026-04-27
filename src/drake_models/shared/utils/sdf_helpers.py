@@ -38,6 +38,51 @@ def pose_str(
     return f"{x:.6f} {y:.6f} {z:.6f} {roll:.6f} {pitch:.6f} {yaw:.6f}"
 
 
+def _write_inertial_block(
+    link: ET.Element,
+    *,
+    mass: float,
+    mass_center: tuple[float, float, float],
+    inertia_xx: float,
+    inertia_yy: float,
+    inertia_zz: float,
+    inertia_xy: float,
+    inertia_xz: float,
+    inertia_yz: float,
+) -> None:
+    """Append a complete ``<inertial>`` block to *link*.
+
+    Writes mass, center-of-mass pose, and the symmetric 3x3 inertia tensor.
+    All values are serialized with six decimal places.
+    """
+    inertial = ET.SubElement(link, "inertial")
+    ET.SubElement(inertial, "mass").text = f"{mass:.6f}"
+    ET.SubElement(inertial, "pose").text = pose_str(*mass_center, 0, 0, 0)
+    inertia = ET.SubElement(inertial, "inertia")
+    ET.SubElement(inertia, "ixx").text = f"{inertia_xx:.6f}"
+    ET.SubElement(inertia, "ixy").text = f"{inertia_xy:.6f}"
+    ET.SubElement(inertia, "ixz").text = f"{inertia_xz:.6f}"
+    ET.SubElement(inertia, "iyy").text = f"{inertia_yy:.6f}"
+    ET.SubElement(inertia, "iyz").text = f"{inertia_yz:.6f}"
+    ET.SubElement(inertia, "izz").text = f"{inertia_zz:.6f}"
+
+
+def _append_geometry(
+    link: ET.Element,
+    *,
+    tag: str,
+    link_name: str,
+    geometry: ET.Element,
+) -> None:
+    """Append a ``<visual>`` or ``<collision>`` child wrapping *geometry*.
+
+    Keeps the naming convention ``<link>_<tag>`` used throughout the SDF
+    output in one place (DRY).
+    """
+    element = ET.SubElement(link, tag, name=f"{link_name}_{tag}")
+    element.append(geometry)
+
+
 def add_link(
     model: ET.Element,
     *,
@@ -59,27 +104,23 @@ def add_link(
     Optionally adds <visual> and <collision> elements if geometry is provided.
     """
     link = ET.SubElement(model, "link", name=name)
-
-    # Inertial
-    inertial = ET.SubElement(link, "inertial")
-    ET.SubElement(inertial, "mass").text = f"{mass:.6f}"
-    ET.SubElement(inertial, "pose").text = pose_str(*mass_center, 0, 0, 0)
-    inertia = ET.SubElement(inertial, "inertia")
-    ET.SubElement(inertia, "ixx").text = f"{inertia_xx:.6f}"
-    ET.SubElement(inertia, "ixy").text = f"{inertia_xy:.6f}"
-    ET.SubElement(inertia, "ixz").text = f"{inertia_xz:.6f}"
-    ET.SubElement(inertia, "iyy").text = f"{inertia_yy:.6f}"
-    ET.SubElement(inertia, "iyz").text = f"{inertia_yz:.6f}"
-    ET.SubElement(inertia, "izz").text = f"{inertia_zz:.6f}"
-
+    _write_inertial_block(
+        link,
+        mass=mass,
+        mass_center=mass_center,
+        inertia_xx=inertia_xx,
+        inertia_yy=inertia_yy,
+        inertia_zz=inertia_zz,
+        inertia_xy=inertia_xy,
+        inertia_xz=inertia_xz,
+        inertia_yz=inertia_yz,
+    )
     if visual_geometry is not None:
-        visual = ET.SubElement(link, "visual", name=f"{name}_visual")
-        visual.append(visual_geometry)
-
+        _append_geometry(link, tag="visual", link_name=name, geometry=visual_geometry)
     if collision_geometry is not None:
-        collision = ET.SubElement(link, "collision", name=f"{name}_collision")
-        collision.append(collision_geometry)
-
+        _append_geometry(
+            link, tag="collision", link_name=name, geometry=collision_geometry
+        )
     return link
 
 
@@ -250,7 +291,31 @@ def add_contact_geometry(
     collision = ET.SubElement(link, "collision", name=name)
     ET.SubElement(collision, "pose").text = pose_str(*pose)
     collision.append(geometry)
+    _append_compliant_proximity_properties(
+        collision,
+        mu_static=mu_static,
+        mu_dynamic=mu_dynamic,
+        hydroelastic_modulus=hydroelastic_modulus,
+        hunt_crossley_dissipation=hunt_crossley_dissipation,
+    )
+    return collision
 
+
+def _append_compliant_proximity_properties(
+    collision: ET.Element,
+    *,
+    mu_static: float,
+    mu_dynamic: float,
+    hydroelastic_modulus: float,
+    hunt_crossley_dissipation: float,
+) -> None:
+    """Attach Drake ``<drake:proximity_properties>`` to *collision*.
+
+    Writes a compliant-hydroelastic block with friction and Hunt-Crossley
+    dissipation.  Exposed as a private helper so rigid-hydroelastic
+    variants (see :func:`_add_ground_contact_collision`) can reuse the
+    friction-writing logic without duplicating the XML shape.
+    """
     prox = ET.SubElement(collision, _drake_tag("proximity_properties"))
     ET.SubElement(prox, _drake_tag("compliant_hydroelastic"))
     ET.SubElement(
@@ -261,8 +326,6 @@ def add_contact_geometry(
     ).text = f"{hunt_crossley_dissipation:.1f}"
     ET.SubElement(prox, _drake_tag("mu_static")).text = f"{mu_static:.1f}"
     ET.SubElement(prox, _drake_tag("mu_dynamic")).text = f"{mu_dynamic:.1f}"
-
-    return collision
 
 
 def _add_ground_contact_collision(

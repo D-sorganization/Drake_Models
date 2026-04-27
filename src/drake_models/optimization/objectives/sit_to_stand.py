@@ -6,13 +6,12 @@ No bar path; balance mode is standing.
 
 from __future__ import annotations
 
-import math
-
 from drake_models.optimization.objectives import (
     BalanceMode,
     ExerciseObjective,
     ExercisePhase,
 )
+from drake_models.optimization.objectives._helpers import bilateral
 
 SIT_TO_STAND = ExerciseObjective(
     exercise_name="sit_to_stand",
@@ -23,72 +22,54 @@ SIT_TO_STAND = ExerciseObjective(
             name="seated",
             time_fraction=0.0,
             joint_angles={
-                "hip_l_flex": math.radians(90),
-                "hip_r_flex": math.radians(90),
-                "knee_l": math.radians(-90),
-                "knee_r": math.radians(-90),
-                "ankle_l_flex": math.radians(0),
-                "ankle_r_flex": math.radians(0),
+                **bilateral("hip", 90, suffix="flex"),
+                **bilateral("knee", -90),
+                **bilateral("ankle", 0, suffix="flex"),
             },
         ),
         ExercisePhase(
             name="forward_lean",
             time_fraction=0.20,
             joint_angles={
-                "hip_l_flex": math.radians(100),
-                "hip_r_flex": math.radians(100),
-                "knee_l": math.radians(-90),
-                "knee_r": math.radians(-90),
-                "ankle_l_flex": math.radians(15),
-                "ankle_r_flex": math.radians(15),
+                **bilateral("hip", 100, suffix="flex"),
+                **bilateral("knee", -90),
+                **bilateral("ankle", 15, suffix="flex"),
             },
         ),
         ExercisePhase(
             name="momentum",
             time_fraction=0.35,
             joint_angles={
-                "hip_l_flex": math.radians(80),
-                "hip_r_flex": math.radians(80),
-                "knee_l": math.radians(-85),
-                "knee_r": math.radians(-85),
-                "ankle_l_flex": math.radians(20),
-                "ankle_r_flex": math.radians(20),
+                **bilateral("hip", 80, suffix="flex"),
+                **bilateral("knee", -85),
+                **bilateral("ankle", 20, suffix="flex"),
             },
         ),
         ExercisePhase(
             name="seat_off",
             time_fraction=0.50,
             joint_angles={
-                "hip_l_flex": math.radians(60),
-                "hip_r_flex": math.radians(60),
-                "knee_l": math.radians(-75),
-                "knee_r": math.radians(-75),
-                "ankle_l_flex": math.radians(20),
-                "ankle_r_flex": math.radians(20),
+                **bilateral("hip", 60, suffix="flex"),
+                **bilateral("knee", -75),
+                **bilateral("ankle", 20, suffix="flex"),
             },
         ),
         ExercisePhase(
             name="rising",
             time_fraction=0.75,
             joint_angles={
-                "hip_l_flex": math.radians(30),
-                "hip_r_flex": math.radians(30),
-                "knee_l": math.radians(-40),
-                "knee_r": math.radians(-40),
-                "ankle_l_flex": math.radians(10),
-                "ankle_r_flex": math.radians(10),
+                **bilateral("hip", 30, suffix="flex"),
+                **bilateral("knee", -40),
+                **bilateral("ankle", 10, suffix="flex"),
             },
         ),
         ExercisePhase(
             name="standing",
             time_fraction=1.0,
             joint_angles={
-                "hip_l_flex": math.radians(5),
-                "hip_r_flex": math.radians(5),
-                "knee_l": math.radians(-5),
-                "knee_r": math.radians(-5),
-                "ankle_l_flex": math.radians(0),
-                "ankle_r_flex": math.radians(0),
+                **bilateral("hip", 5, suffix="flex"),
+                **bilateral("knee", -5),
+                **bilateral("ankle", 0, suffix="flex"),
             },
         ),
     ),

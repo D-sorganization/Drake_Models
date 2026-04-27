@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 name: CI Standard
 on:
   push:
@@ -233,3 +234,122 @@ jobs:
           --cov-fail-under=80 \
           --tb=short \
           -v
+=======
+name: CI Standard
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "LICENSE"
+      - ".gitignore"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "LICENSE"
+      - ".gitignore"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+
+  # ── Dispatcher: route to self-hosted if available ──────────────────────────
+  pick-runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      runner: ${{ steps.check.outputs.runner }}
+    steps:
+      - name: Check for self-hosted runner
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.RUNNER_CHECK_TOKEN }}
+        run: |
+          ONLINE=$(gh api /orgs/${{ github.repository_owner }}/actions/runners \
+            --jq '[.runners[] | select(.status == "online") | select(.labels[].name == "d-sorg-fleet")] | length' \
+            2>/dev/null || echo "0")
+          if [[ "$ONLINE" -gt 0 ]]; then
+            echo "runner=d-sorg-fleet" >> $GITHUB_OUTPUT
+            echo "Self-hosted runner online — routing locally"
+          else
+            echo "runner=ubuntu-latest" >> $GITHUB_OUTPUT
+            echo "No self-hosted runner — using GitHub-hosted"
+          fi
+  quality-gate:
+    needs: pick-runner
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11" }
+      - run: pip install "ruff==0.14.10" "mypy==1.13.0" "bandit==1.7.7"
+
+      - name: Lint
+        run: ruff check src scripts tests examples
+
+      - name: Check Formatting (ruff)
+        run: ruff format --check src scripts tests examples
+
+      - run: pip install mypy types-PyYAML types-requests
+      - run: pip install -e .[dev]
+      - run: mypy src --config-file pyproject.toml
+
+      - name: Verify No Placeholders
+        run: |
+          violations=$(
+            find . \( -path "./.git" -o -path "./.mypy_cache" -o -path "./.ruff_cache" -o -path "./__pycache__" -o -path "./scripts" \) -prune -o -type f -name "*.py" -print0 \
+              | xargs -0 grep -nE "TODO|FIXME" || true
+          )
+          if [ -n "$violations" ]; then
+            echo "$violations"
+            echo "::error::Placeholders found. Remove TODOs/FIXMEs or create tracked GitHub issues."
+            exit 1
+          fi
+
+      - name: Security Audit
+        run: |
+          pip install pip-audit
+          pip install --upgrade pygments
+          pip-audit --skip-editable --ignore-vuln CVE-2026-3219
+
+      - name: Bandit Security Scan
+        run: bandit -r src/ -ll -ii --format txt
+
+  tests:
+    needs: [pick-runner, quality-gate]
+    runs-on: ${{ needs.pick-runner.outputs.runner }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        python: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install Dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run Test Suite
+        run: |
+          python3 -m pytest \
+            --timeout=60 \
+            --timeout-method=thread \
+            -m "not slow and not requires_drake" \
+            --cov=src \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-config=pyproject.toml \
+            --cov-fail-under=80 \
+            --tb=short \
+            -v
+>>>>>>> origin/main
