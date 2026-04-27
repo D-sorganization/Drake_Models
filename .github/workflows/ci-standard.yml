@@ -53,7 +53,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v6
         with: { python-version: "3.11" }
-      - run: pip install "ruff==0.14.10" "mypy==1.13.0" "bandit==1.7.7"
+      - run: pip install -e ".[dev]"
 
       - name: Lint
         run: ruff check src scripts tests examples
@@ -61,8 +61,6 @@ jobs:
       - name: Check Formatting (ruff)
         run: ruff format --check src scripts tests examples
 
-      - run: pip install mypy types-PyYAML types-requests
-      - run: pip install -e .[dev]
       - run: mypy src --config-file pyproject.toml
 
       - name: Verify No Placeholders
