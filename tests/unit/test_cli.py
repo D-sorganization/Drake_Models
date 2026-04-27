@@ -32,17 +32,17 @@ class TestBuildArgParser:
     def test_has_mass_default(self) -> None:
         parser = _build_arg_parser()
         args = parser.parse_args(["squat"])
-        assert args.mass == 80.0  # type: ignore
+        assert args.mass == 80.0
 
     def test_has_height_default(self) -> None:
         parser = _build_arg_parser()
         args = parser.parse_args(["squat"])
-        assert args.height == 1.75  # type: ignore
+        assert args.height == 1.75
 
     def test_has_plates_default(self) -> None:
         parser = _build_arg_parser()
         args = parser.parse_args(["squat"])
-        assert args.plates == 60.0  # type: ignore
+        assert args.plates == 60.0
 
     def test_verbose_flag(self) -> None:
         parser = _build_arg_parser()
@@ -123,21 +123,23 @@ class TestCLI:
         with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
             main(["squat"])
         output = mock_stdout.getvalue()
-        root = ET.fromstring(output.strip())  # type: ignore
+        root = ET.fromstring(output.strip())
         assert root.tag == "sdf"
 
     def test_deadlift_to_stdout(self) -> None:
         with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
             main(["deadlift"])
         output = mock_stdout.getvalue()
-        assert "<?xml" in output  # type: ignore
+        assert "<?xml" in output
 
     def test_custom_mass_and_height(self) -> None:
         with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
             main(["bench_press", "--mass", "100", "--height", "1.90"])
         output = mock_stdout.getvalue()
-        root = ET.fromstring(output.strip())  # type: ignore
-        assert root.find(".//model").get("name") == "bench_press"  # type: ignore
+        root = ET.fromstring(output.strip())
+        model = root.find(".//model")
+        assert model is not None
+        assert model.get("name") == "bench_press"
 
     def test_output_to_file(self, tmp_path: object) -> None:
         import pathlib
