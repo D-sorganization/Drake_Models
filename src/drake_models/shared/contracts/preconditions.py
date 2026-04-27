@@ -11,7 +11,7 @@ accept invalid geometry or physics parameters.
     a shared package. Do not modify this file in isolation — consider
     whether the change belongs in the shared contract layer.
 
-    TODO (epic #157): Migrate to ``from robotics_contracts import preconditions``
+    Epic #157 tracks migrating to ``from robotics_contracts import preconditions``
     once the shared package is published.
 """
 
