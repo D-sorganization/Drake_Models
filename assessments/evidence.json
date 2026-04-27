@@ -1,0 +1,21 @@
+{
+  "repo": "Drake_Models",
+  "owner_repo": "D-sorganization/Drake_Models",
+  "branch": "fix/issue-165-validate-displacement-shape",
+  "head_sha": "e297d8831989cf73b1b9e4a125f7c8f2dc9c9181",
+  "head_date": "2026-04-25",
+  "A": {"src_files": 140, "test_files": 101, "manifests": 1, "gitignore_lines": 29, "has_readme": 1},
+  "B": {"readme_lines": 68, "readme_headers": 5, "docs_files": 24, "md_files": 8},
+  "C": {"test_py": 39, "test_rs": 0, "src_py": 54, "src_rs": 0},
+  "D": {"bare_except": 0, "except_exception": 0, "noqa_suppressions": 481},
+  "F": {"todo_fixme": 0},
+  "G": {"req_lockfiles": 0},
+  "H": {"secrets_raw": 0},
+  "I": {"env_example": 0},
+  "J": {"logging_refs": 46, "metrics_refs": 9},
+  "K": {"suppressions": 481},
+  "L": {"workflow_files": 2},
+  "M": {"dockerfile": 1},
+  "N": {"license": 1},
+  "O": {"claude_md": 1, "agents_md": 1, "claude_lines": 80}
+}
