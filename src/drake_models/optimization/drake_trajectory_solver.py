@@ -58,10 +58,7 @@ def _add_integration_constraints(
     for k in range(n_steps - 1):
         for j in range(n_v):
             prog.AddLinearEqualityConstraint(
-                q[k + 1, offset + j]
-                - q[k, offset + j]
-                - dt * v[k + 1, j]
-                == 0
+                q[k + 1, offset + j] - q[k, offset + j] - dt * v[k + 1, j] == 0
             )
             added += 1
     return added
@@ -124,13 +121,9 @@ def _add_initial_state_constraint(
     n_q = q.shape[1]
     n_v = v.shape[1]
     for j in range(n_q):
-        prog.AddLinearEqualityConstraint(
-            q[0, j] == float(q0[j])
-        )
+        prog.AddLinearEqualityConstraint(q[0, j] == float(q0[j]))
     for j in range(n_v):
-        prog.AddLinearEqualityConstraint(
-            v[0, j] == float(v0[j])
-        )
+        prog.AddLinearEqualityConstraint(v[0, j] == float(v0[j]))
     return n_q + n_v
 
 
