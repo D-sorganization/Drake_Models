@@ -273,8 +273,12 @@ def _add_compound_3dof_bilateral(
             rotate_label=rotate_label,
         )
         # Record the virtual links so callers can inspect / query them
-        created[v1] = model.find(f"link[@name='{v1}']")  # type: ignore[assignment]
-        created[v2] = model.find(f"link[@name='{v2}']")  # type: ignore[assignment]
+        el1 = model.find(f"link[@name='{v1}']")
+        assert el1 is not None
+        created[v1] = el1
+        el2 = model.find(f"link[@name='{v2}']")
+        assert el2 is not None
+        created[v2] = el2
 
     return created
 
@@ -363,6 +367,8 @@ def _add_compound_2dof_bilateral(
             second_limits=second_limits,
             second_label=second_label,
         )
-        created[v1] = model.find(f"link[@name='{v1}']")  # type: ignore[assignment]
+        el1 = model.find(f"link[@name='{v1}']")
+        assert el1 is not None
+        created[v1] = el1
 
     return created
