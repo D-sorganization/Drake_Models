@@ -10,6 +10,7 @@ interpolation.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import numpy as np
 
@@ -118,7 +119,7 @@ def _interpolate_phases(
     return keyframes
 
 
-def _build_ik_plant(sdf_string: str) -> object:
+def _build_ik_plant(sdf_string: str) -> Any:
     """Load *sdf_string* into a finalised Drake MultibodyPlant for IK.
 
     Returns the plant.  Callers must have pydrake available.
@@ -134,7 +135,7 @@ def _build_ik_plant(sdf_string: str) -> object:
 
 
 def _refine_keyframe(
-    plant: object,
+    plant: Any,
     initial_guess: np.ndarray,
     n_q: int,
     n_joints: int,
@@ -147,7 +148,7 @@ def _refine_keyframe(
     """
     from pydrake.all import InverseKinematics, Solve
 
-    ik = InverseKinematics(plant)  # type: ignore[arg-type]
+    ik = InverseKinematics(plant)
     q_vars = ik.q()
     prog = ik.get_mutable_prog()
 
@@ -177,7 +178,7 @@ def _solve_ik_with_drake(
     """
     plant = _build_ik_plant(sdf_string)
     initial_keyframes = _interpolate_phases(objective, n_frames)
-    n_q = plant.num_positions()  # type: ignore[attr-defined]
+    n_q = plant.num_positions()
     n_joints = initial_keyframes.shape[1]
 
     refined = np.zeros((n_frames, n_joints))
