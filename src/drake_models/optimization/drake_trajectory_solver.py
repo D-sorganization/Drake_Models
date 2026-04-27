@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import numpy as np
 from typing import Any
+
+import numpy as np
 
 from drake_models.optimization.exercise_objectives import ExerciseObjective
 from drake_models.optimization.trajectory_types import (
