@@ -63,6 +63,63 @@ plant.Finalize()
 - **DRY** -- Geometry and XML generation defined once in shared modules
 - **Law of Demeter** -- Callers use public APIs only
 
+## Requirements
+
+- Python 3.10+
+- [Drake](https://drake.mit.edu/) (pydrake) — multibody dynamics and control
+- NumPy, SciPy, Matplotlib
+
+## Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/D-sorganization/Drake_Models.git
+cd Drake_Models
+
+# Create a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install in development mode
+pip install -e ".[dev]"
+```
+
+## Running Tests
+
+```bash
+# Run the full test suite
+python3 -m pytest tests/ -v
+
+# Run with coverage
+pytest tests/ --cov=src --cov-report=html
+
+# Run a specific test module
+pytest tests/test_squat_model.py -v
+```
+
+## CI/CD
+
+This repository uses GitHub Actions with a self-hosted runner (`d-sorg-fleet`):
+- **Quality gate**: ruff linting, formatting, mypy type checking, bandit security scan
+- **Tests**: Python 3.10–3.12 matrix with pytest
+
+## Contributing
+
+Contributions are welcome. Please:
+1. Open an issue to discuss your proposed change.
+2. Create a feature branch from `main`.
+3. Follow TDD and Design-by-Contract principles.
+4. Ensure all CI checks pass before requesting review.
+5. Reference the issue in your PR description.
+
+## Troubleshooting
+
+| Issue | Solution |
+|---|---|
+| `ImportError: No module named 'pydrake'` | Install Drake following the [official instructions](https://drake.mit.edu/installation.html) or use `pip install drake` |
+| `pytest` not found | Install dev dependencies: `pip install -e ".[dev]"` |
+| SDF load errors | Verify Drake is on PATH and `DRAKE_RESOURCE_ROOT` is set |
+
 ## License
 
 MIT License. See [LICENSE](LICENSE).
