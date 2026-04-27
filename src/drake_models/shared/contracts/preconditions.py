@@ -3,6 +3,16 @@
 All public functions in this project validate inputs via these guards.
 Violations raise ValueError with descriptive messages — never silently
 accept invalid geometry or physics parameters.
+
+.. note::
+    This file is duplicated verbatim across four robotics repositories:
+    Drake_Models, MuJoCo_Models, OpenSim_Models, and Pinocchio_Models.
+    See `D-sorganization/robotics-contracts#157` for the epic to extract
+    a shared package. Do not modify this file in isolation — consider
+    whether the change belongs in the shared contract layer.
+
+    TODO (epic #157): Migrate to ``from robotics_contracts import preconditions``
+    once the shared package is published.
 """
 
 from __future__ import annotations
