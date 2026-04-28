@@ -19,26 +19,26 @@ class TestSitToStandModelBuilder:
     def test_build_returns_xml_string(self) -> None:
         xml_str = build_sit_to_stand_model()
         assert isinstance(xml_str, str)
-        assert "<?xml" in xml_str  # type: ignore
+        assert "<?xml" in xml_str
 
     def test_valid_sdf(self) -> None:
         xml_str = build_sit_to_stand_model()
         root = ET.fromstring(xml_str)
         assert root.tag == "sdf"
-        assert root.get("version") == "1.8"  # type: ignore
+        assert root.get("version") == "1.8"
 
     def test_model_name(self) -> None:
         xml_str = build_sit_to_stand_model()
         root = ET.fromstring(xml_str)
-        model = root.find("model")  # type: ignore
+        model = root.find("model")
         assert model is not None
-        assert model.get("name") == "sit_to_stand"  # type: ignore
+        assert model.get("name") == "sit_to_stand"
 
     def test_has_chair_body(self) -> None:
         """Model should contain a chair_seat link."""
         xml_str = build_sit_to_stand_model()
         root = ET.fromstring(xml_str)
-        links = {lnk.get("name") for lnk in root.findall(".//link")}  # type: ignore
+        links = {lnk.get("name") for lnk in root.findall(".//link")}
         assert "chair_seat" in links
 
     def test_chair_welded_to_world(self) -> None:
@@ -46,10 +46,12 @@ class TestSitToStandModelBuilder:
         xml_str = build_sit_to_stand_model()
         root = ET.fromstring(xml_str)
         for j in root.findall(".//joint"):
-            if j.get("name") == "chair_to_world":  # type: ignore
-                assert j.get("type") == "fixed"  # type: ignore
-                assert j.find("parent").text == "world"  # type: ignore
-                assert j.find("child").text == "chair_seat"  # type: ignore
+            if j.get("name") == "chair_to_world":
+                assert j.get("type") == "fixed"
+                parent = j.find("parent")
+                child = j.find("child")
+                assert parent is not None and parent.text == "world"
+                assert child is not None and child.text == "chair_seat"
                 break
         else:
             raise AssertionError("chair_to_world joint not found")
@@ -58,36 +60,38 @@ class TestSitToStandModelBuilder:
         """STS model should not have a barbell-to-body joint."""
         xml_str = build_sit_to_stand_model()
         root = ET.fromstring(xml_str)
-        joints = {j.get("name") for j in root.findall(".//joint")}  # type: ignore
+        joints = {j.get("name") for j in root.findall(".//joint")}
         assert not any("barbell_to" in (n or "") for n in joints)
 
     def test_has_initial_pose(self) -> None:
         xml_str = build_sit_to_stand_model()
         root = ET.fromstring(xml_str)
-        initial_pose = root.find(".//initial_pose")  # type: ignore
+        initial_pose = root.find(".//initial_pose")
         assert initial_pose is not None
-        assert initial_pose.get("name") == "seated"  # type: ignore
-        joints = initial_pose.findall("joint")  # type: ignore
+        assert initial_pose.get("name") == "seated"
+        joints = initial_pose.findall("joint")
         assert len(joints) > 0
 
     def test_initial_pose_seated_angles(self) -> None:
         """Seated position should have ~90 degrees hip and knee flexion."""
         xml_str = build_sit_to_stand_model()
         root = ET.fromstring(xml_str)
-        initial_pose = root.find(".//initial_pose")  # type: ignore
+        initial_pose = root.find(".//initial_pose")
         assert initial_pose is not None
         joint_values = {}
-        for j in initial_pose.findall("joint"):  # type: ignore
-            joint_values[j.get("name")] = float(j.text)  # type: ignore
+        for j in initial_pose.findall("joint"):
+            assert j.text is not None
+            joint_values[j.get("name")] = float(j.text)
         assert abs(joint_values["hip_l_flex"] - math.radians(90)) < 0.01
         assert abs(joint_values["knee_l"] - math.radians(-90)) < 0.01
 
     def test_has_gravity(self) -> None:
         xml_str = build_sit_to_stand_model()
         root = ET.fromstring(xml_str)
-        gravity = root.find(".//gravity")  # type: ignore
+        gravity = root.find(".//gravity")
         assert gravity is not None
-        assert "-9.806650" in gravity.text  # type: ignore
+        assert gravity.text is not None
+        assert "-9.806650" in gravity.text
 
     def test_custom_config(self) -> None:
         config = ExerciseConfig(
@@ -96,9 +100,9 @@ class TestSitToStandModelBuilder:
         builder = SitToStandModelBuilder(config)
         xml_str = builder.build()
         root = ET.fromstring(xml_str)
-        model = root.find(".//model")  # type: ignore
+        model = root.find(".//model")
         assert model is not None
-        assert model.get("name") == "sit_to_stand"  # type: ignore
+        assert model.get("name") == "sit_to_stand"
 
 
 class TestMakeChairSeatLink:
@@ -108,20 +112,20 @@ class TestMakeChairSeatLink:
         model = ET.Element("model")
         link = SitToStandModelBuilder._make_chair_seat_link(model)
         assert link.tag == "link"
-        assert link.get("name") == "chair_seat"  # type: ignore
+        assert link.get("name") == "chair_seat"
 
     def test_make_chair_seat_link_has_geometry(self) -> None:
         model = ET.Element("model")
         link = SitToStandModelBuilder._make_chair_seat_link(model)
-        assert link.find("visual") is not None  # type: ignore
-        assert link.find("collision") is not None  # type: ignore
+        assert link.find("visual") is not None
+        assert link.find("collision") is not None
 
     def test_add_chair_contact_attaches_collision(self) -> None:
         model = ET.Element("model")
         link = SitToStandModelBuilder._make_chair_seat_link(model)
-        initial_collisions = len(link.findall("collision"))  # type: ignore
+        initial_collisions = len(link.findall("collision"))
         SitToStandModelBuilder._add_chair_contact(link)
-        after_collisions = len(link.findall("collision"))  # type: ignore
+        after_collisions = len(link.findall("collision"))
         assert after_collisions == initial_collisions + 1
 
 

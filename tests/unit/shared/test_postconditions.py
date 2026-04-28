@@ -28,7 +28,7 @@ class TestEnsureValidXml:
 
     def test_accepts_xml_with_attributes(self) -> None:
         root = ensure_valid_xml('<link name="pelvis"/>')
-        assert root.get("name") == "pelvis"  # type: ignore
+        assert root.get("name") == "pelvis"
 
 
 class TestEnsurePositiveMass:

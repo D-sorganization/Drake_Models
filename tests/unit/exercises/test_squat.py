@@ -19,41 +19,43 @@ class TestSquatModelBuilder:
     def test_build_returns_xml_string(self) -> None:
         xml_str = build_squat_model()
         assert isinstance(xml_str, str)
-        assert "<?xml" in xml_str  # type: ignore
+        assert "<?xml" in xml_str
 
     def test_valid_sdf(self) -> None:
         xml_str = build_squat_model()
         root = ET.fromstring(xml_str)
         assert root.tag == "sdf"
-        assert root.get("version") == "1.8"  # type: ignore
+        assert root.get("version") == "1.8"
 
     def test_model_name(self) -> None:
         xml_str = build_squat_model()
         root = ET.fromstring(xml_str)
-        model = root.find("model")  # type: ignore
+        model = root.find("model")
         assert model is not None
-        assert model.get("name") == "back_squat"  # type: ignore
+        assert model.get("name") == "back_squat"
 
     def test_has_barbell_to_torso_joint(self) -> None:
         xml_str = build_squat_model()
         root = ET.fromstring(xml_str)
-        joints = {j.get("name") for j in root.findall(".//joint")}  # type: ignore
-        assert "barbell_to_torso" in joints  # type: ignore
+        joints = {j.get("name") for j in root.findall(".//joint")}
+        assert "barbell_to_torso" in joints
 
     def test_barbell_to_torso_is_fixed(self) -> None:
         xml_str = build_squat_model()
         root = ET.fromstring(xml_str)
         for j in root.findall(".//joint"):
-            if j.get("name") == "barbell_to_torso":  # type: ignore
-                assert j.get("type") == "fixed"  # type: ignore
+            if j.get("name") == "barbell_to_torso":
+                assert j.get("type") == "fixed"
 
     def test_barbell_attached_to_torso(self) -> None:
         xml_str = build_squat_model()
         root = ET.fromstring(xml_str)
         for j in root.findall(".//joint"):
-            if j.get("name") == "barbell_to_torso":  # type: ignore
-                assert j.find("parent").text == "torso"  # type: ignore
-                assert j.find("child").text == "barbell_shaft"  # type: ignore
+            if j.get("name") == "barbell_to_torso":
+                parent = j.find("parent")
+                child = j.find("child")
+                assert parent is not None and parent.text == "torso"
+                assert child is not None and child.text == "barbell_shaft"
 
     def test_custom_config(self) -> None:
         config = ExerciseConfig(
@@ -63,32 +65,34 @@ class TestSquatModelBuilder:
         builder = SquatModelBuilder(config)
         xml_str = builder.build()
         root = ET.fromstring(xml_str)
-        model = root.find(".//model")  # type: ignore
+        model = root.find(".//model")
         assert model is not None
-        assert model.get("name") == "back_squat"  # type: ignore
+        assert model.get("name") == "back_squat"
 
     def test_has_gravity(self) -> None:
         xml_str = build_squat_model()
         root = ET.fromstring(xml_str)
-        gravity = root.find(".//gravity")  # type: ignore
+        gravity = root.find(".//gravity")
         assert gravity is not None
-        assert "-9.806650" in gravity.text  # type: ignore
+        assert gravity.text is not None
+        assert "-9.806650" in gravity.text
 
     def test_z_up_gravity(self) -> None:
         xml_str = build_squat_model()
         root = ET.fromstring(xml_str)
-        gravity = root.find(".//gravity")  # type: ignore
+        gravity = root.find(".//gravity")
         assert gravity is not None
-        parts = gravity.text.strip().split()  # type: ignore
+        assert gravity.text is not None
+        parts = gravity.text.strip().split()
         assert parts[0] == "0.000000"
         assert parts[1] == "0.000000"
-        assert "-9.806650" in parts[2]  # type: ignore
+        assert "-9.806650" in parts[2]
 
     def test_has_initial_pose(self) -> None:
         xml_str = build_squat_model()
         root = ET.fromstring(xml_str)
-        initial_pose = root.find(".//initial_pose")  # type: ignore
+        initial_pose = root.find(".//initial_pose")
         assert initial_pose is not None
-        assert initial_pose.get("name") == "unrack"  # type: ignore
-        joints = initial_pose.findall("joint")  # type: ignore
+        assert initial_pose.get("name") == "unrack"
+        joints = initial_pose.findall("joint")
         assert len(joints) > 0, "initial_pose must contain at least one joint element"
