@@ -47,10 +47,10 @@ jobs:
       - run: pip install -e ".[dev]"
 
       - name: Lint
-        run: ruff check src scripts tests examples
+        run: ruff check src scripts tests examples benchmarks
 
       - name: Check Formatting (ruff)
-        run: ruff format --check src scripts tests examples
+        run: ruff format --check src scripts tests examples benchmarks
 
       - run: mypy src --config-file pyproject.toml
 
