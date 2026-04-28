@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from pydrake.solvers import MathematicalProgram
 
 from drake_models.optimization.exercise_objectives import ExerciseObjective
 from drake_models.optimization.trajectory_types import (
@@ -192,7 +195,7 @@ def _build_drake_program(
     plant: Any,
     objective: ExerciseObjective,
     config: TrajectoryConfig,
-) -> tuple[object, object, object, object]:
+) -> tuple[MathematicalProgram, np.ndarray, np.ndarray, np.ndarray]:
     """Construct the MathematicalProgram with variables, costs, and constraints."""
     from pydrake.solvers import MathematicalProgram
 
