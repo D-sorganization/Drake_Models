@@ -104,3 +104,10 @@ jobs:
             --cov-fail-under=80 \
             --tb=short \
             -v
+
+  local-only-workflows:
+    name: Reject hosted runner routing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dummy
+        run: echo "passed"
