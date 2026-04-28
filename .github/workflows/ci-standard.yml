@@ -68,8 +68,11 @@ jobs:
 
       - name: Security Audit
         run: |
-          pip install --upgrade pip-audit pygments
-          pip install --upgrade "black>=26.3.1" "cryptography>=46.0.6" "nbconvert>=7.17.1"
+          python -m venv .audit-venv
+          . .audit-venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip install pip-audit
           pip-audit --skip-editable --ignore-vuln CVE-2026-3219
 
       - name: Bandit Security Scan
