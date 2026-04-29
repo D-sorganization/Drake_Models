@@ -84,6 +84,7 @@ jobs:
     runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 15
     strategy:
+      max-parallel: 1
       matrix:
         python: ["3.10", "3.11", "3.12"]
     steps:
