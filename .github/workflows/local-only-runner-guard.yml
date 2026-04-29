@@ -11,6 +11,6 @@ on:
 jobs:
   local-only-workflows:
     name: Reject hosted runner routing
-    runs-on: ubuntu-latest
+    runs-on: d-sorg-fleet
     steps:
       - run: echo "passed"

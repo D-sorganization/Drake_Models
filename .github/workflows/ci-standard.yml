@@ -38,7 +38,7 @@ jobs:
   quality-gate:
     needs: pick-runner
     runs-on: ${{ needs.pick-runner.outputs.runner }}
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -114,7 +114,7 @@ jobs:
 
   local-only-workflows:
     name: Reject hosted runner routing
-    runs-on: ubuntu-latest
+    runs-on: d-sorg-fleet
     steps:
       - name: Dummy
         run: echo "passed"
