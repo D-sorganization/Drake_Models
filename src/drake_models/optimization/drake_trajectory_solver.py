@@ -57,14 +57,22 @@ def _add_integration_constraints(
     n_q = q.shape[1]
     n_v = v.shape[1]
     offset = n_q - n_v
-    added = 0
+
+    # Optimize: Matrix-vector form avoids allocating expression objects per element.
+    # Preallocating arrays and avoiding np.concatenate inside the loop removes list
+    # and array creation overhead per iteration.
+    A = np.hstack([np.eye(n_v), -np.eye(n_v), -dt * np.eye(n_v)])
+    b = np.zeros(n_v)
+
+    vars_all = np.empty((n_steps - 1, 3 * n_v), dtype=q.dtype)
+    vars_all[:, :n_v] = q[1:, offset:]
+    vars_all[:, n_v : 2 * n_v] = q[:-1, offset:]
+    vars_all[:, 2 * n_v :] = v[1:, :]
+
     for k in range(n_steps - 1):
-        for j in range(n_v):
-            prog.AddLinearEqualityConstraint(
-                q[k + 1, offset + j] - q[k, offset + j] - dt * v[k + 1, j] == 0
-            )
-            added += 1
-    return added
+        prog.AddLinearEqualityConstraint(A, b, vars_all[k])
+
+    return (n_steps - 1) * n_v
 
 
 def _add_dynamics_constraints(
