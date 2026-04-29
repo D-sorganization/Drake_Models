@@ -103,7 +103,7 @@ jobs:
             -p no:pytest_xvfb \
             --timeout=60 \
             --timeout-method=thread \
-            -m "not slow and not requires_drake" \
+            -m "not slow and not requires_drake and not benchmark" \
             --cov=src \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
