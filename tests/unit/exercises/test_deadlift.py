@@ -55,13 +55,12 @@ class TestDeadliftModelBuilder:
     def test_grip_offset_constant(self) -> None:
         assert pytest.approx(0.22) == GRIP_OFFSET
 
-    def test_has_gravity(self) -> None:
+    def test_has_no_model_level_gravity(self) -> None:
         xml_str = build_deadlift_model()
         root = ET.fromstring(xml_str)
-        gravity = root.find(".//gravity")
-        assert gravity is not None
-        assert gravity.text is not None
-        assert "-9.806650" in gravity.text
+        model = root.find("model")
+        assert model is not None
+        assert model.find("gravity") is None
 
     def test_has_initial_pose(self) -> None:
         xml_str = build_deadlift_model()
