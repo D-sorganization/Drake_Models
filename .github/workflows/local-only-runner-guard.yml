@@ -28,6 +28,8 @@ jobs:
           else
             git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
           fi
+          git config --local --unset-all http.https://github.com/.extraheader || true
+          git config --global --unset-all http.https://github.com/.extraheader || true
           git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth_header}" fetch --depth=1 origin "$GITHUB_SHA"
           git checkout --force FETCH_HEAD
           git clean -ffdx
