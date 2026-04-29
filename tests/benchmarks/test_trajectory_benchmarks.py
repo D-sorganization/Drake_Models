@@ -21,9 +21,6 @@ from drake_models.optimization.drake_trajectory_solver import (  # noqa: E402
     _build_drake_plant,
     _initial_guess_linear,
 )
-from drake_models.optimization.inverse_kinematics import (  # noqa: E402
-    _solve_ik_for_pose,
-)
 
 
 @pytest.fixture(scope="module")
@@ -146,15 +143,3 @@ def test_bench_initial_guess_linear(benchmark) -> None:
     q_end = np.ones(n_q)
 
     benchmark(_initial_guess_linear, q_start, q_end, n_steps)
-
-
-@pytest.mark.benchmark
-@pytest.mark.requires_drake
-def test_bench_solve_ik_for_pose(benchmark, plant_fixture) -> None:
-    """Benchmark single-pose IK solve."""
-
-    plant = plant_fixture
-    body = plant.GetBodyByName("body")
-    target = np.array([0.1, 0.2, 0.3])
-
-    benchmark(_solve_ik_for_pose, plant, body, target)
