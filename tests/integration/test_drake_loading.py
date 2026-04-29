@@ -165,7 +165,6 @@ class TestSdfWellFormedness:
 
 
 @_SKIP_DRAKE
-@pytest.mark.requires_drake
 class TestDrakeParserLoading:
     """Verify SDF models load through the Drake MultibodyPlant parser.
 
