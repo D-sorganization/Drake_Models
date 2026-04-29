@@ -482,11 +482,11 @@ class TestDrakeDynamicsConstraintsPresent:
     """
 
     def _build(self, n_steps: int = 5) -> tuple:  # noqa: ANN401
-        from drake_models.optimization.exercise_objectives import SQUAT
-        from drake_models.optimization.trajectory_optimizer import (
+        from drake_models.optimization.drake_trajectory_solver import (
             _build_drake_plant,
             _build_drake_program,
         )
+        from drake_models.optimization.exercise_objectives import SQUAT
 
         cfg = TrajectoryConfig(n_timesteps=n_steps, dt=0.01)
         plant = _build_drake_plant(_MINIMAL_SDF, cfg.dt)

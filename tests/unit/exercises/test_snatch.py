@@ -49,13 +49,12 @@ class TestSnatchModelBuilder:
             if j.get("name") == "barbell_to_left_hand":
                 assert j.get("type") == "fixed"
 
-    def test_has_gravity(self) -> None:
+    def test_has_no_model_level_gravity(self) -> None:
         xml_str = build_snatch_model()
         root = ET.fromstring(xml_str)
-        gravity = root.find(".//gravity")
-        assert gravity is not None
-        assert gravity.text is not None
-        assert "-9.806650" in gravity.text
+        model = root.find("model")
+        assert model is not None
+        assert model.find("gravity") is None
 
     def test_has_initial_pose(self) -> None:
         xml_str = build_snatch_model()
