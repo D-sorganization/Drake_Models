@@ -148,6 +148,15 @@ def _add_state_bounds(
     return added
 
 
+def _initial_guess_linear(
+    q_start: np.ndarray,
+    q_end: np.ndarray,
+    n_steps: int,
+) -> np.ndarray:
+    """Return a linear interpolation from *q_start* to *q_end*."""
+    return np.linspace(q_start, q_end, n_steps)
+
+
 def _add_joint_and_actuator_bounds(
     prog: Any,
     plant: Any,
