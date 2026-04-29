@@ -104,7 +104,7 @@ def test_bench_add_integration_constraints(benchmark) -> None:
     v = prog.NewContinuousVariables(n_steps, n_q, "v")
     dt = 0.01
 
-    benchmark(_add_integration_constraints, prog, q, v, dt)
+    benchmark(_add_integration_constraints, prog, q, v, dt, n_steps)
 
 
 @pytest.mark.benchmark
