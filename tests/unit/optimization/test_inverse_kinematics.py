@@ -18,8 +18,10 @@ class TestPydrakeAvailable:
         result = _pydrake_available()
         assert isinstance(result, bool)
 
-    def test_false_without_pydrake(self) -> None:
-        # In the test environment pydrake is not installed.
+    def test_false_without_pydrake(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import importlib.util
+
+        monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
         assert _pydrake_available() is False
 
 
@@ -41,6 +43,12 @@ class TestInterpolatePhases:
 
 
 class TestSolveIkKeyframes:
+    @pytest.fixture(autouse=True)
+    def _force_interpolation_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import drake_models.optimization.inverse_kinematics as mod
+
+        monkeypatch.setattr(mod, "_pydrake_available", lambda: False)
+
     def test_output_shape(self) -> None:
         keyframes = solve_ik_keyframes("<sdf/>", "back_squat", n_frames=25)
         n_joints = len(SQUAT.joint_names())

@@ -24,6 +24,7 @@ def main() -> int:
     failures: list[str] = []
     if not WORKFLOW_DIR.exists():
         return 0
+
     for path in sorted(WORKFLOW_DIR.rglob("*")):
         if path.suffix not in {".yml", ".yaml"}:
             continue
@@ -37,12 +38,15 @@ def main() -> int:
                     failures.append(
                         f"{path}:{line_number}: banned hosted-runner token {token!r}"
                     )
+
     if failures:
         print(
-            "GitHub-hosted runner routing is forbidden. Use local self-hosted runners only."
+            "GitHub-hosted runner routing is forbidden. "
+            "Use local self-hosted runners only."
         )
         print("\n".join(failures))
         return 1
+
     print("Workflow runner routing is local-only.")
     return 0
 

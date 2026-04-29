@@ -23,7 +23,6 @@ from drake_models.shared.utils.sdf_helpers import (
     add_collision_filter_group,
     add_ground_plane_contact,
     serialize_model,
-    vec3_str,
 )
 
 logger = logging.getLogger(__name__)
@@ -249,16 +248,12 @@ class ExerciseModelBuilder(ABC):
         logger.debug("Added %d collision filter groups", len(adjacent_pairs))
 
     def _init_sdf_root(self) -> tuple[ET.Element, ET.Element]:
-        """Create the SDF root, model element, gravity, and static flag.
+        """Create the SDF root, model element, and static flag.
 
         Returns ``(root, model)`` — the SDF root element and its model child.
         """
         root = ET.Element("sdf", version="1.8")
         model = ET.SubElement(root, "model", name=self.exercise_name)
-
-        # Gravity
-        gravity_el = ET.SubElement(model, "gravity")
-        gravity_el.text = vec3_str(*self.config.gravity)
 
         # Static flag (false — this is a dynamic model)
         ET.SubElement(model, "static").text = "false"

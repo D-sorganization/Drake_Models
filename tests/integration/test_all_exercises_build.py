@@ -1,7 +1,7 @@
 """Integration tests: verify all seven exercise models build end-to-end.
 
 Each model must produce well-formed SDF XML with the correct structure:
-<sdf version="1.8"> > <model name="..."> > (gravity, links, joints).
+<sdf version="1.8"> > <model name="..."> > (links, joints).
 """
 
 import xml.etree.ElementTree as ET
@@ -71,26 +71,12 @@ class TestAllExercisesBuild:
         ALL_BUILDERS,
         ids=[n for n, _ in ALL_BUILDERS],  # type: ignore
     )
-    def test_has_gravity(self, name: Any, builder: Any) -> None:
+    def test_has_no_model_level_gravity(self, name: Any, builder: Any) -> None:
         xml_str = builder()
         root = ET.fromstring(xml_str)
-        gravity = root.find(".//gravity")  # type: ignore
-        assert gravity is not None
-        assert "-9.806650" in gravity.text  # type: ignore
-
-    @pytest.mark.parametrize(
-        "name,builder",
-        ALL_BUILDERS,
-        ids=[n for n, _ in ALL_BUILDERS],  # type: ignore
-    )
-    def test_z_up_gravity_convention(self, name: Any, builder: Any) -> None:
-        xml_str = builder()
-        root = ET.fromstring(xml_str)
-        gravity = root.find(".//gravity")  # type: ignore
-        parts = gravity.text.strip().split()  # type: ignore
-        assert parts[0] == "0.000000"
-        assert parts[1] == "0.000000"
-        assert float(parts[2]) < 0  # type: ignore
+        model = root.find("model")  # type: ignore
+        assert model is not None
+        assert model.find("gravity") is None  # type: ignore
 
     @pytest.mark.parametrize(
         "name,builder",
