@@ -77,6 +77,15 @@ class TestSdfWellFormedness:
         assert len(models) == 1
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
+    def test_model_does_not_define_gravity(self, name: str, builder: Any) -> None:
+        """Generated model SDF must not include a model-level <gravity> tag."""
+        xml_str = builder()
+        root = ET.fromstring(xml_str)
+        model = root.find("model")  # type: ignore
+        assert model is not None
+        assert model.find("gravity") is None  # type: ignore
+
+    @pytest.mark.parametrize("name,builder", ALL_BUILDERS, ids=_IDS)
     def test_model_name_attribute(self, name: str, builder: Any) -> None:
         """The <model name='...'> attribute must match the exercise name."""
         xml_str = builder()
