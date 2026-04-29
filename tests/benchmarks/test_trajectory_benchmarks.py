@@ -16,10 +16,10 @@ import pytest
 drake = pytest.importorskip("pydrake", reason="pydrake not installed")
 
 from drake_models.optimization.drake_trajectory_solver import (  # noqa: E402
+    _add_initial_state_constraint,
     _add_integration_constraints,
-    _add_state_bounds,
+    _add_joint_and_actuator_bounds,
     _build_drake_plant,
-    _initial_guess_linear,
 )
 from drake_models.optimization.inverse_kinematics import (  # noqa: E402
     _solve_ik_for_pose,
@@ -51,16 +51,35 @@ def plant_fixture() -> object:
     return _build_drake_plant(sdf, dt=0.01)
 
 
-@pytest.fixture
-def state_bounds_fixture() -> dict:
-    """Return small state-bound dict for benchmarking."""
-    n_q = 7
-    return {
-        "q_min": np.full(n_q, -1.0),
-        "q_max": np.full(n_q, 1.0),
-        "v_min": np.full(n_q, -5.0),
-        "v_max": np.full(n_q, 5.0),
-    }
+class BenchmarkProgram:
+    """Small program double for helper-level benchmark hot paths."""
+
+    def AddBoundingBoxConstraint(
+        self,
+        _lower: np.ndarray,
+        _upper: np.ndarray,
+        _variables: np.ndarray,
+    ) -> None:
+        return None
+
+    def AddLinearEqualityConstraint(self, _expression: object) -> None:
+        return None
+
+
+class BenchmarkPlant:
+    """Small plant double exposing finite and infinite limits."""
+
+    def GetPositionLowerLimits(self) -> np.ndarray:
+        return np.array([-np.inf, -1.0, -0.5, -0.25])
+
+    def GetPositionUpperLimits(self) -> np.ndarray:
+        return np.array([np.inf, 1.0, 0.5, 0.25])
+
+    def GetEffortLowerLimits(self) -> np.ndarray:
+        return np.array([-np.inf, -10.0])
+
+    def GetEffortUpperLimits(self) -> np.ndarray:
+        return np.array([np.inf, 10.0])
 
 
 @pytest.mark.benchmark
@@ -107,45 +126,40 @@ def test_bench_add_integration_constraints(benchmark) -> None:
     v = prog.NewContinuousVariables(n_steps, n_q, "v")
     dt = 0.01
 
-    benchmark(_add_integration_constraints, prog, q, v, dt)
+    benchmark(_add_integration_constraints, prog, q, v, dt, n_steps)
 
 
 @pytest.mark.benchmark
 @pytest.mark.requires_drake
-def test_bench_add_state_bounds(benchmark, state_bounds_fixture) -> None:
-    """Benchmark adding state bound constraints."""
-
-    from pydrake.solvers import MathematicalProgram
-
+def test_bench_add_joint_and_actuator_bounds(benchmark) -> None:
+    """Benchmark adding joint and actuator bound constraints."""
     n_steps = 10
-    n_q = 7
-    prog = MathematicalProgram()
-    q = prog.NewContinuousVariables(n_steps, n_q, "q")
-    v = prog.NewContinuousVariables(n_steps, n_q, "v")
+    prog = BenchmarkProgram()
+    plant = BenchmarkPlant()
+    q = np.zeros((n_steps, 4))
+    u = np.zeros((n_steps, 2))
 
     benchmark(
-        _add_state_bounds,
+        _add_joint_and_actuator_bounds,
         prog,
+        plant,
         q,
-        v,
-        state_bounds_fixture["q_min"],
-        state_bounds_fixture["q_max"],
-        state_bounds_fixture["v_min"],
-        state_bounds_fixture["v_max"],
+        u,
+        n_steps,
     )
 
 
 @pytest.mark.benchmark
 @pytest.mark.requires_drake
-def test_bench_initial_guess_linear(benchmark) -> None:
-    """Benchmark linear interpolation initial-guess generation."""
+def test_bench_add_initial_state_constraint(benchmark) -> None:
+    """Benchmark initial state constraint setup."""
+    prog = BenchmarkProgram()
+    q = np.zeros((10, 7))
+    v = np.zeros((10, 7))
+    q0 = np.zeros(7)
+    v0 = np.zeros(7)
 
-    n_q = 7
-    n_steps = 10
-    q_start = np.zeros(n_q)
-    q_end = np.ones(n_q)
-
-    benchmark(_initial_guess_linear, q_start, q_end, n_steps)
+    benchmark(_add_initial_state_constraint, prog, q, v, q0, v0)
 
 
 @pytest.mark.benchmark
