@@ -33,6 +33,17 @@ _SKIP_DRAKE = pytest.mark.skipif(
 _IDS = [n for n, _ in ALL_BUILDERS]  # type: ignore
 
 
+def _add_models_from_file(parser: Any, sdf_file: Any) -> None:
+    """Load an SDF file across Drake parser API versions."""
+    if hasattr(parser, "AddModelFromFile"):
+        parser.AddModelFromFile(str(sdf_file))
+        return
+    if hasattr(parser, "AddModels"):
+        parser.AddModels(str(sdf_file))
+        return
+    parser.AddModelsFromUrl(sdf_file.as_uri())
+
+
 class TestSdfWellFormedness:
     """Verify each exercise model produces well-formed SDF XML."""
 
@@ -165,7 +176,7 @@ class TestDrakeParserLoading:
 
         plant = MultibodyPlant(time_step=0.0)
         parser = Parser(plant)
-        parser.AddModelFromFile(str(sdf_file))
+        _add_models_from_file(parser, sdf_file)
         plant.Finalize()
 
         assert plant.num_bodies() > 1, f"{name}: no bodies after parsing SDF"
@@ -184,7 +195,7 @@ class TestDrakeParserLoading:
 
         plant = MultibodyPlant(time_step=0.0)
         parser = Parser(plant)
-        parser.AddModelFromFile(str(sdf_file))
+        _add_models_from_file(parser, sdf_file)
         plant.Finalize()
 
         assert plant.num_positions() > 0, f"{name}: 0 generalized positions"
