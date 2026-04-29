@@ -60,22 +60,20 @@ def _add_integration_constraints(
 
     # Optimize: Preallocate the constraints matrix and variable array
     # to avoid allocation overhead for each step and degree of freedom.
+    # ⚡ Bolt: Preallocating arrays and combining variables for matrix operations
+    # speeds up integration constraint setup by ~3x for long trajectories.
     A = np.hstack((np.eye(n_v), -np.eye(n_v), -dt * np.eye(n_v)))
     b = np.zeros(n_v)
 
-    # ⚡ Bolt: Preallocating arrays and combining variables for matrix operations
-    # speeds up integration constraint setup by ~3x for long trajectories.
     vars_all = np.empty((n_steps - 1, 3 * n_v), dtype=q.dtype)
     vars_all[:, :n_v] = q[1:, offset:]
     vars_all[:, n_v : 2 * n_v] = q[:-1, offset:]
     vars_all[:, 2 * n_v :] = v[1:]
 
-    added = 0
     for k in range(n_steps - 1):
         prog.AddLinearEqualityConstraint(A, b, vars_all[k])
-        added += n_v
 
-    return added
+    return (n_steps - 1) * n_v
 
 
 def _add_dynamics_constraints(
