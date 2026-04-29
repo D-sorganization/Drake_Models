@@ -160,6 +160,24 @@ class TestAddLink:
         assert visual is not None
         assert visual.get("name") == "arm_visual"  # type: ignore
 
+    def test_y_cylinder_pose_is_lifted_to_visual(self, model: Any) -> None:
+        geom = make_cylinder_geometry_y(0.1, 0.5)
+        link = add_link(
+            model,
+            name="barbell_shaft",
+            mass=2.0,
+            mass_center=(0, 0, 0),
+            inertia_xx=0.1,
+            inertia_yy=0.1,
+            inertia_zz=0.05,
+            visual_geometry=geom,
+        )
+
+        visual = link.find("visual")  # type: ignore
+        assert visual is not None
+        assert visual.find("pose") is not None  # type: ignore
+        assert visual.find("geometry/pose") is None  # type: ignore
+
     def test_with_collision_geometry(self, model: Any) -> None:
         geom = make_box_geometry(0.2, 0.2, 0.5)
         link = add_link(

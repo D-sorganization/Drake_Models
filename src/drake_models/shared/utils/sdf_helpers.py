@@ -80,6 +80,10 @@ def _append_geometry(
     output in one place (DRY).
     """
     element = ET.SubElement(link, tag, name=f"{link_name}_{tag}")
+    pose = geometry.find("pose")
+    if pose is not None:
+        geometry.remove(pose)
+        element.append(pose)
     element.append(geometry)
 
 
