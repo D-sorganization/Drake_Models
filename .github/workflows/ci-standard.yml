@@ -83,22 +83,31 @@ jobs:
     needs: [pick-runner, quality-gate]
     runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 15
+    env:
+      PYTHONNOUSERSITE: "1"
     strategy:
       max-parallel: 1
       matrix:
         python: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
 
       - name: Install Dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
 
       - name: Run Test Suite
         run: |
-          python3 -m pytest \
+          . .venv/bin/activate
+          python -m pytest \
             -p no:xvfb \
             -p no:pytest_xvfb \
             --timeout=60 \
@@ -116,5 +125,6 @@ jobs:
     name: Reject hosted runner routing
     runs-on: d-sorg-fleet
     steps:
-      - name: Dummy
-        run: echo "passed"
+      - uses: actions/checkout@v4
+      - name: Run local-only workflow guard
+        run: python3 scripts/check_local_only_workflows.py
