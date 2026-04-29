@@ -130,6 +130,33 @@ def _add_initial_state_constraint(
     return n_q + n_v
 
 
+def _add_state_bounds(
+    prog: Any,
+    q: np.ndarray,
+    v: np.ndarray,
+    q_min: np.ndarray,
+    q_max: np.ndarray,
+    v_min: np.ndarray,
+    v_max: np.ndarray,
+) -> int:
+    """Apply explicit per-knot position and velocity bounds."""
+    added = 0
+    for k in range(q.shape[0]):
+        prog.AddBoundingBoxConstraint(q_min, q_max, q[k])
+        prog.AddBoundingBoxConstraint(v_min, v_max, v[k])
+        added += 2
+    return added
+
+
+def _initial_guess_linear(
+    q_start: np.ndarray,
+    q_end: np.ndarray,
+    n_steps: int,
+) -> np.ndarray:
+    """Return a linear interpolation from *q_start* to *q_end*."""
+    return np.linspace(q_start, q_end, n_steps)
+
+
 def _add_joint_and_actuator_bounds(
     prog: Any,
     plant: Any,

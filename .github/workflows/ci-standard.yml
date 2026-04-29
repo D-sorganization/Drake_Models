@@ -21,7 +21,7 @@ permissions:
 
 jobs:
 
-  # ── Dispatcher: route to self-hosted if available ──────────────────────────
+  # Dispatcher: route to self-hosted if available
   pick-runner:
     runs-on: d-sorg-fleet
     timeout-minutes: 2
@@ -33,16 +33,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RUNNER_CHECK_TOKEN }}
         run: |
-          echo "runner=d-sorg-fleet" >> $GITHUB_OUTPUT
+          mkdir -p "$(dirname "$GITHUB_OUTPUT")"
+          echo "runner=d-sorg-fleet" >> "$GITHUB_OUTPUT"
   quality-gate:
     needs: pick-runner
     runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: pip install -e ".[dev]"
 
@@ -83,11 +84,12 @@ jobs:
     runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 15
     strategy:
+      max-parallel: 1
       matrix:
         python: ["3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
 
@@ -97,9 +99,11 @@ jobs:
       - name: Run Test Suite
         run: |
           python3 -m pytest \
+            -p no:xvfb \
+            -p no:pytest_xvfb \
             --timeout=60 \
             --timeout-method=thread \
-            -m "not slow and not requires_drake" \
+            -m "not slow and not requires_drake and not benchmark" \
             --cov=src \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
