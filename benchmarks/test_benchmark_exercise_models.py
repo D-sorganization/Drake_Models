@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
+from drake_models.exercises.bench_press.bench_press_model import BenchPressModelBuilder
+from drake_models.exercises.deadlift.deadlift_model import DeadliftModelBuilder
 from drake_models.exercises.factory import build_exercise_model
 from drake_models.exercises.squat.squat_model import SquatModelBuilder
-from drake_models.exercises.deadlift.deadlift_model import DeadliftModelBuilder
-from drake_models.exercises.bench_press.bench_press_model import BenchPressModelBuilder
 
 
 @pytest.mark.benchmark(group="model_instantiation")
