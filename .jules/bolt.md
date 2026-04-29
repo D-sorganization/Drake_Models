@@ -30,6 +30,6 @@
 ## 2025-05-18 - Replacing `np.concatenate` in loops with preallocated slices
 **Learning:** In constraint setup routines (`_add_dynamics_constraints`), using `np.concatenate` inside a tight loop over `n_steps` to assemble variable slices is a bottleneck. It incurs continuous memory allocations and list creation overhead. Preallocating a monolithic array (`np.empty`) and block-assigning slices before the loop avoids per-iteration allocation and yields a ~3x performance improvement in generating mathematical program constraints.
 **Action:** When feeding slice-assembled vectors or equations into solvers repeatedly, prefer allocating one large array outside the loop and filling it via slice assignments over repeatedly calling `np.concatenate` inside the loop.
-## $(date +%Y-%m-%d) - Drake constraint array allocation overhead
+## 2026-04-29 - Drake constraint array allocation overhead
 **Learning:** Adding constraints individually inside tight Python loops to Drake's `MathematicalProgram` is a performance anti-pattern. The allocation overhead for each `AddLinearEqualityConstraint` or `AddBoundingBoxConstraint` can dominate solver setup time.
 **Action:** Always prefer matrix-vector forms (`AddLinearEqualityConstraint(A, b, vars)`) with preallocated arrays (via `np.empty`, ensuring correct `dtype`) or array-based constraints (`AddBoundingBoxConstraint(lower, upper, vars)`) over iterating through array elements or timesteps.
