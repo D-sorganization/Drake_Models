@@ -47,7 +47,9 @@ jobs:
         with: { python-version: "3.11" }
         env:
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      - run: pip install -e ".[dev]"
+      - run: pip install -e .
+      - run: pip install ruff>=0.14.0 bandit>=1.7.7 pytest>=9.0.3 pytest-cov>=7.1.0
+      - run: pip install --ignore-installed mypy>=1.15.0 types-PyYAML
 
       - name: Lint
         run: ruff check src scripts tests examples benchmarks
