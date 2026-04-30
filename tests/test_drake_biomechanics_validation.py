@@ -24,7 +24,6 @@ import math
 import xml.etree.ElementTree as ET
 from typing import Any
 
-import numpy as np
 import pytest
 
 # Import builders at module level - this is safe for tests
@@ -324,9 +323,11 @@ class TestJointDefinitions:
                 # At least one of lower/upper should be defined
                 if lower is not None and upper is not None:
                     try:
-                        l = float(lower.text)
-                        u = float(upper.text)
-                        assert l <= u, f"Joint '{joint_name}' limits inverted"
+                        lower_val = float(lower.text)
+                        upper_val = float(upper.text)
+                        assert (
+                            lower_val <= upper_val
+                        ), f"Joint '{joint_name}' limits inverted"
                     except (ValueError, AttributeError):
                         pass
 
@@ -491,7 +492,6 @@ class TestKinematicChainConsistency:
 
         # Validate joints in the model (not in initial_pose)
         for joint in model.findall("joint"):
-            joint_name = joint.get("name", "<unnamed>")
             parent_el = joint.find("parent")
             child_el = joint.find("child")
             if parent_el is not None and parent_el.text:
@@ -524,9 +524,12 @@ class TestKinematicChainConsistency:
         world_joints = []
         for joint in model.findall("joint"):
             parent_el = joint.find("parent")
-            if parent_el is not None and parent_el.text:
-                if parent_el.text.strip() == "world":
-                    world_joints.append(joint.get("name", "<unnamed>"))
+            if (
+                parent_el is not None
+                and parent_el.text
+                and parent_el.text.strip() == "world"
+            ):
+                world_joints.append(joint.get("name", "<unnamed>"))
 
         assert (
             len(world_joints) > 0
@@ -726,7 +729,6 @@ class TestConstraintEnforcement:
         model = root.find("model")
         assert model is not None
         for joint in model.findall("joint"):
-            joint_name = joint.get("name", "<unnamed>")
             pose_el = joint.find("pose")
             if pose_el is not None and pose_el.text:
                 coords = list(map(float, pose_el.text.split()[:3]))
