@@ -1,5 +1,9 @@
 # CLAUDE.md -- Drake_Models
 
+## Branch Policy
+
+All work on `main` branch. PRs target `main`.
+
 ## What This Is
 
 Drake multibody simulation models for classical barbell exercises (squat,
