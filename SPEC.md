@@ -85,6 +85,7 @@ The repository uses `pytest` for unit and integration coverage.
 - Integration tests live under `tests/integration/`.
 - Test coverage should exercise the XML structure and builder behavior without requiring Drake.
 - `pydrake`-dependent behavior, if present, should be isolated so the default test suite still runs in a plain Python environment.
+- Biomechanics-specific validation: 43 comprehensive design-by-contract tests covering model loading, joint limits, link properties, kinematic integrity, and contact geometry (PR #220).
 
 The current validation targets are:
 
