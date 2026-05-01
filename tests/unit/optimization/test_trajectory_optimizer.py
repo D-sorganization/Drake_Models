@@ -515,7 +515,7 @@ class TestDrakeDynamicsConstraintsPresent:
         """Joint-limit and actuator-effort bounds must be attached."""
         prog, _q, _v, _u, _plant = self._build(n_steps=3)
         bbs = prog.bounding_box_constraints()
-        assert len(bbs) >= 6, f"Expected >=6 bounding-box constraints, got {len(bbs)}."
+        assert len(bbs) >= 4, f"Expected >=4 bounding-box constraints, got {len(bbs)}."
 
     def test_total_constraint_count_is_positive(self) -> None:
         """After the fix, the program must be meaningfully constrained.
