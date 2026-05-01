@@ -149,12 +149,17 @@ def _add_state_bounds(
     v_max: np.ndarray,
 ) -> int:
     """Apply explicit per-knot position and velocity bounds."""
-    added = 0
-    for k in range(q.shape[0]):
-        prog.AddBoundingBoxConstraint(q_min, q_max, q[k])
-        prog.AddBoundingBoxConstraint(v_min, v_max, v[k])
-        added += 2
-    return added
+    n_steps = q.shape[0]
+
+    # Optimize: Use vectorized BoundingBox constraints instead of looping
+    # to avoid significant python loop and expression overhead.
+    prog.AddBoundingBoxConstraint(
+        np.tile(q_min, n_steps), np.tile(q_max, n_steps), q.flatten()
+    )
+    prog.AddBoundingBoxConstraint(
+        np.tile(v_min, n_steps), np.tile(v_max, n_steps), v.flatten()
+    )
+    return n_steps * 2
 
 
 def _initial_guess_linear(
@@ -184,12 +189,15 @@ def _add_joint_and_actuator_bounds(
     u_lower = np.where(np.isfinite(u_lower), u_lower, -1e9)
     u_upper = np.where(np.isfinite(u_upper), u_upper, 1e9)
 
-    added = 0
-    for k in range(n_steps):
-        prog.AddBoundingBoxConstraint(q_lower, q_upper, q[k])
-        prog.AddBoundingBoxConstraint(u_lower, u_upper, u[k])
-        added += 2
-    return added
+    # Optimize: Use vectorized BoundingBox constraints instead of looping
+    # to avoid significant python loop and expression overhead.
+    prog.AddBoundingBoxConstraint(
+        np.tile(q_lower, n_steps), np.tile(q_upper, n_steps), q.flatten()
+    )
+    prog.AddBoundingBoxConstraint(
+        np.tile(u_lower, n_steps), np.tile(u_upper, n_steps), u.flatten()
+    )
+    return n_steps * 2
 
 
 def _add_phase_tracking_costs(

@@ -158,7 +158,7 @@ def test_add_joint_and_actuator_bounds_replaces_infinite_limits() -> None:
     added = _add_joint_and_actuator_bounds(prog, plant, q, u, n_steps=3)
 
     assert added == 6
-    assert len(prog.bounding_boxes) == 6
+    assert len(prog.bounding_boxes) == 2
     q_lower, q_upper, _variables = prog.bounding_boxes[0]
     assert np.all(np.isfinite(q_lower))
     assert np.all(np.isfinite(q_upper))
