@@ -211,6 +211,8 @@ def _add_phase_tracking_costs(
 ) -> None:
     """Add phase-tracking quadratic costs to *prog*."""
     joint_names = objective.joint_names()
+    # ⚡ Bolt: Replace O(N) list.index() lookup in the inner loop with an O(1) dictionary lookup
+    joint_name_to_idx = {name: idx for idx, name in enumerate(joint_names)}
 
     # Optimize: pre-calculate constant Q matrices to avoid allocation overhead in loop
     Q_state = state_weight * np.eye(n_q)
@@ -220,8 +222,8 @@ def _add_phase_tracking_costs(
         k = int(phase.time_fraction * (n_steps - 1))
         target = np.zeros(n_q)
         for jname, angle in phase.joint_angles.items():
-            if jname in joint_names:
-                idx = joint_names.index(jname)
+            if jname in joint_name_to_idx:
+                idx = joint_name_to_idx[jname]
                 if idx < n_q:
                     target[idx] = angle
 
