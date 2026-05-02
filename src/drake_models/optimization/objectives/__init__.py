@@ -119,10 +119,14 @@ class ExerciseObjective:
         Missing joints in a phase are filled with ``np.nan``.
         """
         names = self.joint_names()
+        # ⚡ Bolt: Replace O(N) linear scan over `names` in nested loop with O(1) dict lookup
+        # by iterating over the phase's joint_angles directly.
+        name_to_j = {name: j for j, name in enumerate(names)}
+
         n_phases = len(self.phases)
         arr = np.full((n_phases, len(names)), np.nan)
         for i, phase in enumerate(self.phases):
-            for j, name in enumerate(names):
-                if name in phase.joint_angles:
-                    arr[i, j] = phase.joint_angles[name]
+            for name, angle in phase.joint_angles.items():
+                if name in name_to_j:
+                    arr[i, name_to_j[name]] = angle
         return arr
