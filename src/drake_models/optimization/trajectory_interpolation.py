@@ -51,10 +51,12 @@ def _interpolate_joint_positions(
 ) -> np.ndarray:
     """Linearly interpolate joint angles across *time_fracs*."""
     n_steps = len(time_fracs)
-    positions = np.zeros((n_steps, n_joints))
+    # Optimize: Preallocate transposed array to iterate over contiguous memory (rows),
+    # which is significantly faster than slice assignments to columns (positions[:, j]).
+    positions_t = np.empty((n_joints, n_steps))
     for j in range(n_joints):
-        positions[:, j] = np.interp(time_fracs, phase_times, phase_angles_clean[:, j])
-    return positions
+        positions_t[j] = np.interp(time_fracs, phase_times, phase_angles_clean[:, j])
+    return positions_t.T
 
 
 def _finite_diff_velocities(positions: np.ndarray, dt: float) -> np.ndarray:

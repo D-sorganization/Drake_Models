@@ -78,16 +78,18 @@ class TestSolveIkKeyframes:
         keyframes = solve_ik_keyframes("<sdf/>", "back_squat", n_frames=100)
         first_phase = SQUAT.phases[0]
         joint_names = SQUAT.joint_names()
+        name_to_idx = {name: i for i, name in enumerate(joint_names)}
         for jname, angle in first_phase.joint_angles.items():
-            idx = joint_names.index(jname)
+            idx = name_to_idx[jname]
             assert abs(keyframes[0, idx] - angle) < 0.01
 
     def test_ends_near_last_phase(self) -> None:
         keyframes = solve_ik_keyframes("<sdf/>", "back_squat", n_frames=100)
         last_phase = SQUAT.phases[-1]
         joint_names = SQUAT.joint_names()
+        name_to_idx = {name: i for i, name in enumerate(joint_names)}
         for jname, angle in last_phase.joint_angles.items():
-            idx = joint_names.index(jname)
+            idx = name_to_idx[jname]
             assert abs(keyframes[-1, idx] - angle) < 0.01
 
     def test_all_exercises(self) -> None:

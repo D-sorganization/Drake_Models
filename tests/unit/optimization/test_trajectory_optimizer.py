@@ -214,8 +214,9 @@ class TestInterpolateTrajectory:
         result = interpolate_trajectory(SQUAT, cfg)
         first_phase = SQUAT.phases[0]
         joint_names = SQUAT.joint_names()
+        name_to_idx = {name: i for i, name in enumerate(joint_names)}
         for jname, angle in first_phase.joint_angles.items():
-            idx = joint_names.index(jname)
+            idx = name_to_idx[jname]
             assert abs(result.joint_positions[0, idx] - angle) < 0.01
 
     def test_ends_near_last_phase(self) -> None:
@@ -223,8 +224,9 @@ class TestInterpolateTrajectory:
         result = interpolate_trajectory(SQUAT, cfg)
         last_phase = SQUAT.phases[-1]
         joint_names = SQUAT.joint_names()
+        name_to_idx = {name: i for i, name in enumerate(joint_names)}
         for jname, angle in last_phase.joint_angles.items():
-            idx = joint_names.index(jname)
+            idx = name_to_idx[jname]
             assert abs(result.joint_positions[-1, idx] - angle) < 0.01
 
     def test_torques_are_zero(self) -> None:
