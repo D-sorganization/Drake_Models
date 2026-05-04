@@ -108,25 +108,38 @@ class ExerciseObjective:
 
     def joint_names(self) -> list[str]:
         """Return the sorted union of all joint names across phases."""
-        names: set[str] = set()
-        for phase in self.phases:
-            names.update(phase.joint_angles.keys())
-        return sorted(names)
+        if not hasattr(self, "_cached_joint_names"):
+            names: set[str] = set()
+            for phase in self.phases:
+                names.update(phase.joint_angles.keys())
+            object.__setattr__(self, "_cached_joint_names", tuple(sorted(names)))
+        # Return a mutable list to match the original type hint,
+        # but generated from the cached immutable tuple.
+        return list(self._cached_joint_names)  # type: ignore[attr-defined]
 
     def phase_angles_array(self) -> np.ndarray:
         """Return (n_phases, n_unique_joints) array of target angles.
 
         Missing joints in a phase are filled with ``np.nan``.
         """
-        names = self.joint_names()
-        # ⚡ Bolt: Replace O(N) linear scan over `names` in nested loop with O(1) dict lookup
-        # by iterating over the phase's joint_angles directly.
-        name_to_j = {name: j for j, name in enumerate(names)}
+        if not hasattr(self, "_cached_phase_angles_array"):
+            names = self.joint_names()
+            # ⚡ Bolt: Replace O(N) linear scan over `names` in nested loop with O(1) dict lookup
+            # by iterating over the phase's joint_angles directly.
+            name_to_j = {name: j for j, name in enumerate(names)}
 
-        n_phases = len(self.phases)
-        arr = np.full((n_phases, len(names)), np.nan)
-        for i, phase in enumerate(self.phases):
-            for name, angle in phase.joint_angles.items():
-                if name in name_to_j:
-                    arr[i, name_to_j[name]] = angle
-        return arr
+            n_phases = len(self.phases)
+            arr = np.full((n_phases, len(names)), np.nan)
+            for i, phase in enumerate(self.phases):
+                for name, angle in phase.joint_angles.items():
+                    if name in name_to_j:
+                        arr[i, name_to_j[name]] = angle
+            arr.flags.writeable = False
+            object.__setattr__(self, "_cached_phase_angles_array", arr)
+
+        # We can return the cached array directly if downstream only reads it,
+        # but to be safe against mutation we'll return a copy of the read-only array
+        # or just let it fail if they try to mutate it (which is safer). Wait,
+        # np.where works on read-only arrays. So returning the cached array directly
+        # and making it writeable=False is the safest pattern.
+        return self._cached_phase_angles_array  # type: ignore[attr-defined]
