@@ -68,3 +68,6 @@
 ## 2024-05-18 - Fast array construction via memory contiguity
 **Learning:** When building 2D NumPy arrays in loops, assigning values to non-contiguous memory slices (like `positions[:, j]`) causes cache misses and overhead.
 **Action:** Preallocate the array in a transposed format, assign data to contiguous rows (`positions_t[j]`), and return the transpose `.T` to significantly speed up memory-bound operations.
+## 2024-05-18 - Caching derived arrays on singleton dataclasses
+**Learning:** In optimization loops or setup routines that are called frequently, rebuilding target arrays or lists (like `np.full(...)` combined with dictionary lookups and set operations) from singleton definitions (like predefined `ExerciseObjective`s) incurs unnecessary overhead.
+**Action:** When a frozen dataclass is used as a global or module-level singleton, use explicit caching mechanisms (like memoization into private instance attributes on `__post_init__` or using `@functools.cache` if appropriate) for expensive derived properties like `joint_names` or `phase_angles_array` to avoid rebuilding them repeatedly.
