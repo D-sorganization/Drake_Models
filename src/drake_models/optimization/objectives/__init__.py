@@ -115,7 +115,7 @@ class ExerciseObjective:
             object.__setattr__(self, "_cached_joint_names", tuple(sorted(names)))
         # Return a mutable list to match the original type hint,
         # but generated from the cached immutable tuple.
-        return list(getattr(self, "_cached_joint_names"))  # type: ignore[attr-defined]
+        return list(self._cached_joint_names)  # type: ignore[attr-defined]
 
     def phase_angles_array(self) -> np.ndarray:
         """Return (n_phases, n_unique_joints) array of target angles.
@@ -142,4 +142,4 @@ class ExerciseObjective:
         # or just let it fail if they try to mutate it (which is safer). Wait,
         # np.where works on read-only arrays. So returning the cached array directly
         # and making it writeable=False is the safest pattern.
-        return getattr(self, "_cached_phase_angles_array")  # type: ignore[attr-defined]
+        return self._cached_phase_angles_array  # type: ignore[attr-defined]
