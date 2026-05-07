@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  drake-models:
+    build: .
+    volumes:
+      - .:/workspace
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - QT_X11_NO_MITSHM=1
+    network_mode: host
+    command: python -m drake_models
