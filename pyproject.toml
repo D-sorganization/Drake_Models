@@ -95,9 +95,10 @@ python_classes = "Test*"
 python_functions = "test_*"
 addopts = "-ra -q --strict-markers --strict-config --durations=20"
 markers = [
+    "unit: Pure logic, highly isolated, execution in < 100ms",
+    "integration: Subsystem boundaries, DBs, I/O, heavy mocking",
+    "e2e: Full system boot, real networks, user workflows",
     "slow: marks tests as slow",
-    "integration: marks tests as integration tests",
-    "unit: marks tests as unit tests",
     "requires_drake: tests requiring pydrake package",
     "benchmark: marks performance benchmarks",
 ]
