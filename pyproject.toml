@@ -93,13 +93,45 @@ pythonpath = [".", "src"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-addopts = "-ra -q --strict-markers --strict-config --durations=20"
+timeout = 60
+timeout_method = "thread"
+
+# Default lane: fast, deterministic, offline.
+# Heavy paths are deselected; nightly/release lanes opt in via -m overrides.
+addopts = """
+  -ra
+  -q
+  --strict-markers
+  --strict-config
+  --durations=20
+  -m "not slow and not live_simulation and not e2e and not requires_network"
+"""
+
 markers = [
-    "slow: marks tests as slow",
-    "integration: marks tests as integration tests",
-    "unit: marks tests as unit tests",
+    # ---- tier markers ----
+    "unit: pure logic, fully mocked, < 100 ms wall-clock",
+    "integration: cross-module / file-system / process boundaries, < 5 s",
+    "e2e: full-stack smoke tests; nightly + release gate only",
+    "slow: > 1 s wall-clock; deselect with -m 'not slow'",
+    "live_simulation: requires a real physics / math engine; deselect by default",
+
+    # ---- environment markers ----
+    "requires_network: needs real outbound network; deselect by default",
+    "requires_gpu: needs CUDA / Metal / ROCm",
+    "requires_gl: needs OpenGL or a display",
+    "headless_safe: verified under QT_QPA_PLATFORM=offscreen",
+
+    # ---- per-engine markers ----
     "requires_drake: tests requiring pydrake package",
-    "benchmark: marks performance benchmarks",
+    "requires_mujoco: skip when import mujoco fails",
+    "requires_pinocchio: skip when pinocchio is the stub PyPI wheel",
+    "requires_opensim: skip when import opensim fails",
+    "requires_matlab: skip when MATLAB Engine for Python is unavailable",
+
+    # ---- workflow markers ----
+    "serial: must run with -n 0 (xdist parallel breaks this test)",
+    "benchmark: marks performance benchmarks; not a primary correctness gate",
+    "smoke: release-blocking smoke; subset of e2e",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
