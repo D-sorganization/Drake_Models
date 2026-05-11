@@ -1,0 +1,63 @@
+name: Model Pack Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "model_pack.yaml"
+      - "src/drake_models/model_pack.py"
+      - "src/drake_models/__main__.py"
+      - "pyproject.toml"
+      - ".github/workflows/model-pack-smoke.yml"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "model_pack.yaml"
+      - "src/drake_models/model_pack.py"
+      - "src/drake_models/__main__.py"
+      - "pyproject.toml"
+      - ".github/workflows/model-pack-smoke.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  model-pack-api:
+    name: model_pack API smoke
+    runs-on: d-sorg-fleet
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+      - name: Install package
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Run model_pack API smoke
+        run: |
+          . .venv/bin/activate
+          python -c "from drake_models.model_pack import resolve, manifest, list_exercises; resolve(); manifest(); list_exercises()"
+
+      - name: Verify launcher CLI export contract
+        run: |
+          . .venv/bin/activate
+          python -m drake_models --exercise gait --export /tmp/gait.sdf
+          test -s /tmp/gait.sdf
+          grep -q '<sdf' /tmp/gait.sdf
+          grep -q 'version="1.8"' /tmp/gait.sdf
