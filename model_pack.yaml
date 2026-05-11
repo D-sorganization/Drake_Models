@@ -1,0 +1,24 @@
+schema: model_pack/v1
+repo: Drake_Models
+package: drake_models
+engine: drake
+engine_version: ">=1.20"
+anthropometrics: winter_2009
+format: sdformat-1.8
+axis_convention: z_up
+models_root: src/drake_models/exercises
+exercises:
+  - id: squat
+    path: src/drake_models/exercises/squat
+  - id: deadlift
+    path: src/drake_models/exercises/deadlift
+  - id: bench_press
+    path: src/drake_models/exercises/bench_press
+  - id: snatch
+    path: src/drake_models/exercises/snatch
+  - id: clean_and_jerk
+    path: src/drake_models/exercises/clean_and_jerk
+  - id: gait
+    path: src/drake_models/exercises/gait
+  - id: sit_to_stand
+    path: src/drake_models/exercises/sit_to_stand

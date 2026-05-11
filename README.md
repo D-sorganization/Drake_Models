@@ -1,5 +1,14 @@
 # Drake_Models
 
+## Used by UpstreamDrift
+
+This repository publishes a `model_pack.yaml` manifest and a
+`drake_models` console script that satisfy the UpstreamDrift fleet's shared
+launcher contract. See the umbrella tracker
+[D-sorganization/UpstreamDrift#5179](https://github.com/D-sorganization/UpstreamDrift/issues/5179)
+for the integration scope. The `biomech.model_pack` entry point exposes
+`resolve()`, `manifest()`, and `list_exercises()` for downstream discovery.
+
 Drake (pydrake) multibody models for five classical barbell exercises:
 
 - **Back Squat** -- barbell on upper trapezius, sagittal-plane hip/knee/ankle flexion
