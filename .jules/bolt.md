@@ -77,3 +77,7 @@
 ## 2026-05-07 - Vectorize ND interpolation with searchsorted
 **Learning:** Using `np.interp` within a loop over array columns or dimensions incurs significant Python loop dispatch overhead. Vectorizing ND interpolation using `np.searchsorted` to find bin indices, combined with manual linear blending (`val0 + w1 * (val1 - val0)`), is ~40-50% faster than looping with `np.interp` over 1D slices.
 **Action:** Replace `for j in range(N): np.interp(...)` patterns with single vectorized `np.searchsorted` and math operations for large dimension arrays.
+
+## 2024-05-19 - Surprising Python/NumPy array interpolation performance
+**Learning:** For interpolating joint angles across timesteps (a 2D operation), full vectorization using `np.searchsorted` and manual linear blending across all joints simultaneously is surprisingly ~3x *slower* than using a simple Python `for` loop over each joint calling `np.interp` on 1D slices, provided the loop avoids column-wise assignments into an array.
+**Action:** When building 2D NumPy arrays in loops, preallocating a transposed array with `np.empty()` and assigning to contiguous rows inside the loop (e.g., `arr[j] = ...`), before transposing the result back (`arr.T`), avoids significant overhead compared to both column-wise assignment and overly complex vectorization on typical array sizes.

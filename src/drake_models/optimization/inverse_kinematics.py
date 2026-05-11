@@ -105,10 +105,13 @@ def _interpolate_phases(
     phase_angles_clean = np.where(np.isnan(phase_angles), 0.0, phase_angles)
 
     time_fracs = np.linspace(0.0, 1.0, n_frames)
-    keyframes = np.zeros((n_frames, n_joints))
-
+    # ⚡ Bolt: Preallocating a transposed array and avoiding column-wise assignment
+    # in the loop over joints speeds up keyframe generation compared to vectorization
+    # or column assignment.
+    keyframes = np.empty((n_joints, n_frames))
     for j in range(n_joints):
-        keyframes[:, j] = np.interp(time_fracs, phase_times, phase_angles_clean[:, j])
+        keyframes[j] = np.interp(time_fracs, phase_times, phase_angles_clean[:, j])
+    keyframes = keyframes.T
 
     logger.info(
         "Generated %d keyframes for %s (%d joints) via interpolation",
