@@ -152,7 +152,7 @@ def parallel_axis_shift(
 def rotation_matrix_x(angle_rad: float) -> np.ndarray:
     """3x3 rotation matrix about the X axis."""
     c, s = math.cos(angle_rad), math.sin(angle_rad)
-    # ⚡ Bolt: Preallocating array and assigning avoids nested list overhead
+    # ⚡ Bolt: Avoid nested list inspection overhead
     arr = np.zeros((3, 3), dtype=float)
     arr[0, 0] = 1.0
     arr[1, 1] = c
@@ -165,7 +165,7 @@ def rotation_matrix_x(angle_rad: float) -> np.ndarray:
 def rotation_matrix_y(angle_rad: float) -> np.ndarray:
     """3x3 rotation matrix about the Y axis."""
     c, s = math.cos(angle_rad), math.sin(angle_rad)
-    # ⚡ Bolt: Preallocating array and assigning avoids nested list overhead
+    # ⚡ Bolt: Avoid nested list inspection overhead
     arr = np.zeros((3, 3), dtype=float)
     arr[0, 0] = c
     arr[0, 2] = s
@@ -178,7 +178,7 @@ def rotation_matrix_y(angle_rad: float) -> np.ndarray:
 def rotation_matrix_z(angle_rad: float) -> np.ndarray:
     """3x3 rotation matrix about the Z axis."""
     c, s = math.cos(angle_rad), math.sin(angle_rad)
-    # ⚡ Bolt: Preallocating array and assigning avoids nested list overhead
+    # ⚡ Bolt: Avoid nested list inspection overhead
     arr = np.zeros((3, 3), dtype=float)
     arr[0, 0] = c
     arr[0, 1] = -s
