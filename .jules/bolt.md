@@ -81,3 +81,7 @@
 ## 2024-05-19 - Surprising Python/NumPy array interpolation performance
 **Learning:** For interpolating joint angles across timesteps (a 2D operation), full vectorization using `np.searchsorted` and manual linear blending across all joints simultaneously is surprisingly ~3x *slower* than using a simple Python `for` loop over each joint calling `np.interp` on 1D slices, provided the loop avoids column-wise assignments into an array.
 **Action:** When building 2D NumPy arrays in loops, preallocating a transposed array with `np.empty()` and assigning to contiguous rows inside the loop (e.g., `arr[j] = ...`), before transposing the result back (`arr.T`), avoids significant overhead compared to both column-wise assignment and overly complex vectorization on typical array sizes.
+
+## 2026-05-16 - Avoid nested lists for small fixed-size matrices
+**Learning:** For small, fixed-size matrices (e.g., 3x3 rotation matrices), passing nested lists to `np.array(..., dtype=float)` incurs significant list-inspection and dynamic memory allocation overhead. Preallocating an empty array with `np.zeros()` and directly assigning the non-zero scalar values is ~2x faster in hot paths.
+**Action:** When building small, fixed-size matrices in performance-critical code, preallocate the array with `np.zeros()` and explicitly set the non-zero elements.
