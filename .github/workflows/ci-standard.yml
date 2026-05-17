@@ -87,12 +87,13 @@ jobs:
         run: bandit -r src/ -ll -ii --format txt
 
   tests:
-    needs: [pick-runner, quality-gate]
+    needs: pick-runner
     runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 15
     env:
       PYTHONNOUSERSITE: "1"
     strategy:
+      fail-fast: false
       max-parallel: 1
       matrix:
         python: ["3.10", "3.11", "3.12"]
