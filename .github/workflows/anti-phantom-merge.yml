@@ -34,7 +34,7 @@ jobs:
         run: |
           set -eo pipefail
 
-          # Override label takes precedence — admins only
+          # Override label takes precedence -- admins only
           LABELS=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '[.labels[].name] | join(",")')
           if echo "$LABELS" | grep -qw "phantom-guard-override"; then
             ACTOR="${{ github.actor }}"
