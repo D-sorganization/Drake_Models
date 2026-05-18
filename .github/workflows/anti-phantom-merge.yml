@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   guard:
+    timeout-minutes: 10
     runs-on: d-sorg-fleet
     if: github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'master'
     steps:

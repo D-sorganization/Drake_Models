@@ -19,6 +19,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: local-only-runner-guard-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   reject-hosted-runner-routing:
     name: Reject hosted runner routing
