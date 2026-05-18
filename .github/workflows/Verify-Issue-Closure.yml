@@ -31,7 +31,7 @@ jobs:
     runs-on: d-sorg-fleet
     steps:
       - name: Check for closure evidence
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
