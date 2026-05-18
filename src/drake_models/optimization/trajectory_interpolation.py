@@ -63,12 +63,14 @@ def _finite_diff_velocities(positions: np.ndarray, dt: float) -> np.ndarray:
     """Compute finite-difference joint velocities from *positions*."""
     # ⚡ Bolt: Avoid np.diff overhead and redundant zero initialization
     # by using preallocated empty arrays, scalar dt inversion, and slicing.
+    # In-place np.subtract avoids creating an intermediate array before multiplication.
     # This is ~40-50% faster than np.zeros_like + np.diff for large arrays.
     if len(positions) > 1:
         velocities = np.empty_like(positions)
         velocities[0] = 0.0
         dt_inv = 1.0 / dt
-        velocities[1:] = (positions[1:] - positions[:-1]) * dt_inv
+        np.subtract(positions[1:], positions[:-1], out=velocities[1:])
+        velocities[1:] *= dt_inv
         return velocities
     return np.zeros_like(positions)
 

@@ -85,3 +85,7 @@
 ## 2026-05-16 - Avoid nested lists for small fixed-size matrices
 **Learning:** For small, fixed-size matrices (e.g., 3x3 rotation matrices), passing nested lists to `np.array(..., dtype=float)` incurs significant list-inspection and dynamic memory allocation overhead. Preallocating an empty array with `np.zeros()` and directly assigning the non-zero scalar values is ~2x faster in hot paths.
 **Action:** When building small, fixed-size matrices in performance-critical code, preallocate the array with `np.zeros()` and explicitly set the non-zero elements.
+
+## 2024-05-18 - [NumPy Finite Difference Optimization]
+**Learning:** In finite difference calculations using NumPy slices (e.g. `arr[1:] - arr[:-1]`), allocating an intermediate array for the subtraction result can be avoided by using `np.subtract(..., out=...)` into a preallocated array.
+**Action:** Use `np.subtract(a, b, out=result)` instead of `result = a - b` when performance is critical and an output array is already allocated.
