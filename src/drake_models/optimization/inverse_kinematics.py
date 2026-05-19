@@ -10,7 +10,7 @@ interpolation.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -157,7 +157,7 @@ def _refine_keyframe(
     q_init = np.zeros(n_q)
     for j in range(min(n_joints, n_q)):
         q_init[j] = initial_guess[j]
-    prog.SetInitialGuess(q_vars, q_init)  # type: ignore[arg-type]
+    prog.SetInitialGuess(cast(Any, q_vars), cast(Any, q_init))
 
     result = Solve(prog)
     if result.is_success():
