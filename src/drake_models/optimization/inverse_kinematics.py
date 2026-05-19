@@ -157,7 +157,7 @@ def _refine_keyframe(
     q_init = np.zeros(n_q)
     for j in range(min(n_joints, n_q)):
         q_init[j] = initial_guess[j]
-    prog.SetInitialGuess(q_vars, q_init)
+    prog.SetInitialGuess(q_vars, q_init)  # type: ignore[arg-type]
 
     result = Solve(prog)
     if result.is_success():
