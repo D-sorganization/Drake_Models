@@ -143,3 +143,26 @@ class ExerciseObjective:
         # np.where works on read-only arrays. So returning the cached array directly
         # and making it writeable=False is the safest pattern.
         return self._cached_phase_angles_array  # type: ignore[attr-defined]
+
+    def phase_times_array(self) -> np.ndarray:
+        """Return (n_phases,) array of target phase times.
+
+        The returned array is read-only.
+        """
+        if not hasattr(self, "_cached_phase_times_array"):
+            arr = np.array([p.time_fraction for p in self.phases], dtype=float)
+            arr.flags.writeable = False
+            object.__setattr__(self, "_cached_phase_times_array", arr)
+        return self._cached_phase_times_array  # type: ignore[attr-defined]
+
+    def phase_angles_clean_array(self) -> np.ndarray:
+        """Return (n_phases, n_unique_joints) array of target angles, with NaN as 0.0.
+
+        The returned array is read-only.
+        """
+        if not hasattr(self, "_cached_phase_angles_clean"):
+            arr = self.phase_angles_array()
+            clean_arr = np.where(np.isnan(arr), 0.0, arr)
+            clean_arr.flags.writeable = False
+            object.__setattr__(self, "_cached_phase_angles_clean", clean_arr)
+        return self._cached_phase_angles_clean  # type: ignore[attr-defined]

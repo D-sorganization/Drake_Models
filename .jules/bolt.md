@@ -89,3 +89,7 @@
 ## 2024-05-18 - [NumPy Finite Difference Optimization]
 **Learning:** In finite difference calculations using NumPy slices (e.g. `arr[1:] - arr[:-1]`), allocating an intermediate array for the subtraction result can be avoided by using `np.subtract(..., out=...)` into a preallocated array.
 **Action:** Use `np.subtract(a, b, out=result)` instead of `result = a - b` when performance is critical and an output array is already allocated.
+
+## 2026-05-19 - Caching repeated intermediate array computations
+**Learning:** During trajectory generation (e.g. `_build_phase_arrays`), computing `np.where(np.isnan(...))` on static arrays, or recreating `phase_times` via list comprehension over `objective.phases` every time is wasteful in hot loops, especially when the underlying objective arrays are immutable constants. Caching these arrays (like `phase_times` and `phase_angles_clean`) inside the `ExerciseObjective` dataclass reduces overhead in benchmarks (e.g., from ~268us to ~567ns for `test_benchmark_build_phase_arrays`).
+**Action:** Identify intermediate operations on static config arrays and pull them into the cached initialization, adding explicit getters on the configuration objects.
