@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 
@@ -29,6 +29,11 @@ def _build_drake_plant(sdf_string: str, dt: float) -> object:
     parser.AddModelsFromString(sdf_string, "sdf")
     plant.Finalize()
     return plant
+
+
+def _drake_array(value: Any) -> np.ndarray:
+    """Normalize pydrake array-returning APIs for NumPy typing."""
+    return cast(np.ndarray, value)
 
 
 def _add_control_costs(prog: Any, u: np.ndarray, n_steps: int, weight: float) -> None:
@@ -251,9 +256,9 @@ def _build_drake_program(
     n_steps = config.n_timesteps
 
     prog = MathematicalProgram()
-    q = prog.NewContinuousVariables(n_steps, n_q, "q")
-    v = prog.NewContinuousVariables(n_steps, n_v, "v")
-    u = prog.NewContinuousVariables(n_steps, n_u, "u")
+    q = _drake_array(prog.NewContinuousVariables(n_steps, n_q, "q"))
+    v = _drake_array(prog.NewContinuousVariables(n_steps, n_v, "v"))
+    u = _drake_array(prog.NewContinuousVariables(n_steps, n_u, "u"))
 
     _add_control_costs(prog, u, n_steps, config.control_weight)
     _add_phase_tracking_costs(
@@ -291,9 +296,9 @@ def solve_with_drake(
     time = np.linspace(0.0, config.total_time, config.n_timesteps)
 
     return TrajectoryResult(
-        joint_positions=result.GetSolution(q),
-        joint_velocities=result.GetSolution(v),
-        joint_torques=result.GetSolution(u),
+        joint_positions=_drake_array(result.GetSolution(q)),
+        joint_velocities=_drake_array(result.GetSolution(v)),
+        joint_torques=_drake_array(result.GetSolution(u)),
         time=time,
         cost=result.get_optimal_cost(),
         converged=result.is_success(),
