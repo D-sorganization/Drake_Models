@@ -31,7 +31,7 @@ def _build_drake_plant(sdf_string: str, dt: float) -> object:
     return plant
 
 
-def _add_control_costs(prog: Any, u: np.ndarray[Any, Any], n_steps: int, weight: float) -> None:
+def _add_control_costs(prog: Any, u: np.ndarray, n_steps: int, weight: float) -> None:
     """Add per-timestep quadratic control costs to *prog*."""
     n_u = u.shape[1]
     # Optimize: pre-calculate constant Q and b matrices outside the loop
@@ -48,8 +48,8 @@ def _add_control_costs(prog: Any, u: np.ndarray[Any, Any], n_steps: int, weight:
 
 def _add_integration_constraints(
     prog: Any,
-    q: np.ndarray[Any, Any],
-    v: np.ndarray[Any, Any],
+    q: np.ndarray,
+    v: np.ndarray,
     dt: float,
     n_steps: int,
 ) -> int:
@@ -81,9 +81,9 @@ def _add_integration_constraints(
 def _add_dynamics_constraints(
     prog: Any,
     plant: Any,
-    q: np.ndarray[Any, Any],
-    v: np.ndarray[Any, Any],
-    u: np.ndarray[Any, Any],
+    q: np.ndarray,
+    v: np.ndarray,
+    u: np.ndarray,
     dt: float,
     n_steps: int,
 ) -> int:
@@ -126,10 +126,10 @@ def _add_dynamics_constraints(
 
 def _add_initial_state_constraint(
     prog: Any,
-    q: np.ndarray[Any, Any],
-    v: np.ndarray[Any, Any],
-    q0: np.ndarray[Any, Any],
-    v0: np.ndarray[Any, Any],
+    q: np.ndarray,
+    v: np.ndarray,
+    q0: np.ndarray,
+    v0: np.ndarray,
 ) -> int:
     """Pin the first knot point to the supplied initial state."""
     # Optimize: Use array-based AddBoundingBoxConstraint instead of looping
@@ -141,12 +141,12 @@ def _add_initial_state_constraint(
 
 def _add_state_bounds(
     prog: Any,
-    q: np.ndarray[Any, Any],
-    v: np.ndarray[Any, Any],
-    q_min: np.ndarray[Any, Any],
-    q_max: np.ndarray[Any, Any],
-    v_min: np.ndarray[Any, Any],
-    v_max: np.ndarray[Any, Any],
+    q: np.ndarray,
+    v: np.ndarray,
+    q_min: np.ndarray,
+    q_max: np.ndarray,
+    v_min: np.ndarray,
+    v_max: np.ndarray,
 ) -> int:
     """Apply explicit per-knot position and velocity bounds."""
     n_steps = q.shape[0]
@@ -163,10 +163,10 @@ def _add_state_bounds(
 
 
 def _initial_guess_linear(
-    q_start: np.ndarray[Any, Any],
-    q_end: np.ndarray[Any, Any],
+    q_start: np.ndarray,
+    q_end: np.ndarray,
     n_steps: int,
-) -> np.ndarray[Any, Any]:
+) -> np.ndarray:
     """Return a linear interpolation from *q_start* to *q_end*."""
     return np.linspace(q_start, q_end, n_steps)
 
@@ -174,8 +174,8 @@ def _initial_guess_linear(
 def _add_joint_and_actuator_bounds(
     prog: Any,
     plant: Any,
-    q: np.ndarray[Any, Any],
-    u: np.ndarray[Any, Any],
+    q: np.ndarray,
+    u: np.ndarray,
     n_steps: int,
 ) -> int:
     """Apply per-knot position limits and actuator effort limits."""
@@ -202,7 +202,7 @@ def _add_joint_and_actuator_bounds(
 
 def _add_phase_tracking_costs(
     prog: Any,
-    q: np.ndarray[Any, Any],
+    q: np.ndarray,
     objective: ExerciseObjective,
     n_q: int,
     n_steps: int,
@@ -241,7 +241,7 @@ def _build_drake_program(
     plant: Any,
     objective: ExerciseObjective,
     config: TrajectoryConfig,
-) -> tuple[MathematicalProgram, np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any]]:
+) -> tuple[MathematicalProgram, np.ndarray, np.ndarray, np.ndarray]:
     """Construct the MathematicalProgram with variables, costs, and constraints."""
     from pydrake.solvers import MathematicalProgram
 
