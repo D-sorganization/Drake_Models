@@ -10,9 +10,10 @@ interpolation.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
+import numpy.typing as npt
 
 from drake_models.optimization.exercise_objectives import (
     ExerciseObjective,
@@ -155,7 +156,7 @@ def _refine_keyframe(
     q_vars = ik.q()
     prog = ik.get_mutable_prog()
 
-    q_init = np.zeros(n_q)
+    q_init = cast(npt.NDArray[Any], np.zeros(n_q))
     for j in range(min(n_joints, n_q)):
         q_init[j] = initial_guess[j]
     prog.SetInitialGuess(q_vars, q_init)

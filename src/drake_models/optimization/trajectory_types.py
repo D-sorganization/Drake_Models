@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Any
 
-import numpy as np
+import numpy.typing as npt
 
 
 @dataclass(frozen=True)
@@ -58,10 +59,10 @@ class TrajectoryConfig:
 class TrajectoryResult:
     """Result of a trajectory optimization solve."""
 
-    joint_positions: np.ndarray
-    joint_velocities: np.ndarray
-    joint_torques: np.ndarray
-    time: np.ndarray
+    joint_positions: npt.NDArray[Any]
+    joint_velocities: npt.NDArray[Any]
+    joint_torques: npt.NDArray[Any]
+    time: npt.NDArray[Any]
     cost: float
     converged: bool
     iterations: int
