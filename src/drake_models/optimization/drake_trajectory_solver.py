@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import numpy as np
-
-if TYPE_CHECKING:
-    from pydrake.solvers import MathematicalProgram
 
 from drake_models.optimization.exercise_objectives import ExerciseObjective
 from drake_models.optimization.trajectory_types import (
@@ -241,7 +238,7 @@ def _build_drake_program(
     plant: Any,
     objective: ExerciseObjective,
     config: TrajectoryConfig,
-) -> tuple[MathematicalProgram, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[Any, Any, Any, Any]:
     """Construct the MathematicalProgram with variables, costs, and constraints."""
     from pydrake.solvers import MathematicalProgram
 
@@ -291,9 +288,9 @@ def solve_with_drake(
     time = np.linspace(0.0, config.total_time, config.n_timesteps)
 
     return TrajectoryResult(
-        joint_positions=result.GetSolution(q),
-        joint_velocities=result.GetSolution(v),
-        joint_torques=result.GetSolution(u),
+        joint_positions=np.asarray(result.GetSolution(q)),
+        joint_velocities=np.asarray(result.GetSolution(v)),
+        joint_torques=np.asarray(result.GetSolution(u)),
         time=time,
         cost=result.get_optimal_cost(),
         converged=result.is_success(),
