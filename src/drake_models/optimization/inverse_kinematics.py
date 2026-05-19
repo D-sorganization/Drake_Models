@@ -100,9 +100,8 @@ def _interpolate_phases(
     joint_names = objective.joint_names()
     n_joints = len(joint_names)
 
-    phase_times = np.array([p.time_fraction for p in objective.phases])
-    phase_angles = objective.phase_angles_array()
-    phase_angles_clean = np.where(np.isnan(phase_angles), 0.0, phase_angles)
+    phase_times = objective.phase_times_array()
+    phase_angles_clean = objective.phase_angles_clean_array()
 
     time_fracs = np.linspace(0.0, 1.0, n_frames)
     # ⚡ Bolt: Preallocating a transposed array and avoiding column-wise assignment
