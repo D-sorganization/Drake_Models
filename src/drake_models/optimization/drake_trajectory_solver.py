@@ -31,7 +31,9 @@ def _build_drake_plant(sdf_string: str, dt: float) -> object:
     return plant
 
 
-def _add_control_costs(prog: Any, u: np.ndarray[Any, Any], n_steps: int, weight: float) -> None:
+def _add_control_costs(
+    prog: Any, u: np.ndarray[Any, Any], n_steps: int, weight: float
+) -> None:
     """Add per-timestep quadratic control costs to *prog*."""
     n_u = u.shape[1]
     # Optimize: pre-calculate constant Q and b matrices outside the loop
@@ -241,7 +243,12 @@ def _build_drake_program(
     plant: Any,
     objective: ExerciseObjective,
     config: TrajectoryConfig,
-) -> tuple[MathematicalProgram, np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any]]:
+) -> tuple[
+    MathematicalProgram,
+    np.ndarray[Any, Any],
+    np.ndarray[Any, Any],
+    np.ndarray[Any, Any],
+]:
     """Construct the MathematicalProgram with variables, costs, and constraints."""
     from pydrake.solvers import MathematicalProgram
 
