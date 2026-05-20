@@ -53,11 +53,7 @@ def _subprocess_env() -> dict[str, str]:
     pythonpath = result.stdout.strip()
     if pythonpath:
         existing_pp = env.get("PYTHONPATH", "")
-        env["PYTHONPATH"] = (
-            f"{pythonpath};{existing_pp}"
-            if existing_pp
-            else pythonpath
-        )
+        env["PYTHONPATH"] = f"{pythonpath};{existing_pp}" if existing_pp else pythonpath
     return env
 
 
