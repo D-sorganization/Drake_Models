@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 if TYPE_CHECKING:
-    from pydrake.solvers import MathematicalProgram
+    pass
 
 from drake_models.optimization.exercise_objectives import ExerciseObjective
 from drake_models.optimization.trajectory_types import (
@@ -31,7 +31,7 @@ def _build_drake_plant(sdf_string: str, dt: float) -> object:
     return plant
 
 
-def _add_control_costs(prog: Any, u: np.ndarray, n_steps: int, weight: float) -> None:
+def _add_control_costs(prog: Any, u: Any, n_steps: int, weight: float) -> None:
     """Add per-timestep quadratic control costs to *prog*."""
     n_u = u.shape[1]
     # Optimize: pre-calculate constant Q and b matrices outside the loop
@@ -48,8 +48,8 @@ def _add_control_costs(prog: Any, u: np.ndarray, n_steps: int, weight: float) ->
 
 def _add_integration_constraints(
     prog: Any,
-    q: np.ndarray,
-    v: np.ndarray,
+    q: Any,
+    v: Any,
     dt: float,
     n_steps: int,
 ) -> int:
@@ -81,9 +81,9 @@ def _add_integration_constraints(
 def _add_dynamics_constraints(
     prog: Any,
     plant: Any,
-    q: np.ndarray,
-    v: np.ndarray,
-    u: np.ndarray,
+    q: Any,
+    v: Any,
+    u: Any,
     dt: float,
     n_steps: int,
 ) -> int:
@@ -126,8 +126,8 @@ def _add_dynamics_constraints(
 
 def _add_initial_state_constraint(
     prog: Any,
-    q: np.ndarray,
-    v: np.ndarray,
+    q: Any,
+    v: Any,
     q0: np.ndarray,
     v0: np.ndarray,
 ) -> int:
@@ -141,8 +141,8 @@ def _add_initial_state_constraint(
 
 def _add_state_bounds(
     prog: Any,
-    q: np.ndarray,
-    v: np.ndarray,
+    q: Any,
+    v: Any,
     q_min: np.ndarray,
     q_max: np.ndarray,
     v_min: np.ndarray,
@@ -174,8 +174,8 @@ def _initial_guess_linear(
 def _add_joint_and_actuator_bounds(
     prog: Any,
     plant: Any,
-    q: np.ndarray,
-    u: np.ndarray,
+    q: Any,
+    u: Any,
     n_steps: int,
 ) -> int:
     """Apply per-knot position limits and actuator effort limits."""
@@ -202,7 +202,7 @@ def _add_joint_and_actuator_bounds(
 
 def _add_phase_tracking_costs(
     prog: Any,
-    q: np.ndarray,
+    q: Any,
     objective: ExerciseObjective,
     n_q: int,
     n_steps: int,
@@ -241,7 +241,7 @@ def _build_drake_program(
     plant: Any,
     objective: ExerciseObjective,
     config: TrajectoryConfig,
-) -> tuple[MathematicalProgram, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[Any, Any, Any, Any]:
     """Construct the MathematicalProgram with variables, costs, and constraints."""
     from pydrake.solvers import MathematicalProgram
 
