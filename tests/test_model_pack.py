@@ -9,6 +9,7 @@ a working Drake install; the default pytest lane deselects that marker.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -27,6 +28,37 @@ EXPECTED_EXERCISES = [
     "gait",
     "sit_to_stand",
 ]
+
+
+def _subprocess_env() -> dict[str, str]:
+    """Return environment for subprocess with parent's PYTHONPATH preserved.
+
+    This ensures subprocesses spawned by tests can find the drake_models module
+    when running in CI with a venv, where the venv's site-packages must be
+    explicitly passed via PYTHONPATH.
+    """
+    env = os.environ.copy()
+    # Get current Python's site-packages by running a subprocess to extract it
+    # This approach works both in editable installs and venv setups
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; print(';'.join(p for p in sys.path if p))",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    pythonpath = result.stdout.strip()
+    if pythonpath:
+        existing_pp = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = (
+            f"{pythonpath};{existing_pp}"
+            if existing_pp
+            else pythonpath
+        )
+    return env
 
 
 class TestManifest:
@@ -145,6 +177,7 @@ class TestLauncherCli:
             check=False,
             capture_output=True,
             text=True,
+            env=_subprocess_env(),
         )
         assert result.returncode == 0, result.stderr
         assert out.is_file()
@@ -159,6 +192,7 @@ class TestLauncherCli:
             check=False,
             capture_output=True,
             text=True,
+            env=_subprocess_env(),
         )
         assert result.returncode == 0, result.stderr
         printed = set(result.stdout.split())
@@ -198,6 +232,7 @@ class TestPydrakeParse:
             check=False,
             capture_output=True,
             text=True,
+            env=_subprocess_env(),
         )
         assert result.returncode == 0, result.stderr
 
