@@ -68,7 +68,8 @@ def _finite_diff_velocities(positions: np.ndarray, dt: float) -> np.ndarray:
         velocities = np.empty_like(positions)
         velocities[0] = 0.0
         dt_inv = 1.0 / dt
-        velocities[1:] = (positions[1:] - positions[:-1]) * dt_inv
+        np.subtract(positions[1:], positions[:-1], out=velocities[1:])
+        velocities[1:] *= dt_inv
         return velocities
     return np.zeros_like(positions)
 

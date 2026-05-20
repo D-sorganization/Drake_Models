@@ -85,3 +85,6 @@
 ## 2026-05-16 - Avoid nested lists for small fixed-size matrices
 **Learning:** For small, fixed-size matrices (e.g., 3x3 rotation matrices), passing nested lists to `np.array(..., dtype=float)` incurs significant list-inspection and dynamic memory allocation overhead. Preallocating an empty array with `np.zeros()` and directly assigning the non-zero scalar values is ~2x faster in hot paths.
 **Action:** When building small, fixed-size matrices in performance-critical code, preallocate the array with `np.zeros()` and explicitly set the non-zero elements.
+## 2024-05-14 - Ineffective in-place array allocation
+**Learning:** Attempting to optimize an operation like `a - b` by using `out = np.empty_like(a)` followed by `np.subtract(a, b, out=out)` inside a function is ineffective and does not reduce memory allocations, as `np.empty_like()` still allocates a new array on every call. In-place operations only improve performance when writing into a pre-existing, pre-allocated array outside of the function or loop, or modifying slices of an already allocated array (like in finite diff interpolation).
+**Action:** Only use `np.subtract` with an `out` parameter when writing to an array or slice that has been allocated *before* the function call or loop iteration.

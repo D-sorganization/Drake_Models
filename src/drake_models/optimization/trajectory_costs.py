@@ -21,7 +21,8 @@ def compute_state_cost(
     """Quadratic state tracking cost: ``weight * sum((q - q_target)^2)``."""
     if weight < 0:
         raise ValueError(f"weight must be non-negative, got {weight}")
-    diff = positions - target
+    diff = np.empty_like(positions)
+    np.subtract(positions, target, out=diff)
     # Optimize: np.vdot avoids intermediate array allocation and is ~2x faster than np.sum(diff**2)
     return float(weight * np.vdot(diff, diff))
 
@@ -34,6 +35,7 @@ def compute_terminal_cost(
     """Terminal cost on final state: ``weight * sum((q_T - q_target)^2)``."""
     if weight < 0:
         raise ValueError(f"weight must be non-negative, got {weight}")
-    diff = final_positions - target
+    diff = np.empty_like(final_positions)
+    np.subtract(final_positions, target, out=diff)
     # Optimize: np.vdot avoids intermediate array allocation and is ~2x faster than np.sum(diff**2)
     return float(weight * np.vdot(diff, diff))
