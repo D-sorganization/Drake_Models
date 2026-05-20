@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 
 if TYPE_CHECKING:
-    pass
+    from pydrake.solvers import MathematicalProgram
 
 from drake_models.optimization.exercise_objectives import ExerciseObjective
 from drake_models.optimization.trajectory_types import (
@@ -31,7 +31,12 @@ def _build_drake_plant(sdf_string: str, dt: float) -> object:
     return plant
 
 
-def _add_control_costs(prog: Any, u: Any, n_steps: int, weight: float) -> None:
+def _drake_array(value: Any) -> np.ndarray:
+    """Normalize pydrake array-returning APIs for NumPy typing."""
+    return cast(np.ndarray, value)
+
+
+def _add_control_costs(prog: Any, u: np.ndarray, n_steps: int, weight: float) -> None:
     """Add per-timestep quadratic control costs to *prog*."""
     n_u = u.shape[1]
     # Optimize: pre-calculate constant Q and b matrices outside the loop
@@ -48,8 +53,8 @@ def _add_control_costs(prog: Any, u: Any, n_steps: int, weight: float) -> None:
 
 def _add_integration_constraints(
     prog: Any,
-    q: Any,
-    v: Any,
+    q: np.ndarray,
+    v: np.ndarray,
     dt: float,
     n_steps: int,
 ) -> int:
@@ -81,9 +86,9 @@ def _add_integration_constraints(
 def _add_dynamics_constraints(
     prog: Any,
     plant: Any,
-    q: Any,
-    v: Any,
-    u: Any,
+    q: np.ndarray,
+    v: np.ndarray,
+    u: np.ndarray,
     dt: float,
     n_steps: int,
 ) -> int:
@@ -126,8 +131,8 @@ def _add_dynamics_constraints(
 
 def _add_initial_state_constraint(
     prog: Any,
-    q: Any,
-    v: Any,
+    q: np.ndarray,
+    v: np.ndarray,
     q0: np.ndarray,
     v0: np.ndarray,
 ) -> int:
@@ -141,8 +146,8 @@ def _add_initial_state_constraint(
 
 def _add_state_bounds(
     prog: Any,
-    q: Any,
-    v: Any,
+    q: np.ndarray,
+    v: np.ndarray,
     q_min: np.ndarray,
     q_max: np.ndarray,
     v_min: np.ndarray,
@@ -174,8 +179,8 @@ def _initial_guess_linear(
 def _add_joint_and_actuator_bounds(
     prog: Any,
     plant: Any,
-    q: Any,
-    u: Any,
+    q: np.ndarray,
+    u: np.ndarray,
     n_steps: int,
 ) -> int:
     """Apply per-knot position limits and actuator effort limits."""
@@ -202,7 +207,7 @@ def _add_joint_and_actuator_bounds(
 
 def _add_phase_tracking_costs(
     prog: Any,
-    q: Any,
+    q: np.ndarray,
     objective: ExerciseObjective,
     n_q: int,
     n_steps: int,
@@ -241,7 +246,7 @@ def _build_drake_program(
     plant: Any,
     objective: ExerciseObjective,
     config: TrajectoryConfig,
-) -> tuple[Any, Any, Any, Any]:
+) -> tuple[MathematicalProgram, np.ndarray, np.ndarray, np.ndarray]:
     """Construct the MathematicalProgram with variables, costs, and constraints."""
     from pydrake.solvers import MathematicalProgram
 
@@ -251,9 +256,9 @@ def _build_drake_program(
     n_steps = config.n_timesteps
 
     prog = MathematicalProgram()
-    q = prog.NewContinuousVariables(n_steps, n_q, "q")
-    v = prog.NewContinuousVariables(n_steps, n_v, "v")
-    u = prog.NewContinuousVariables(n_steps, n_u, "u")
+    q = _drake_array(prog.NewContinuousVariables(n_steps, n_q, "q"))
+    v = _drake_array(prog.NewContinuousVariables(n_steps, n_v, "v"))
+    u = _drake_array(prog.NewContinuousVariables(n_steps, n_u, "u"))
 
     _add_control_costs(prog, u, n_steps, config.control_weight)
     _add_phase_tracking_costs(
@@ -291,9 +296,9 @@ def solve_with_drake(
     time = np.linspace(0.0, config.total_time, config.n_timesteps)
 
     return TrajectoryResult(
-        joint_positions=result.GetSolution(q),
-        joint_velocities=result.GetSolution(v),
-        joint_torques=result.GetSolution(u),
+        joint_positions=_drake_array(result.GetSolution(q)),
+        joint_velocities=_drake_array(result.GetSolution(v)),
+        joint_torques=_drake_array(result.GetSolution(u)),
         time=time,
         cost=result.get_optimal_cost(),
         converged=result.is_success(),

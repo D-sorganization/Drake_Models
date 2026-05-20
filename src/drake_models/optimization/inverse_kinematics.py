@@ -10,7 +10,7 @@ interpolation.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -100,9 +100,8 @@ def _interpolate_phases(
     joint_names = objective.joint_names()
     n_joints = len(joint_names)
 
-    phase_times = np.array([p.time_fraction for p in objective.phases])
-    phase_angles = objective.phase_angles_array()
-    phase_angles_clean = np.where(np.isnan(phase_angles), 0.0, phase_angles)
+    phase_times = objective.phase_times_array()
+    phase_angles_clean = objective.phase_angles_clean_array()
 
     time_fracs = np.linspace(0.0, 1.0, n_frames)
     # ⚡ Bolt: Preallocating a transposed array and avoiding column-wise assignment
@@ -158,7 +157,7 @@ def _refine_keyframe(
     q_init = np.zeros(n_q)
     for j in range(min(n_joints, n_q)):
         q_init[j] = initial_guess[j]
-    prog.SetInitialGuess(q_vars, q_init)
+    prog.SetInitialGuess(cast(Any, q_vars), cast(Any, q_init))
 
     result = Solve(prog)
     if result.is_success():

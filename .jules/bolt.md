@@ -85,6 +85,15 @@
 ## 2026-05-16 - Avoid nested lists for small fixed-size matrices
 **Learning:** For small, fixed-size matrices (e.g., 3x3 rotation matrices), passing nested lists to `np.array(..., dtype=float)` incurs significant list-inspection and dynamic memory allocation overhead. Preallocating an empty array with `np.zeros()` and directly assigning the non-zero scalar values is ~2x faster in hot paths.
 **Action:** When building small, fixed-size matrices in performance-critical code, preallocate the array with `np.zeros()` and explicitly set the non-zero elements.
+
 ## 2024-05-14 - Ineffective in-place array allocation
 **Learning:** Attempting to optimize an operation like `a - b` by using `out = np.empty_like(a)` followed by `np.subtract(a, b, out=out)` inside a function is ineffective and does not reduce memory allocations, as `np.empty_like()` still allocates a new array on every call. In-place operations only improve performance when writing into a pre-existing, pre-allocated array outside of the function or loop, or modifying slices of an already allocated array (like in finite diff interpolation).
 **Action:** Only use `np.subtract` with an `out` parameter when writing to an array or slice that has been allocated *before* the function call or loop iteration.
+
+## 2024-05-18 - [NumPy Finite Difference Optimization]
+**Learning:** In finite difference calculations using NumPy slices (e.g. `arr[1:] - arr[:-1]`), allocating an intermediate array for the subtraction result can be avoided by using `np.subtract(..., out=...)` into a preallocated array.
+**Action:** Use `np.subtract(a, b, out=result)` instead of `result = a - b` when performance is critical and an output array is already allocated.
+
+## 2026-05-19 - Caching repeated intermediate array computations
+**Learning:** During trajectory generation (e.g. `_build_phase_arrays`), computing `np.where(np.isnan(...))` on static arrays, or recreating `phase_times` via list comprehension over `objective.phases` every time is wasteful in hot loops, especially when the underlying objective arrays are immutable constants. Caching these arrays (like `phase_times` and `phase_angles_clean`) inside the `ExerciseObjective` dataclass reduces overhead in benchmarks (e.g., from ~268us to ~567ns for `test_benchmark_build_phase_arrays`).
+**Action:** Identify intermediate operations on static config arrays and pull them into the cached initialization, adding explicit getters on the configuration objects.

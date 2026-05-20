@@ -23,9 +23,8 @@ def _build_phase_arrays(
     objective: ExerciseObjective,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return phase time fractions and NaN-free phase angle arrays."""
-    phase_times = np.array([p.time_fraction for p in objective.phases])
-    phase_angles = objective.phase_angles_array()
-    phase_angles_clean = np.where(np.isnan(phase_angles), 0.0, phase_angles)
+    phase_times = objective.phase_times_array()
+    phase_angles_clean = objective.phase_angles_clean_array()
     return phase_times, phase_angles_clean
 
 
@@ -63,6 +62,7 @@ def _finite_diff_velocities(positions: np.ndarray, dt: float) -> np.ndarray:
     """Compute finite-difference joint velocities from *positions*."""
     # ⚡ Bolt: Avoid np.diff overhead and redundant zero initialization
     # by using preallocated empty arrays, scalar dt inversion, and slicing.
+    # In-place np.subtract avoids creating an intermediate array before multiplication.
     # This is ~40-50% faster than np.zeros_like + np.diff for large arrays.
     if len(positions) > 1:
         velocities = np.empty_like(positions)
