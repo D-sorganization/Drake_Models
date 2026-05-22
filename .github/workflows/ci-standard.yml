@@ -20,7 +20,6 @@ permissions:
   contents: read
 
 jobs:
-
   # Dispatcher: route to self-hosted if available
   pick-runner:
     runs-on: d-sorg-fleet
@@ -45,7 +44,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
-          cache: 'pip'
+          cache: "pip"
           python-version: "3.11"
         env:
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -109,7 +108,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-          cache: 'pip'
+          cache: "pip"
         env:
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -154,4 +153,4 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Run local-only workflow guard
-        run: python3 scripts/check_local_only_workflows.py
+        run: python scripts/check_local_only_workflows.py
