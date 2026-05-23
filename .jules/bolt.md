@@ -97,3 +97,11 @@
 ## 2026-05-19 - Caching repeated intermediate array computations
 **Learning:** During trajectory generation (e.g. `_build_phase_arrays`), computing `np.where(np.isnan(...))` on static arrays, or recreating `phase_times` via list comprehension over `objective.phases` every time is wasteful in hot loops, especially when the underlying objective arrays are immutable constants. Caching these arrays (like `phase_times` and `phase_angles_clean`) inside the `ExerciseObjective` dataclass reduces overhead in benchmarks (e.g., from ~268us to ~567ns for `test_benchmark_build_phase_arrays`).
 **Action:** Identify intermediate operations on static config arrays and pull them into the cached initialization, adding explicit getters on the configuration objects.
+
+## 2026-05-07 - Vectorize ND interpolation with searchsorted
+**Learning:** Using `np.interp` within a loop over array columns or dimensions incurs significant Python loop dispatch overhead. Vectorizing ND interpolation using `np.searchsorted` to find bin indices, combined with manual linear blending (`val0 + w1 * (val1 - val0)`), is ~40-50% faster than looping with `np.interp` over 1D slices.
+**Action:** Replace `for j in range(N): np.interp(...)` patterns with single vectorized `np.searchsorted` and math operations for large dimension arrays.
+
+## 2026-05-07 - Vectorize ND interpolation with searchsorted
+**Learning:** Using `np.interp` within a loop over array columns or dimensions incurs significant Python loop dispatch overhead. Vectorizing ND interpolation using `np.searchsorted` to find bin indices, combined with manual linear blending (`val0 + w1 * (val1 - val0)`), is ~40-50% faster than looping with `np.interp` over 1D slices. When performing this replacement, it's vital to remember that `np.interp` automatically performs flat extrapolation (clipping) outside the specified x-bounds; thus, your manual implementation must include `w1 = np.clip(w1, 0.0, 1.0)` to maintain mathematical parity and avoid unintended linear extrapolation.
+**Action:** Replace `for j in range(N): np.interp(...)` patterns with single vectorized `np.searchsorted` and math operations for large dimension arrays, while being sure to include `np.clip` on the blending weights to match `np.interp`'s default boundary condition.
