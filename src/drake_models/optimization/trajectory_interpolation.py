@@ -49,13 +49,25 @@ def _interpolate_joint_positions(
     n_joints: int,
 ) -> np.ndarray:
     """Linearly interpolate joint angles across *time_fracs*."""
-    # ⚡ Bolt: Preallocating a transposed array and avoiding column-wise assignment
-    # in the loop over joints speeds up keyframe generation compared to vectorization
-    # or column assignment.
-    positions = np.empty((n_joints, len(time_fracs)))
-    for j in range(n_joints):
-        positions[j] = np.interp(time_fracs, phase_times, phase_angles_clean[:, j])
-    return positions.T
+    # ⚡ Bolt: Vectorize ND interpolation with searchsorted
+    # Replacing np.interp within a loop over array columns with a single
+    # vectorized np.searchsorted to find bin indices, combined with manual
+    # linear blending, is significantly faster than looping with np.interp
+    # over 1D slices for large dimension arrays.
+    idx = np.searchsorted(phase_times, time_fracs)
+    idx = np.clip(idx, 1, len(phase_times) - 1)
+
+    t0 = phase_times[idx - 1]
+    t1 = phase_times[idx]
+
+    dt = t1 - t0
+    w1 = (time_fracs - t0) / np.where(dt == 0, 1.0, dt)
+    w1 = np.clip(w1, 0.0, 1.0)
+
+    val0 = phase_angles_clean[idx - 1]
+    val1 = phase_angles_clean[idx]
+
+    return val0 + (val1 - val0) * w1[:, None]
 
 
 def _finite_diff_velocities(positions: np.ndarray, dt: float) -> np.ndarray:
