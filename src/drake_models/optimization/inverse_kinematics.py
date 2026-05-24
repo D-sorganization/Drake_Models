@@ -104,13 +104,26 @@ def _interpolate_phases(
     phase_angles_clean = objective.phase_angles_clean_array()
 
     time_fracs = np.linspace(0.0, 1.0, n_frames)
-    # ⚡ Bolt: Preallocating a transposed array and avoiding column-wise assignment
-    # in the loop over joints speeds up keyframe generation compared to vectorization
-    # or column assignment.
-    keyframes = np.empty((n_joints, n_frames))
-    for j in range(n_joints):
-        keyframes[j] = np.interp(time_fracs, phase_times, phase_angles_clean[:, j])
-    keyframes = keyframes.T
+
+    # ⚡ Bolt: Vectorize ND interpolation with searchsorted
+    # Replacing np.interp within a loop over array columns with a single
+    # vectorized np.searchsorted to find bin indices, combined with manual
+    # linear blending, is significantly faster than looping with np.interp
+    # over 1D slices for large dimension arrays.
+    idx = np.searchsorted(phase_times, time_fracs)
+    idx = np.clip(idx, 1, len(phase_times) - 1)
+
+    t0 = phase_times[idx - 1]
+    t1 = phase_times[idx]
+
+    dt = t1 - t0
+    w1 = (time_fracs - t0) / np.where(dt == 0, 1.0, dt)
+    w1 = np.clip(w1, 0.0, 1.0)
+
+    val0 = phase_angles_clean[idx - 1]
+    val1 = phase_angles_clean[idx]
+
+    keyframes = val0 + (val1 - val0) * w1[:, None]
 
     logger.info(
         "Generated %d keyframes for %s (%d joints) via interpolation",
