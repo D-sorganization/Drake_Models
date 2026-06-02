@@ -35,11 +35,20 @@ def ensure_positive_definite_inertia(
     ixx: float, iyy: float, izz: float, body_name: str
 ) -> None:
     """Assert that principal inertias are positive (necessary for PD)."""
-    for label, val in [("Ixx", ixx), ("Iyy", iyy), ("Izz", izz)]:
-        if val <= 0:
-            raise AssertionError(
-                f"Postcondition violated: {body_name} {label}={val} not positive"
-            )
+    # ⚡ Bolt: Unroll validation loop to avoid list and tuple allocation overhead
+    # In hot paths, this reduces overhead by avoiding dynamic allocations.
+    if ixx <= 0:
+        raise AssertionError(
+            f"Postcondition violated: {body_name} Ixx={ixx} not positive"
+        )
+    if iyy <= 0:
+        raise AssertionError(
+            f"Postcondition violated: {body_name} Iyy={iyy} not positive"
+        )
+    if izz <= 0:
+        raise AssertionError(
+            f"Postcondition violated: {body_name} Izz={izz} not positive"
+        )
     # Triangle inequality for principal inertias
     if ixx + iyy < izz or ixx + izz < iyy or iyy + izz < ixx:
         raise AssertionError(

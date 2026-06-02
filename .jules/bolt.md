@@ -109,3 +109,7 @@
 ## 2024-05-31 - Avoiding tuple allocation in dataclass validation loops
 **Learning:** Validating multiple dataclass attributes in `__post_init__` using a `for name, value in (("attr1", self.attr1), ...):` loop creates a new tuple and performs unpacking on every instantiation. This causes unnecessary overhead in hot paths where configuration objects are frequently created. Replacing the loop with explicit, unrolled `if` statements for each attribute reduces instantiation time by ~50%.
 **Action:** When validating a small, fixed number of attributes in `__post_init__`, unroll the loop into explicit `if` statements instead of iterating over dynamically created tuples of names and values.
+
+## 2026-06-02 - [Avoid list/tuple allocation in hot contract validation loops]
+**Learning:** Validating multiple attributes or arguments in frequently called functions (like DbC contracts such as `ensure_positive_definite_inertia`) using a list of tuples loop (e.g., `for label, val in [("Ixx", ixx), ("Iyy", iyy), ...]:`) creates dynamic allocations and unpacks them on every call. In tight loops (like when building large physics models), this creates unnecessary overhead.
+**Action:** Unroll the loop into explicit `if` statements to avoid this memory allocation overhead and significantly speed up execution.
