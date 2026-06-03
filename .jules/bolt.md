@@ -113,3 +113,7 @@
 ## 2026-06-02 - [Avoid list/tuple allocation in hot contract validation loops]
 **Learning:** Validating multiple attributes or arguments in frequently called functions (like DbC contracts such as `ensure_positive_definite_inertia`) using a list of tuples loop (e.g., `for label, val in [("Ixx", ixx), ("Iyy", iyy), ...]:`) creates dynamic allocations and unpacks them on every call. In tight loops (like when building large physics models), this creates unnecessary overhead.
 **Action:** Unroll the loop into explicit `if` statements to avoid this memory allocation overhead and significantly speed up execution.
+
+## 2026-06-03 - Vectorize ND interpolation with searchsorted and clipping
+**Learning:** Using `np.interp` within a loop over array columns or dimensions incurs significant Python loop dispatch overhead. Vectorizing ND interpolation using `np.searchsorted` to find bin indices, combined with manual linear blending (`val0 + w1 * (val1 - val0)`), is ~35% faster than looping with `np.interp` over 1D slices for typical joint trajectory matrices. When replacing `np.interp`, you must remember to add `w1 = np.clip(w1, 0.0, 1.0)` to maintain mathematical parity with `np.interp`'s default boundary condition (flat extrapolation).
+**Action:** Replace `for j in range(N): np.interp(...)` patterns with single vectorized `np.searchsorted` and math operations for large dimension arrays, while being sure to include `np.clip` on the blending weights to avoid unintended linear extrapolation outside specified bounds.
