@@ -60,18 +60,25 @@ def _interpolate_joint_positions(
     t0 = phase_times[idx - 1]
     t1 = phase_times[idx]
 
-    dt = t1 - t0
-    # Avoid division by zero, though in valid phases dt > 0
-    dt[dt == 0] = 1.0
+    # ⚡ Bolt: Use np.copyto to avoid boolean mask allocations
+    # Using np.copyto is faster than dt[dt == 0] = 1.0 which allocates intermediate arrays.
+    dt = np.subtract(t1, t0)
+    np.copyto(dt, 1.0, where=dt == 0)
 
-    w1 = (time_fracs - t0) / dt
-    w1 = np.clip(w1, 0.0, 1.0)
+    # ⚡ Bolt: In-place arithmetic avoids allocating temporary arrays for weights
+    w1 = np.subtract(time_fracs, t0)
+    w1 /= dt
+    np.clip(w1, 0.0, 1.0, out=w1)
     w1 = w1[:, np.newaxis]
 
     v0 = phase_angles_clean[idx - 1]
     v1 = phase_angles_clean[idx]
 
-    return v0 + w1 * (v1 - v0)
+    # ⚡ Bolt: In-place blending saves further array allocations
+    result = np.subtract(v1, v0)
+    result *= w1
+    result += v0
+    return result
 
 
 def _finite_diff_velocities(positions: np.ndarray, dt: float) -> np.ndarray:
