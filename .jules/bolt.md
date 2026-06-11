@@ -120,3 +120,7 @@
 ## 2023-06-10 - Avoid boolean array allocations and use in-place operations
 **Learning:** Using boolean indexing for conditional assignment (like `dt[dt == 0] = 1.0`) in a hot path allocates a temporary boolean array, creating significant memory overhead. Using `np.copyto` avoids this allocation. Similarly, complex math operations like `v0 + w1 * (v1 - v0)` allocate several intermediate arrays. Replacing them with in-place operations (`np.subtract`, `/=`, `*=`, `+=`) improves execution speed significantly.
 **Action:** When updating arrays conditionally in hot paths, use `np.copyto(..., where=...)`. Use in-place operations and `out=` arguments (`np.clip(..., out=...)`) to avoid intermediate array allocations during math operations.
+
+## 2026-06-11 - Optimize array passing to Drake bounds
+**Learning:** Passing multi-dimensional NumPy arrays to PyDrake constraints (e.g., `AddBoundingBoxConstraint`) with `.flatten()` forces a full memory copy allocation.
+**Action:** Use `.ravel()` instead of `.flatten()` when supplying bounds or variable arrays to Drake, as it returns a contiguous view without intermediate allocation, significantly reducing overhead during solver setup.
