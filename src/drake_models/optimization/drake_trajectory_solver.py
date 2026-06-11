@@ -158,11 +158,13 @@ def _add_state_bounds(
 
     # Optimize: Use vectorized BoundingBox constraints instead of looping
     # to avoid significant python loop and expression overhead.
+    # ⚡ Bolt: Use .ravel() instead of .flatten() to avoid array copy allocation
+    # when setting up constraints.
     prog.AddBoundingBoxConstraint(
-        np.tile(q_min, n_steps), np.tile(q_max, n_steps), q.flatten()
+        np.tile(q_min, n_steps), np.tile(q_max, n_steps), q.ravel()
     )
     prog.AddBoundingBoxConstraint(
-        np.tile(v_min, n_steps), np.tile(v_max, n_steps), v.flatten()
+        np.tile(v_min, n_steps), np.tile(v_max, n_steps), v.ravel()
     )
     return n_steps * 2
 
@@ -196,11 +198,13 @@ def _add_joint_and_actuator_bounds(
 
     # Optimize: Use vectorized BoundingBox constraints instead of looping
     # to avoid significant python loop and expression overhead.
+    # ⚡ Bolt: Use .ravel() instead of .flatten() to avoid array copy allocation
+    # when setting up constraints.
     prog.AddBoundingBoxConstraint(
-        np.tile(q_lower, n_steps), np.tile(q_upper, n_steps), q.flatten()
+        np.tile(q_lower, n_steps), np.tile(q_upper, n_steps), q.ravel()
     )
     prog.AddBoundingBoxConstraint(
-        np.tile(u_lower, n_steps), np.tile(u_upper, n_steps), u.flatten()
+        np.tile(u_lower, n_steps), np.tile(u_upper, n_steps), u.ravel()
     )
     return n_steps * 2
 
