@@ -106,8 +106,9 @@ def interpolate_trajectory(
         raise ValueError("objective must have at least one phase")
     n_joints = len(objective.joint_names())
     n_steps = config.n_timesteps
-    time = np.linspace(0.0, config.total_time, n_steps)
     time_fracs = np.linspace(0.0, 1.0, n_steps)
+    # ⚡ Bolt: Reuse time_fracs array calculation to avoid duplicate linspace cost
+    time = time_fracs * config.total_time
 
     phase_times, phase_angles_clean = _build_phase_arrays(objective)
     positions = _interpolate_joint_positions(

@@ -124,3 +124,6 @@
 ## 2026-06-11 - Optimize array passing to Drake bounds
 **Learning:** Passing multi-dimensional NumPy arrays to PyDrake constraints (e.g., `AddBoundingBoxConstraint`) with `.flatten()` forces a full memory copy allocation.
 **Action:** Use `.ravel()` instead of `.flatten()` when supplying bounds or variable arrays to Drake, as it returns a contiguous view without intermediate allocation, significantly reducing overhead during solver setup.
+## 2026-06-14 - Redundant array allocation and property access
+**Learning:** For minor overhead reduction in hot paths or validation workflows: 1) prefer the built-in `len(arr)` over `arr.shape[0]` to check the first dimension size of NumPy arrays, 2) derive parallel absolute time arrays via scalar multiplication (`time_fracs * total_time`) to avoid redundant `np.linspace` calls, and 3) cache repetitive property calculations (like `self.total_time`) directly via underlying attributes inside `__post_init__` to bypass `@property` method overhead.
+**Action:** Use scalar multiplication over `np.linspace` when generating parallel time sequences, use `len()` for checking array dimension size if it is only 1-D or only checking first dimension, and calculate/cache repetitive values in `__post_init__` directly rather than invoking property methods.
