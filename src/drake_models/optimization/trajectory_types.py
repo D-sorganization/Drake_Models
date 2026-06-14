@@ -58,8 +58,7 @@ class TrajectoryConfig:
         tt = self.n_timesteps * self.dt
         if not math.isfinite(tt) or tt <= 0:
             raise ValueError(
-                f"total_time (n_timesteps*dt) must be positive and finite, "
-                f"got {tt}"
+                f"total_time (n_timesteps*dt) must be positive and finite, got {tt}"
             )
 
     @property
