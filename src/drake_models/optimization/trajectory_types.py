@@ -54,10 +54,12 @@ class TrajectoryConfig:
             raise ValueError(
                 f"balance_weight must be non-negative and finite, got {self.balance_weight}"
             )
-        if not math.isfinite(self.total_time) or self.total_time <= 0:
+        # ⚡ Bolt: Cache total_time calculation to avoid property method call overhead during validation
+        tt = self.n_timesteps * self.dt
+        if not math.isfinite(tt) or tt <= 0:
             raise ValueError(
                 f"total_time (n_timesteps*dt) must be positive and finite, "
-                f"got {self.total_time}"
+                f"got {tt}"
             )
 
     @property
@@ -80,19 +82,21 @@ class TrajectoryResult:
 
     def __post_init__(self) -> None:
         """Validate that all array dimensions are consistent with the time axis."""
-        n = self.time.shape[0]
-        if self.joint_positions.shape[0] != n:
+        # ⚡ Bolt: Use `len` instead of `.shape[0]` for faster size checking
+        # on the first dimension of numpy arrays.
+        n = len(self.time)
+        if len(self.joint_positions) != n:
             raise ValueError(
-                f"joint_positions rows ({self.joint_positions.shape[0]}) "
+                f"joint_positions rows ({len(self.joint_positions)}) "
                 f"must match time length ({n})"
             )
-        if self.joint_velocities.shape[0] != n:
+        if len(self.joint_velocities) != n:
             raise ValueError(
-                f"joint_velocities rows ({self.joint_velocities.shape[0]}) "
+                f"joint_velocities rows ({len(self.joint_velocities)}) "
                 f"must match time length ({n})"
             )
-        if self.joint_torques.shape[0] != n:
+        if len(self.joint_torques) != n:
             raise ValueError(
-                f"joint_torques rows ({self.joint_torques.shape[0]}) "
+                f"joint_torques rows ({len(self.joint_torques)}) "
                 f"must match time length ({n})"
             )
