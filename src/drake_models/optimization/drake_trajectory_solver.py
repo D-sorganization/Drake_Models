@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
@@ -14,7 +15,6 @@ from drake_models.optimization.trajectory_types import (
     TrajectoryConfig,
     TrajectoryResult,
 )
-from drake_models.shared.contracts.preconditions import require_finite
 
 
 def _build_drake_plant(sdf_string: str, dt: float) -> object:
@@ -289,7 +289,12 @@ def solve_with_drake(
     """Solve trajectory optimization using Drake's MathematicalProgram."""
     from pydrake.solvers import Solve
 
-    require_finite(np.array([config.dt, config.total_time]), "config timing")
+    # ⚡ Bolt: Replace array allocation with math.isfinite for timing validation
+    # Using math.isfinite avoids the memory allocation and dispatch overhead
+    # of creating a temporary NumPy array just to validate scalars.
+    if not math.isfinite(config.dt) or not math.isfinite(config.total_time):
+        raise ValueError("config timing contains non-finite values")
+
     plant = _build_drake_plant(sdf_string, config.dt)
     prog, q, v, u = _build_drake_program(plant, objective, config)
     result = Solve(prog)
