@@ -127,3 +127,6 @@
 ## 2026-06-14 - Redundant array allocation and property access
 **Learning:** For minor overhead reduction in hot paths or validation workflows: 1) prefer the built-in `len(arr)` over `arr.shape[0]` to check the first dimension size of NumPy arrays, 2) derive parallel absolute time arrays via scalar multiplication (`time_fracs * total_time`) to avoid redundant `np.linspace` calls, and 3) cache repetitive property calculations (like `self.total_time`) directly via underlying attributes inside `__post_init__` to bypass `@property` method overhead.
 **Action:** Use scalar multiplication over `np.linspace` when generating parallel time sequences, use `len()` for checking array dimension size if it is only 1-D or only checking first dimension, and calculate/cache repetitive values in `__post_init__` directly rather than invoking property methods.
+## 2024-06-15 - Array Allocation Overhead in Validation
+**Learning:** Instantiating a new NumPy array (`np.array([val1, val2])`) and calling `.all()` simply to validate that two scalar floats are finite creates measurable memory allocation and Python-to-C dispatch overhead.
+**Action:** Replace array creation for scalar validation with separate `math.isfinite()` checks for each scalar.
