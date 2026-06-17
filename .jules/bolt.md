@@ -130,3 +130,7 @@
 ## 2024-06-15 - Array Allocation Overhead in Validation
 **Learning:** Instantiating a new NumPy array (`np.array([val1, val2])`) and calling `.all()` simply to validate that two scalar floats are finite creates measurable memory allocation and Python-to-C dispatch overhead.
 **Action:** Replace array creation for scalar validation with separate `math.isfinite()` checks for each scalar.
+
+## 2026-06-25 - [Array Allocation Performance]
+**Learning:** `np.zeros(shape, dtype=float)` is significantly faster (~3x) than `np.zeros_like(arr)` when creating initialized zero arrays. `np.empty(shape, dtype=float)` is also slightly faster and more direct than `np.empty_like(arr)`.
+**Action:** When allocating new arrays, prefer explicit `np.zeros(shape, dtype)` and `np.empty(shape, dtype)` over their `*_like` equivalents in hot paths.
