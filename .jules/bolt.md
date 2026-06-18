@@ -134,3 +134,6 @@
 ## 2026-06-25 - [Array Allocation Performance]
 **Learning:** `np.zeros(shape, dtype=float)` is significantly faster (~3x) than `np.zeros_like(arr)` when creating initialized zero arrays. `np.empty(shape, dtype=float)` is also slightly faster and more direct than `np.empty_like(arr)`.
 **Action:** When allocating new arrays, prefer explicit `np.zeros(shape, dtype)` and `np.empty(shape, dtype)` over their `*_like` equivalents in hot paths.
+## 2026-06-25 - [Use ndarray methods and python math operators]
+**Learning:** Calling top-level NumPy functions like `np.clip()` and `np.subtract()` in hot paths incurs measurable `__array_function__` dispatch and global lookup overhead. Replacing them with direct ndarray method calls (e.g., `arr.clip(...)`) and standard Python math operators (e.g., `a - b`) speeds up execution significantly, provided the operation isn't writing into a pre-allocated array using the `out=` kwarg (in which case `np.subtract(..., out=...)` is still needed).
+**Action:** In frequently called loops, prefer `arr.clip(...)` over `np.clip(...)` and use `a - b` instead of `np.subtract(a, b)` for array math where intermediate arrays are acceptable or unavoidable.
