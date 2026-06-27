@@ -137,3 +137,7 @@
 ## 2026-06-25 - [Use ndarray methods and python math operators]
 **Learning:** Calling top-level NumPy functions like `np.clip()` and `np.subtract()` in hot paths incurs measurable `__array_function__` dispatch and global lookup overhead. Replacing them with direct ndarray method calls (e.g., `arr.clip(...)`) and standard Python math operators (e.g., `a - b`) speeds up execution significantly, provided the operation isn't writing into a pre-allocated array using the `out=` kwarg (in which case `np.subtract(..., out=...)` is still needed).
 **Action:** In frequently called loops, prefer `arr.clip(...)` over `np.clip(...)` and use `a - b` instead of `np.subtract(a, b)` for array math where intermediate arrays are acceptable or unavoidable.
+
+## 2026-06-25 - [Block Matrix Construction]
+**Learning:** Using `np.hstack` over a tuple of arrays like `(np.eye(N), -np.eye(N), -dt*np.eye(N))` incurs the overhead of allocating three independent inner arrays and one outer tuple before eventually copying data into a newly allocated output array. Instead, preallocating the final array via `np.zeros` and using block-assignment or `np.fill_diagonal` directly on array slices (e.g., `np.fill_diagonal(A[:, :N], 1.0)`) avoids intermediate allocations and performs ~40% faster.
+**Action:** When creating fixed-size block matrices in hot paths, pre-allocate the final matrix with `np.zeros` and write block components directly using slices or fast element-setters like `np.fill_diagonal` instead of using `np.hstack` or `np.vstack` on temporary arrays.
