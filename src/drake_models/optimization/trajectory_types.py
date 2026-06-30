@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TrajectoryConfig:
     """Configuration for trajectory optimization solver."""
 
@@ -67,7 +67,7 @@ class TrajectoryConfig:
         return self.n_timesteps * self.dt
 
 
-@dataclass
+@dataclass(slots=True)
 class TrajectoryResult:
     """Result of a trajectory optimization solve."""
 

@@ -8,7 +8,7 @@ are defined here.  Per-exercise phase definitions live in sibling modules
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 
 import numpy as np
@@ -29,7 +29,7 @@ class BalanceMode(Enum):
     """CoM over a widened base of support (split jerk receiving position)."""
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ExercisePhase:
     """A target configuration within an exercise movement.
 
@@ -62,7 +62,7 @@ class ExercisePhase:
             raise ValueError(f"tolerance must be positive, got {self.tolerance}")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ExerciseObjective:
     """Complete optimization objective for a barbell exercise.
 
@@ -83,6 +83,10 @@ class ExerciseObjective:
     balance_mode: BalanceMode = BalanceMode.STANDING
     bar_path: str = "vertical"
     n_joints: int = 20
+    _cached_joint_names: tuple[str, ...] | None = field(default=None, init=False, repr=False)
+    _cached_phase_angles_array: np.ndarray | None = field(default=None, init=False, repr=False)
+    _cached_phase_times_array: np.ndarray | None = field(default=None, init=False, repr=False)
+    _cached_phase_angles_clean: np.ndarray | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Validate that phases are ordered and contain at least 2 entries."""
@@ -108,7 +112,7 @@ class ExerciseObjective:
 
     def joint_names(self) -> list[str]:
         """Return the sorted union of all joint names across phases."""
-        if not hasattr(self, "_cached_joint_names"):
+        if self._cached_joint_names is None:
             names: set[str] = set()
             for phase in self.phases:
                 names.update(phase.joint_angles.keys())
@@ -122,7 +126,7 @@ class ExerciseObjective:
 
         Missing joints in a phase are filled with ``np.nan``.
         """
-        if not hasattr(self, "_cached_phase_angles_array"):
+        if self._cached_phase_angles_array is None:
             names = self.joint_names()
             # ⚡ Bolt: Replace O(N) linear scan over `names` in nested loop with O(1) dict lookup
             # by iterating over the phase's joint_angles directly.
@@ -149,7 +153,7 @@ class ExerciseObjective:
 
         The returned array is read-only.
         """
-        if not hasattr(self, "_cached_phase_times_array"):
+        if self._cached_phase_times_array is None:
             arr = np.array([p.time_fraction for p in self.phases], dtype=float)
             arr.flags.writeable = False
             object.__setattr__(self, "_cached_phase_times_array", arr)
@@ -160,7 +164,7 @@ class ExerciseObjective:
 
         The returned array is read-only.
         """
-        if not hasattr(self, "_cached_phase_angles_clean"):
+        if self._cached_phase_angles_clean is None:
             arr = self.phase_angles_array()
             clean_arr = np.where(np.isnan(arr), 0.0, arr)
             clean_arr.flags.writeable = False
