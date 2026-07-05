@@ -65,7 +65,13 @@ def _add_integration_constraints(
 
     # Optimize: Preallocate the constraints matrix and variable array
     # to avoid allocation overhead for each step and degree of freedom.
-    A = np.hstack((np.eye(n_v), -np.eye(n_v), -dt * np.eye(n_v)))
+    # ⚡ Bolt: Pre-allocate a single output array using np.zeros() and
+    # populate the blocks using array slices and np.fill_diagonal() instead
+    # of using np.hstack on intermediate arrays to avoid allocations.
+    A = np.zeros((n_v, 3 * n_v))
+    np.fill_diagonal(A[:, :n_v], 1.0)
+    np.fill_diagonal(A[:, n_v : 2 * n_v], -1.0)
+    np.fill_diagonal(A[:, 2 * n_v :], -dt)
     b = np.zeros(n_v)
 
     # ⚡ Bolt: Preallocating arrays and combining variables for matrix operations
