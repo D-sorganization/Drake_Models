@@ -137,6 +137,7 @@
 ## 2026-06-25 - [Use ndarray methods and python math operators]
 **Learning:** Calling top-level NumPy functions like `np.clip()` and `np.subtract()` in hot paths incurs measurable `__array_function__` dispatch and global lookup overhead. Replacing them with direct ndarray method calls (e.g., `arr.clip(...)`) and standard Python math operators (e.g., `a - b`) speeds up execution significantly, provided the operation isn't writing into a pre-allocated array using the `out=` kwarg (in which case `np.subtract(..., out=...)` is still needed).
 **Action:** In frequently called loops, prefer `arr.clip(...)` over `np.clip(...)` and use `a - b` instead of `np.subtract(a, b)` for array math where intermediate arrays are acceptable or unavoidable.
+
 ## 2026-06-25 - [Use slots=True for heavily instantiated dataclasses]
 **Learning:** Adding `slots=True` to `@dataclass(frozen=True)` significantly reduces instantiation time and memory overhead. For classes that are instantiated frequently (e.g. `TrajectoryConfig`), this can yield a measurable performance improvement (in our benchmark, `test_benchmark_trajectory_config_creation` mean time dropped from ~5000ns to ~4000ns, roughly a 20% speedup).
 **Action:** When a dataclass is created in massive numbers or on performance-critical paths, always consider adding `slots=True`.
