@@ -8,7 +8,8 @@ from dataclasses import dataclass
 import numpy as np
 
 
-@dataclass(frozen=True)
+# ⚡ Bolt: Use slots=True to reduce memory allocation and speed up instantiation
+@dataclass(frozen=True, slots=True)
 class TrajectoryConfig:
     """Configuration for trajectory optimization solver."""
 
