@@ -40,8 +40,10 @@ def _add_control_costs(prog: Any, u: np.ndarray, n_steps: int, weight: float) ->
     """Add per-timestep quadratic control costs to *prog*."""
     n_u = u.shape[1]
     # Optimize: pre-calculate constant Q and b matrices outside the loop
-    # to avoid allocation overhead for every knot point
-    Q = weight * np.eye(n_u)
+    # to avoid allocation overhead for every knot point.
+    # ⚡ Bolt: Use np.fill_diagonal instead of weight * np.eye(n)
+    Q = np.zeros((n_u, n_u))
+    np.fill_diagonal(Q, weight)
     b = np.zeros(n_u)
     for k in range(n_steps):
         prog.AddQuadraticCost(
@@ -65,7 +67,12 @@ def _add_integration_constraints(
 
     # Optimize: Preallocate the constraints matrix and variable array
     # to avoid allocation overhead for each step and degree of freedom.
-    A = np.hstack((np.eye(n_v), -np.eye(n_v), -dt * np.eye(n_v)))
+    # ⚡ Bolt: Construct block matrix efficiently with np.zeros and np.fill_diagonal
+    # instead of np.hstack and np.eye to avoid multiple intermediate allocations.
+    A = np.zeros((n_v, 3 * n_v))
+    np.fill_diagonal(A[:, :n_v], 1.0)
+    np.fill_diagonal(A[:, n_v : 2 * n_v], -1.0)
+    np.fill_diagonal(A[:, 2 * n_v :], -dt)
     b = np.zeros(n_v)
 
     # ⚡ Bolt: Preallocating arrays and combining variables for matrix operations
@@ -220,8 +227,11 @@ def _add_phase_tracking_costs(
     joint_name_to_idx = {name: idx for idx, name in enumerate(joint_names)}
 
     # Optimize: pre-calculate constant Q matrices to avoid allocation overhead in loop
-    Q_state = state_weight * np.eye(n_q)
-    Q_terminal = terminal_weight * np.eye(n_q)
+    # ⚡ Bolt: Use np.fill_diagonal instead of weight * np.eye(n)
+    Q_state = np.zeros((n_q, n_q))
+    np.fill_diagonal(Q_state, state_weight)
+    Q_terminal = np.zeros((n_q, n_q))
+    np.fill_diagonal(Q_terminal, terminal_weight)
 
     for phase in objective.phases:
         k = int(phase.time_fraction * (n_steps - 1))
