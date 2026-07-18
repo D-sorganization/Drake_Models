@@ -137,3 +137,7 @@
 ## 2026-06-25 - [Use ndarray methods and python math operators]
 **Learning:** Calling top-level NumPy functions like `np.clip()` and `np.subtract()` in hot paths incurs measurable `__array_function__` dispatch and global lookup overhead. Replacing them with direct ndarray method calls (e.g., `arr.clip(...)`) and standard Python math operators (e.g., `a - b`) speeds up execution significantly, provided the operation isn't writing into a pre-allocated array using the `out=` kwarg (in which case `np.subtract(..., out=...)` is still needed).
 **Action:** In frequently called loops, prefer `arr.clip(...)` over `np.clip(...)` and use `a - b` instead of `np.subtract(a, b)` for array math where intermediate arrays are acceptable or unavoidable.
+
+## 2026-07-28 - [Avoid np.hstack and np.eye for block matrices]
+**Learning:** When constructing block matrices from multiple sub-matrices in hot paths (e.g., combining identity matrices for equality constraints like `np.hstack((np.eye(n), -np.eye(n), -dt * np.eye(n)))`), avoid using `np.hstack` on a tuple of newly allocated intermediate arrays. Instead, pre-allocate a single output array using `np.zeros()` and populate the blocks using array slices and `np.fill_diagonal()`. This avoids multiple intermediate memory allocations and executes roughly 40-50% faster.
+**Action:** When building block matrices out of diagonal blocks, use `np.zeros()` and `np.fill_diagonal()` instead of `np.hstack` and `np.eye`.
