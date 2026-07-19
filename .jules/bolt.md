@@ -137,3 +137,6 @@
 ## 2026-06-25 - [Use ndarray methods and python math operators]
 **Learning:** Calling top-level NumPy functions like `np.clip()` and `np.subtract()` in hot paths incurs measurable `__array_function__` dispatch and global lookup overhead. Replacing them with direct ndarray method calls (e.g., `arr.clip(...)`) and standard Python math operators (e.g., `a - b`) speeds up execution significantly, provided the operation isn't writing into a pre-allocated array using the `out=` kwarg (in which case `np.subtract(..., out=...)` is still needed).
 **Action:** In frequently called loops, prefer `arr.clip(...)` over `np.clip(...)` and use `a - b` instead of `np.subtract(a, b)` for array math where intermediate arrays are acceptable or unavoidable.
+## 2024-05-18 - Avoid committing temporary profiling scripts
+**Learning:** During performance investigations, temporary benchmarking or profiling scripts (like `test_*.py` created via heredocs) are often written to the repository root. These files violate commit hygiene and pollute the repository if included in a PR.
+**Action:** Always delete or `.gitignore` any temporary, exploratory scripts or data files generated during the optimization process before initiating the final code review and submitting a PR.
