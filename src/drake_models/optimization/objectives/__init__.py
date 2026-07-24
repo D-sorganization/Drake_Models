@@ -84,10 +84,18 @@ class ExerciseObjective:
     balance_mode: BalanceMode = BalanceMode.STANDING
     bar_path: str = "vertical"
     n_joints: int = 20
-    _cached_joint_names: tuple[str, ...] | None = dataclasses.field(default=None, init=False, repr=False)
-    _cached_phase_angles_array: np.ndarray | None = dataclasses.field(default=None, init=False, repr=False)
-    _cached_phase_times_array: np.ndarray | None = dataclasses.field(default=None, init=False, repr=False)
-    _cached_phase_angles_clean: np.ndarray | None = dataclasses.field(default=None, init=False, repr=False)
+    _cached_joint_names: tuple[str, ...] | None = dataclasses.field(
+        default=None, init=False, repr=False
+    )
+    _cached_phase_angles_array: np.ndarray | None = dataclasses.field(
+        default=None, init=False, repr=False
+    )
+    _cached_phase_times_array: np.ndarray | None = dataclasses.field(
+        default=None, init=False, repr=False
+    )
+    _cached_phase_angles_clean: np.ndarray | None = dataclasses.field(
+        default=None, init=False, repr=False
+    )
 
     def __post_init__(self) -> None:
         """Validate that phases are ordered and contain at least 2 entries."""
