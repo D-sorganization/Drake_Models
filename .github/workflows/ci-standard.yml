@@ -83,6 +83,7 @@ jobs:
             source .audit-venv/bin/activate
           fi
           python -m pip install --upgrade pip
+          python -m pip install --upgrade "setuptools>=83.0.0"
           python -m pip install -e ".[dev]"
           python -m pip install pip-audit
           pip-audit --skip-editable --ignore-vuln CVE-2026-3219
