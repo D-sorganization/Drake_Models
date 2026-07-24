@@ -54,8 +54,14 @@ def _interpolate_joint_positions(
     # using np.searchsorted and manual linear blending is ~35% faster.
     # To match np.interp's default flat extrapolation behavior outside bounds,
     # we clip the blending weights w1 between 0.0 and 1.0.
-    idx = np.searchsorted(phase_times, time_fracs)
-    idx.clip(1, len(phase_times) - 1, out=idx)
+    # By using side="right", we avoid returning index 0 for values matching
+    # phase_times[0]. This allows us to avoid a full-array `.clip(1, ...)` call,
+    # by only bounding the values that fall off the edges,
+    # significantly reducing C-dispatch overhead while maintaining mathematical
+    # parity with np.interp extrapolation boundaries.
+    idx = np.searchsorted(phase_times, time_fracs, side="right")
+    idx[idx == 0] = 1
+    idx[idx == len(phase_times)] = len(phase_times) - 1
 
     t0 = phase_times[idx - 1]
     t1 = phase_times[idx]

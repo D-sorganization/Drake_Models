@@ -7,6 +7,7 @@ are defined here.  Per-exercise phase definitions live in sibling modules
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -29,7 +30,7 @@ class BalanceMode(Enum):
     """CoM over a widened base of support (split jerk receiving position)."""
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ExercisePhase:
     """A target configuration within an exercise movement.
 
@@ -62,7 +63,7 @@ class ExercisePhase:
             raise ValueError(f"tolerance must be positive, got {self.tolerance}")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ExerciseObjective:
     """Complete optimization objective for a barbell exercise.
 
@@ -83,6 +84,18 @@ class ExerciseObjective:
     balance_mode: BalanceMode = BalanceMode.STANDING
     bar_path: str = "vertical"
     n_joints: int = 20
+    _cached_joint_names: tuple[str, ...] | None = dataclasses.field(
+        default=None, init=False, repr=False
+    )
+    _cached_phase_angles_array: np.ndarray | None = dataclasses.field(
+        default=None, init=False, repr=False
+    )
+    _cached_phase_times_array: np.ndarray | None = dataclasses.field(
+        default=None, init=False, repr=False
+    )
+    _cached_phase_angles_clean: np.ndarray | None = dataclasses.field(
+        default=None, init=False, repr=False
+    )
 
     def __post_init__(self) -> None:
         """Validate that phases are ordered and contain at least 2 entries."""
@@ -108,32 +121,35 @@ class ExerciseObjective:
 
     def joint_names(self) -> list[str]:
         """Return the sorted union of all joint names across phases."""
-        if not hasattr(self, "_cached_joint_names"):
+        if self._cached_joint_names is None:
             names: set[str] = set()
             for phase in self.phases:
                 names.update(phase.joint_angles.keys())
             object.__setattr__(self, "_cached_joint_names", tuple(sorted(names)))
         # Return a mutable list to match the original type hint,
         # but generated from the cached immutable tuple.
-        return list(self._cached_joint_names)  # type: ignore[attr-defined]
+        return list(self._cached_joint_names)  # type: ignore[arg-type]
 
     def phase_angles_array(self) -> np.ndarray:
         """Return (n_phases, n_unique_joints) array of target angles.
 
         Missing joints in a phase are filled with ``np.nan``.
         """
-        if not hasattr(self, "_cached_phase_angles_array"):
+        if self._cached_phase_angles_array is None:
             names = self.joint_names()
             # ⚡ Bolt: Replace O(N) linear scan over `names` in nested loop with O(1) dict lookup
             # by iterating over the phase's joint_angles directly.
             name_to_j = {name: j for j, name in enumerate(names)}
 
             n_phases = len(self.phases)
-            arr = np.full((n_phases, len(names)), np.nan)
+            # ⚡ Bolt: Use np.empty and .fill(np.nan) instead of np.full
+            # for faster allocation, and remove redundant check since
+            # joint_names is the union of all phase joint names.
+            arr = np.empty((n_phases, len(names)))
+            arr.fill(np.nan)
             for i, phase in enumerate(self.phases):
                 for name, angle in phase.joint_angles.items():
-                    if name in name_to_j:
-                        arr[i, name_to_j[name]] = angle
+                    arr[i, name_to_j[name]] = angle
             arr.flags.writeable = False
             object.__setattr__(self, "_cached_phase_angles_array", arr)
 
@@ -142,27 +158,27 @@ class ExerciseObjective:
         # or just let it fail if they try to mutate it (which is safer). Wait,
         # np.where works on read-only arrays. So returning the cached array directly
         # and making it writeable=False is the safest pattern.
-        return self._cached_phase_angles_array  # type: ignore[attr-defined]
+        return self._cached_phase_angles_array  # type: ignore[return-value]
 
     def phase_times_array(self) -> np.ndarray:
         """Return (n_phases,) array of target phase times.
 
         The returned array is read-only.
         """
-        if not hasattr(self, "_cached_phase_times_array"):
+        if self._cached_phase_times_array is None:
             arr = np.array([p.time_fraction for p in self.phases], dtype=float)
             arr.flags.writeable = False
             object.__setattr__(self, "_cached_phase_times_array", arr)
-        return self._cached_phase_times_array  # type: ignore[attr-defined]
+        return self._cached_phase_times_array  # type: ignore[return-value]
 
     def phase_angles_clean_array(self) -> np.ndarray:
         """Return (n_phases, n_unique_joints) array of target angles, with NaN as 0.0.
 
         The returned array is read-only.
         """
-        if not hasattr(self, "_cached_phase_angles_clean"):
+        if self._cached_phase_angles_clean is None:
             arr = self.phase_angles_array()
             clean_arr = np.where(np.isnan(arr), 0.0, arr)
             clean_arr.flags.writeable = False
             object.__setattr__(self, "_cached_phase_angles_clean", clean_arr)
-        return self._cached_phase_angles_clean  # type: ignore[attr-defined]
+        return self._cached_phase_angles_clean  # type: ignore[return-value]
