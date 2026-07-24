@@ -7,9 +7,8 @@ are defined here.  Per-exercise phase definitions live in sibling modules
 
 from __future__ import annotations
 
-import logging
-
 import dataclasses
+import logging
 from dataclasses import dataclass
 from enum import Enum, auto
 
