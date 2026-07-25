@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           cache: "pip"
           python-version: "3.11"
@@ -83,6 +83,7 @@ jobs:
             source .audit-venv/bin/activate
           fi
           python -m pip install --upgrade pip
+          python -m pip install --upgrade "setuptools>=83.0.0"
           python -m pip install -e ".[dev]"
           python -m pip install pip-audit
           pip-audit --skip-editable --ignore-vuln CVE-2026-3219 --ignore-vuln PYSEC-2026-3447
@@ -105,7 +106,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
           cache: "pip"
@@ -152,7 +153,7 @@ jobs:
     runs-on: d-sorg-fleet
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
         env:
