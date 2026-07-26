@@ -84,9 +84,9 @@ jobs:
           fi
           python -m pip install --upgrade pip
           python -m pip install --upgrade "setuptools>=83.0.0"
-          python -m pip install pip-audit
           python -m pip install -e ".[dev]"
           python -m pip install --upgrade "setuptools>=83.0.0"
+          python -m pip install pip-audit
           pip-audit --skip-editable --ignore-vuln CVE-2026-3219 --ignore-vuln PYSEC-2026-3447
 
       - name: Bandit Security Scan
