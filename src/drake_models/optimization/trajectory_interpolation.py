@@ -98,8 +98,11 @@ def _finite_diff_velocities(positions: np.ndarray, dt: float) -> np.ndarray:
         velocities = np.empty(positions.shape, dtype=positions.dtype)
         velocities[0] = 0.0
         dt_inv = 1.0 / dt
-        np.subtract(positions[1:], positions[:-1], out=velocities[1:])
-        velocities[1:] *= dt_inv
+
+        # ⚡ Bolt: Cache array view to avoid redundant view allocation overhead
+        v_slice = velocities[1:]
+        np.subtract(positions[1:], positions[:-1], out=v_slice)
+        v_slice *= dt_inv
         return velocities
     return np.zeros(positions.shape, dtype=positions.dtype)
 
