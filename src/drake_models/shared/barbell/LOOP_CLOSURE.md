@@ -72,6 +72,7 @@ shaft_frame = plant.GetFrameByName("barbell_shaft")
 
 # RigidTransform specifying grip offset along Y axis
 from pydrake.math import RigidTransform
+
 grip_offset = RigidTransform([0, grip_width, 0])
 
 plant.AddWeldConstraint(
