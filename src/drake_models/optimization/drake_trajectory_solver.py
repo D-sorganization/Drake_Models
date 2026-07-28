@@ -75,12 +75,11 @@ def _add_integration_constraints(
     np.fill_diagonal(A[:, 2 * n_v :], -dt)
     b = np.zeros(n_v)
 
-    # ⚡ Bolt: Preallocating arrays and combining variables for matrix operations
-    # speeds up integration constraint setup by ~3x for long trajectories.
-    vars_all = np.empty((n_steps - 1, 3 * n_v), dtype=q.dtype)
-    vars_all[:, :n_v] = q[1:, offset:]
-    vars_all[:, n_v : 2 * n_v] = q[:-1, offset:]
-    vars_all[:, 2 * n_v :] = v[1:]
+    # ⚡ Bolt: Using np.concatenate outside the loop to combine variable slices
+    # is faster than preallocating an empty array and doing multiple slice assignments.
+    vars_all = np.concatenate(
+        [q[1:, offset:], q[:-1, offset:], v[1:]], axis=1, dtype=q.dtype
+    )
 
     added = 0
     for k in range(n_steps - 1):
@@ -122,14 +121,9 @@ def _add_dynamics_constraints(
     lb = np.zeros(n_v)
     ub = np.zeros(n_v)
 
-    # ⚡ Bolt: Preallocating arrays and avoiding np.concatenate inside the loop
-    # removes list and array creation overhead per iteration. This speeds up
-    # dynamics constraint setup by ~3x for long trajectories.
-    vars_all = np.empty((n_steps - 1, n_q + 2 * n_v + n_u), dtype=q.dtype)
-    vars_all[:, :n_q] = q[:-1]
-    vars_all[:, n_q : n_q + n_v] = v[:-1]
-    vars_all[:, n_q + n_v : n_q + 2 * n_v] = v[1:]
-    vars_all[:, n_q + 2 * n_v :] = u[:-1]
+    # ⚡ Bolt: Using np.concatenate outside the loop to combine variable slices
+    # is faster and cleaner than preallocating an empty array and doing multiple slice assignments.
+    vars_all = np.concatenate([q[:-1], v[:-1], v[1:], u[:-1]], axis=1, dtype=q.dtype)
 
     for k in range(n_steps - 1):
         prog.AddConstraint(_residual, lb=lb, ub=ub, vars=vars_all[k])
