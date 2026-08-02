@@ -148,3 +148,7 @@
 ## 2026-07-09 - [Avoid np.linspace overhead for multidimensional arrays]
 **Learning:** Using `np.linspace` with multidimensional start/end arrays is significantly slower than creating a 1D fraction array and applying manual linear blending.
 **Action:** When interpolating multi-dimensional arrays, compute a 1D `np.linspace` of fractions and use standard vector math (e.g. `start + fractions[:, np.newaxis] * (end - start)`) rather than passing the multidimensional arrays directly to `np.linspace`.
+
+## 2026-07-15 - [Avoid np.where allocations in hot paths]
+**Learning:** Using `np.where(condition, arr, default)` allocates a new array for the output. For both mutable and immutable arrays, creating a copy (if necessary) and using boolean array indexing directly (e.g., `arr[~condition] = default`) avoids `np.where`'s C-level broadcasting overhead and is faster (~15-35%).
+**Action:** Replace `np.where()` with direct boolean masking assignment (`arr[mask] = val`) for replacing non-finite values or conditional array replacements.

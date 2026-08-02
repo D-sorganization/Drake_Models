@@ -195,10 +195,10 @@ def _add_joint_and_actuator_bounds(
     u_lower = plant.GetEffortLowerLimits()
     u_upper = plant.GetEffortUpperLimits()
 
-    q_lower = np.where(np.isfinite(q_lower), q_lower, -1e9)
-    q_upper = np.where(np.isfinite(q_upper), q_upper, 1e9)
-    u_lower = np.where(np.isfinite(u_lower), u_lower, -1e9)
-    u_upper = np.where(np.isfinite(u_upper), u_upper, 1e9)
+    q_lower[~np.isfinite(q_lower)] = -1e9
+    q_upper[~np.isfinite(q_upper)] = 1e9
+    u_lower[~np.isfinite(u_lower)] = -1e9
+    u_upper[~np.isfinite(u_upper)] = 1e9
 
     # Optimize: Use vectorized BoundingBox constraints instead of looping
     # to avoid significant python loop and expression overhead.
