@@ -152,3 +152,10 @@
 ## 2026-07-15 - [Avoid np.where allocations in hot paths]
 **Learning:** Using `np.where(condition, arr, default)` allocates a new array for the output. For both mutable and immutable arrays, creating a copy (if necessary) and using boolean array indexing directly (e.g., `arr[~condition] = default`) avoids `np.where`'s C-level broadcasting overhead and is faster (~15-35%).
 **Action:** Replace `np.where()` with direct boolean masking assignment (`arr[mask] = val`) for replacing non-finite values or conditional array replacements.
+## 2024-06-25 - Avoid `np.searchsorted` for small trajectory arrays
+**Learning:** Despite synthetic benchmarks showing `np.searchsorted` as faster for large arrays, in this specific robotics domain context (`drake_models`) where the number of joints is typically small, `np.searchsorted` is ~3x slower than a simple Python loop calling `np.interp` on 1D slices for generating typical trajectories.
+**Action:** Do not blindly replace `np.interp` loops with vectorized `np.searchsorted` implementations. Always heed existing codebase comments warning against specific optimizations that have already been benchmarked and rejected.
+
+## 2024-06-25 - Optimize Dictionary Lookups in Hot Loops
+**Learning:** In tight loops (like iterating over phases and joints in `_add_phase_tracking_costs`), performing `if key in dict: val = dict[key]` results in two hash map lookups.
+**Action:** Replace double lookups with `val = dict.get(key)` and checking `if val is not None:` to safely reduce overhead.
