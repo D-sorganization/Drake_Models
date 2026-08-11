@@ -38,10 +38,6 @@ def plant_fixture() -> object:
             </inertia>
           </inertial>
         </link>
-        <joint name="floating" type="free">
-          <parent>world</parent>
-          <child>body</child>
-        </joint>
       </model>
     </sdf>
     """
@@ -78,10 +74,6 @@ def test_bench_build_drake_plant(benchmark) -> None:
                 </inertia>
               </inertial>
             </link>
-            <joint name="floating" type="free">
-              <parent>world</parent>
-              <child>body</child>
-            </joint>
           </model>
         </sdf>
         """
