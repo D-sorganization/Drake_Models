@@ -322,12 +322,12 @@ def _append_compliant_proximity_properties(
     """
     prox = ET.SubElement(collision, _drake_tag("proximity_properties"))
     ET.SubElement(prox, _drake_tag("compliant_hydroelastic"))
-    ET.SubElement(
-        prox, _drake_tag("hydroelastic_modulus")
-    ).text = f"{hydroelastic_modulus:.0f}"
-    ET.SubElement(
-        prox, _drake_tag("hunt_crossley_dissipation")
-    ).text = f"{hunt_crossley_dissipation:.1f}"
+    ET.SubElement(prox, _drake_tag("hydroelastic_modulus")).text = (
+        f"{hydroelastic_modulus:.0f}"
+    )
+    ET.SubElement(prox, _drake_tag("hunt_crossley_dissipation")).text = (
+        f"{hunt_crossley_dissipation:.1f}"
+    )
     ET.SubElement(prox, _drake_tag("mu_static")).text = f"{mu_static:.1f}"
     ET.SubElement(prox, _drake_tag("mu_dynamic")).text = f"{mu_dynamic:.1f}"
 

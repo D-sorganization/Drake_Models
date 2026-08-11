@@ -96,9 +96,9 @@ def resolve() -> Path:
         package_dir = here.parent
         if (package_dir / _MANIFEST_FILENAME).is_file():
             exercises_dir = package_dir / "exercises"
-            assert exercises_dir.is_dir(), (
-                f"resolved exercises dir does not exist: {exercises_dir}"
-            )
+            assert (
+                exercises_dir.is_dir()
+            ), f"resolved exercises dir does not exist: {exercises_dir}"
             return exercises_dir
         raise FileNotFoundError(
             f"Could not locate {_MANIFEST_FILENAME} to resolve models root",

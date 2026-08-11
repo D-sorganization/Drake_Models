@@ -198,15 +198,15 @@ class TestLinkProperties:
             iyy = float(inertia.find("iyy").text)
             izz = float(inertia.find("izz").text)
             # Triangle inequalities for inertia tensor
-            assert ixx + iyy >= izz, (
-                f"Link '{link_name}': Ixx + Iyy < Izz ({ixx + iyy} < {izz})"
-            )
-            assert iyy + izz >= ixx, (
-                f"Link '{link_name}': Iyy + Izz < Ixx ({iyy + izz} < {ixx})"
-            )
-            assert izz + ixx >= iyy, (
-                f"Link '{link_name}': Izz + Ixx < Iyy ({izz + ixx} < {iyy})"
-            )
+            assert (
+                ixx + iyy >= izz
+            ), f"Link '{link_name}': Ixx + Iyy < Izz ({ixx + iyy} < {izz})"
+            assert (
+                iyy + izz >= ixx
+            ), f"Link '{link_name}': Iyy + Izz < Ixx ({iyy + izz} < {ixx})"
+            assert (
+                izz + ixx >= iyy
+            ), f"Link '{link_name}': Izz + Ixx < Iyy ({izz + ixx} < {iyy})"
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS)
     def test_mass_center_exists_in_inertial_block(
@@ -271,12 +271,12 @@ class TestJointDefinitions:
             joint_name = joint.get("name", "<unnamed>")
             parent_el = joint.find("parent")
             child_el = joint.find("child")
-            assert parent_el is not None and parent_el.text, (
-                f"Joint '{joint_name}' missing <parent>"
-            )
-            assert child_el is not None and child_el.text, (
-                f"Joint '{joint_name}' missing <child>"
-            )
+            assert (
+                parent_el is not None and parent_el.text
+            ), f"Joint '{joint_name}' missing <parent>"
+            assert (
+                child_el is not None and child_el.text
+            ), f"Joint '{joint_name}' missing <child>"
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS)
     def test_all_joints_have_type(self, name: str, builder: Any) -> None:
@@ -291,9 +291,9 @@ class TestJointDefinitions:
         for joint in model.findall("joint"):
             joint_name = joint.get("name", "<unnamed>")
             joint_type = joint.get("type")
-            assert joint_type is not None, (
-                f"Joint '{joint_name}' missing type attribute"
-            )
+            assert (
+                joint_type is not None
+            ), f"Joint '{joint_name}' missing type attribute"
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS)
     def test_revolute_joints_have_limits(self, name: str, builder: Any) -> None:
@@ -321,9 +321,9 @@ class TestJointDefinitions:
                     try:
                         lower_val = float(lower.text)
                         upper_val = float(upper.text)
-                        assert lower_val <= upper_val, (
-                            f"Joint '{joint_name}' limits inverted"
-                        )
+                        assert (
+                            lower_val <= upper_val
+                        ), f"Joint '{joint_name}' limits inverted"
                     except (ValueError, AttributeError):
                         pass
 
@@ -350,9 +350,9 @@ class TestJointDefinitions:
                 continue
             lower = float(lower_el.text)
             upper = float(upper_el.text)
-            assert lower <= upper, (
-                f"Joint '{joint_name}': lower ({lower}) > upper ({upper})"
-            )
+            assert (
+                lower <= upper
+            ), f"Joint '{joint_name}': lower ({lower}) > upper ({upper})"
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS)
     def test_revolute_joints_have_axis(self, name: str, builder: Any) -> None:
@@ -396,9 +396,9 @@ class TestJointDefinitions:
             coords = list(map(float, xyz_el.text.split()))
             norm = math.sqrt(sum(c**2 for c in coords))
             # Allow small tolerance for normalization
-            assert abs(norm - 1.0) < 0.01, (
-                f"Joint '{joint_name}' axis not normalized: norm={norm}"
-            )
+            assert (
+                abs(norm - 1.0) < 0.01
+            ), f"Joint '{joint_name}' axis not normalized: norm={norm}"
 
 
 class TestKinematicChainConsistency:
@@ -445,9 +445,9 @@ class TestKinematicChainConsistency:
             return False
 
         for child_node in children:
-            assert not has_cycle(child_node, set()), (
-                f"Cyclic parent-child relationship involving '{child_node}'"
-            )
+            assert not has_cycle(
+                child_node, set()
+            ), f"Cyclic parent-child relationship involving '{child_node}'"
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS)
     def test_each_link_has_at_most_one_parent(self, name: str, builder: Any) -> None:
@@ -469,9 +469,9 @@ class TestKinematicChainConsistency:
                 child_counts[child_name] = child_counts.get(child_name, 0) + 1
 
         for link, count in child_counts.items():
-            assert count <= 1, (
-                f"Link '{link}' is child of {count} joints (tree violation)"
-            )
+            assert (
+                count <= 1
+            ), f"Link '{link}' is child of {count} joints (tree violation)"
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS)
     def test_all_joint_children_are_links(self, name: str, builder: Any) -> None:
@@ -563,9 +563,9 @@ class TestInertialPropertyValidation:
             if "virtual" in link_name or "ground" in link_name or mass < 0.001:
                 continue
             # Barbell exercises typically involve body parts (0.5-50kg) and barbells (<200kg)
-            assert 0.1 <= mass <= 500, (
-                f"Link '{link_name}' mass {mass} outside plausible range [0.1, 500] kg"
-            )
+            assert (
+                0.1 <= mass <= 500
+            ), f"Link '{link_name}' mass {mass} outside plausible range [0.1, 500] kg"
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS)
     def test_inertia_consistent_with_mass(self, name: str, builder: Any) -> None:
@@ -592,15 +592,15 @@ class TestInertialPropertyValidation:
             # Rough heuristic: inertia should not exceed mass × 10m²
             # (typical human segments ~1-2m long)
             max_inertia = mass * 100  # 10m characteristic length
-            assert ixx <= max_inertia, (
-                f"Link '{link_name}' Ixx={ixx} exceeds mass*100={max_inertia}"
-            )
-            assert iyy <= max_inertia, (
-                f"Link '{link_name}' Iyy={iyy} exceeds mass*100={max_inertia}"
-            )
-            assert izz <= max_inertia, (
-                f"Link '{link_name}' Izz={izz} exceeds mass*100={max_inertia}"
-            )
+            assert (
+                ixx <= max_inertia
+            ), f"Link '{link_name}' Ixx={ixx} exceeds mass*100={max_inertia}"
+            assert (
+                iyy <= max_inertia
+            ), f"Link '{link_name}' Iyy={iyy} exceeds mass*100={max_inertia}"
+            assert (
+                izz <= max_inertia
+            ), f"Link '{link_name}' Izz={izz} exceeds mass*100={max_inertia}"
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS)
     def test_total_model_mass_plausible(self, name: str, builder: Any) -> None:
@@ -619,9 +619,9 @@ class TestInertialPropertyValidation:
                 if mass_el is not None:
                     total_mass += float(mass_el.text)
         # Barbell exercises: typical body+equipment 30-300 kg
-        assert 30 <= total_mass <= 300, (
-            f"Total model mass {total_mass} outside plausible range [30, 300] kg"
-        )
+        assert (
+            30 <= total_mass <= 300
+        ), f"Total model mass {total_mass} outside plausible range [30, 300] kg"
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS)
     def test_inertia_off_diagonal_zeros(self, name: str, builder: Any) -> None:
@@ -644,9 +644,9 @@ class TestInertialPropertyValidation:
                 # Off-diagonal terms should not be present or should be zero
                 if el is not None:
                     val = float(el.text) if el.text else 0.0
-                    assert abs(val) < 1e-10, (
-                        f"Off-diagonal inertia {component} is non-zero"
-                    )
+                    assert (
+                        abs(val) < 1e-10
+                    ), f"Off-diagonal inertia {component} is non-zero"
 
 
 class TestConstraintEnforcement:
@@ -680,9 +680,9 @@ class TestConstraintEnforcement:
             if lower_el is not None and upper_el is not None:
                 lower = float(lower_el.text)
                 upper = float(upper_el.text)
-                assert lower <= upper, (
-                    f"Joint '{joint_name}': limits inverted ({lower} > {upper})"
-                )
+                assert (
+                    lower <= upper
+                ), f"Joint '{joint_name}': limits inverted ({lower} > {upper})"
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS)
     def test_joint_limits_reasonable_magnitude(self, name: str, builder: Any) -> None:
@@ -708,12 +708,12 @@ class TestConstraintEnforcement:
                 upper = float(upper_el.text)
                 # Most human joints: limits < 180° = π radians
                 # Allow up to 2π for multi-revolution cases
-                assert abs(lower) <= 2 * math.pi, (
-                    f"Joint '{joint_name}' lower limit {lower} exceeds ±2π"
-                )
-                assert abs(upper) <= 2 * math.pi, (
-                    f"Joint '{joint_name}' upper limit {upper} exceeds ±2π"
-                )
+                assert (
+                    abs(lower) <= 2 * math.pi
+                ), f"Joint '{joint_name}' lower limit {lower} exceeds ±2π"
+                assert (
+                    abs(upper) <= 2 * math.pi
+                ), f"Joint '{joint_name}' upper limit {upper} exceeds ±2π"
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS)
     def test_no_zero_length_joints(self, name: str, builder: Any) -> None:
@@ -792,9 +792,9 @@ class TestContactGeometryValidation:
             size_el = box.find("size")
             if size_el is not None and size_el.text:
                 dims = list(map(float, size_el.text.split()))
-                assert all(d > 0 for d in dims), (
-                    f"Box dimensions must be > 0, got {dims}"
-                )
+                assert all(
+                    d > 0 for d in dims
+                ), f"Box dimensions must be > 0, got {dims}"
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS)
     def test_sphere_geometry_radius_positive(self, name: str, builder: Any) -> None:
@@ -894,9 +894,9 @@ class TestEdgeCasesAndDegenerates:
                 try:
                     coords = list(map(float, pose_el.text.split()[:6]))
                     for coord in coords:
-                        assert math.isfinite(coord), (
-                            f"Joint '{joint_name}' pose has non-finite value: {coord}"
-                        )
+                        assert math.isfinite(
+                            coord
+                        ), f"Joint '{joint_name}' pose has non-finite value: {coord}"
                 except (ValueError, IndexError):
                     pass
 
@@ -921,9 +921,9 @@ class TestEdgeCasesAndDegenerates:
                     coords = list(map(float, pose_el.text.split()[:3]))
                     distance = math.sqrt(sum(c**2 for c in coords))
                     # Reasonable limit: 10m from origin
-                    assert distance <= 10.0, (
-                        f"Link '{link_name}' mass center {distance}m from origin"
-                    )
+                    assert (
+                        distance <= 10.0
+                    ), f"Link '{link_name}' mass center {distance}m from origin"
                 except (ValueError, IndexError):
                     pass
 
@@ -1024,9 +1024,9 @@ class TestModelConsistencyAndSymmetry:
                 if link_r in link_masses:
                     mass_r = link_masses[link_r]
                     # Allow 5% tolerance for symmetry
-                    assert abs(mass_l - mass_r) / mass_l <= 0.05, (
-                        f"Left/right mass asymmetry: {link_l}={mass_l}, {link_r}={mass_r}"
-                    )
+                    assert (
+                        abs(mass_l - mass_r) / mass_l <= 0.05
+                    ), f"Left/right mass asymmetry: {link_l}={mass_l}, {link_r}={mass_r}"
 
     @pytest.mark.parametrize("name,builder", ALL_BUILDERS)
     def test_bilateral_limb_inertia_symmetry(self, name: str, builder: Any) -> None:
@@ -1065,6 +1065,6 @@ class TestModelConsistencyAndSymmetry:
                     ]:
                         if i_l > 0:
                             rel_diff = abs(i_l - i_r) / i_l
-                            assert rel_diff <= 0.05, (
-                                f"{link_l}/{link_r} {name} asymmetry: {i_l} vs {i_r}"
-                            )
+                            assert (
+                                rel_diff <= 0.05
+                            ), f"{link_l}/{link_r} {name} asymmetry: {i_l} vs {i_r}"

@@ -204,9 +204,9 @@ class TestCreateFullBody:
         for j in model.findall("joint"):
             if j.get("type") == "revolute":
                 xyz = j.find("axis/xyz").text.strip()
-                assert xyz in valid_axes, (
-                    f"Joint {j.get('name')} has unexpected axis: {xyz}"
-                )
+                assert (
+                    xyz in valid_axes
+                ), f"Joint {j.get('name')} has unexpected axis: {xyz}"
 
     def test_links_have_visual_geometry(self, model: Any) -> None:
         create_full_body(model)

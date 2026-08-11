@@ -227,9 +227,9 @@ class TestFootContactGeometry:
             assert foot is not None
             collisions = foot.findall("collision")
             contact_names = [c.get("name") for c in collisions]
-            assert f"foot_{side}_contact" in contact_names, (
-                f"foot_{side} missing contact collision"
-            )
+            assert (
+                f"foot_{side}_contact" in contact_names
+            ), f"foot_{side} missing contact collision"
 
     def test_foot_contact_has_box_geometry(self, model: Any) -> None:
         create_full_body(model)

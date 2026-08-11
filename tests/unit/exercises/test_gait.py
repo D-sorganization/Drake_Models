@@ -40,9 +40,9 @@ class TestGaitModelBuilder:
         joints = {j.get("name") for j in root.findall(".//joint")}
         barbell_joints = [n for n in joints if n and "barbell" in n.lower()]
         # Barbell links exist but no joint connecting barbell to body
-        assert not any("barbell_to" in (n or "") for n in joints), (
-            f"Unexpected barbell attachment joints: {barbell_joints}"
-        )
+        assert not any(
+            "barbell_to" in (n or "") for n in joints
+        ), f"Unexpected barbell attachment joints: {barbell_joints}"
 
     def test_has_initial_pose(self) -> None:
         xml_str = build_gait_model()
