@@ -250,10 +250,9 @@ def _add_phase_tracking_costs(
         k = int(phase.time_fraction * (n_steps - 1))
         target = np.zeros(n_q)
         for jname, angle in phase.joint_angles.items():
-            if jname in joint_name_to_idx:
-                idx = joint_name_to_idx[jname]
-                if idx < n_q:
-                    target[idx] = angle
+            idx = joint_name_to_idx.get(jname)
+            if idx is not None and idx < n_q:
+                target[idx] = angle
 
         weight = terminal_weight if phase is objective.phases[-1] else state_weight
         Q = Q_terminal if phase is objective.phases[-1] else Q_state
