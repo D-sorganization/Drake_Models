@@ -20,20 +20,50 @@ permissions:
   contents: read
 
 jobs:
-  # Dispatcher: route to self-hosted if available
+  # Dispatcher: route to hosted runners on public repos.
+  # This repo is public, so standard GitHub-hosted runners are free and
+  # unmetered. Pinning the dispatcher itself to the fleet meant every
+  # downstream job waited for a self-hosted slot before it could even learn
+  # where to run. Private repos still fall through to the fleet, so no Actions
+  # minutes are ever billed.
+  #
+  # Reverting: set the repo variable CI_RUNNER_MODE=local.
   pick-runner:
-    runs-on: d-sorg-fleet
-    timeout-minutes: 2
+    runs-on:
+      ${{ !github.event.repository.private && vars.CI_RUNNER_MODE != 'local' && 'ubuntu-latest' ||
+      'd-sorg-fleet' }}
+    timeout-minutes: 3
     outputs:
       runner: ${{ steps.check.outputs.runner }}
+      mode: ${{ steps.check.outputs.mode }}
     steps:
-      - name: Check for self-hosted runner
+      - name: Select runner target without API polling
         id: check
+        shell: bash
         env:
-          GH_TOKEN: ${{ secrets.RUNNER_CHECK_TOKEN }}
+          CI_RUNNER_MODE: ${{ vars.CI_RUNNER_MODE }}
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+          RUNNER_LABEL: d-sorg-fleet
         run: |
+          mode="${CI_RUNNER_MODE:-auto}"
+          if [ "$REPOSITORY_PRIVATE" != "true" ] && [ "$mode" != "local" ]; then
+            mode="hosted"
+            runner="ubuntu-latest"
+          else
+            mode="local"
+            runner="$RUNNER_LABEL"
+          fi
           mkdir -p "$(dirname "$GITHUB_OUTPUT")"
-          echo "runner=d-sorg-fleet" >> "$GITHUB_OUTPUT"
+          {
+            echo "runner=$runner"
+            echo "mode=$mode"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "## Runner Selection"
+            echo "- requested mode: \`${CI_RUNNER_MODE:-unset}\`"
+            echo "- selected target: \`$runner\` (\`$mode\`)"
+            echo "- GitHub API calls: \`0\`"
+          } >> "$GITHUB_STEP_SUMMARY"
   quality-gate:
     needs: pick-runner
     runs-on: ${{ needs.pick-runner.outputs.runner }}
