@@ -156,3 +156,11 @@
 ## 2024-08-09 - Faster Array Replication for Bounding Boxes
 **Learning:** `np.tile(array, n_steps)` is significantly slower (~2.4x) than `np.repeat(array[np.newaxis, :], n_steps, axis=0).ravel()` for duplicating 1D arrays across multiple steps because `np.tile` allocates heavily in python space, while `np.repeat` leverages C-level broadcasting more efficiently.
 **Action:** When constructing flattened constraint bound arrays across multiple timesteps, use the `np.repeat(arr[np.newaxis, :], n_steps, axis=0).ravel()` pattern.
+
+## 2024-06-25 - Avoid `np.searchsorted` for small trajectory arrays
+**Learning:** Despite synthetic benchmarks showing `np.searchsorted` as faster for large arrays, in this specific robotics domain context (`drake_models`) where the number of joints is typically small, `np.searchsorted` is ~3x slower than a simple Python loop calling `np.interp` on 1D slices for generating typical trajectories.
+**Action:** Do not blindly replace `np.interp` loops with vectorized `np.searchsorted` implementations. Always heed existing codebase comments warning against specific optimizations that have already been benchmarked and rejected.
+
+## 2024-06-25 - Optimize Dictionary Lookups in Hot Loops
+**Learning:** In tight loops (like iterating over phases and joints in `_add_phase_tracking_costs`), performing `if key in dict: val = dict[key]` results in two hash map lookups.
+**Action:** Replace double lookups with `val = dict.get(key)` and checking `if val is not None:` to safely reduce overhead.
