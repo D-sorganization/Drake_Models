@@ -1,166 +1,219 @@
 ## 2024-05-18 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2024-05-18 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2024-05-18 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2024-05-18 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2024-05-18 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2024-05-18 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2024-05-18 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2026-05-01 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2026-05-01 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2026-05-01 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2026-05-01 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2026-05-01 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2026-05-01 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2026-05-01 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2026-05-01 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
 
 ## 2026-05-01 - Drake MathematicalProgram Bounding Box Constraint Overhead
+
 **Learning:** When adding bounding box constraints to Drake's `MathematicalProgram` in loops over multiple time steps, iterating in Python over scalar variables causes significant expression and list allocation overhead. Drake's `AddBoundingBoxConstraint` correctly accepts flattened arrays (e.g., `q.flatten()`) along with tiled limits arrays (e.g., `np.tile(q_min, n_steps)`).
 **Action:** Always prefer flattening constraint variables and tiling bounds over iterating with Python loops when setting up `AddBoundingBoxConstraint`.
+
 ## 2024-05-18 - Avoid O(N) linear scans and list.index() in nested loops
+
 **Learning:** Performing `list.index(name)` inside nested loops or iterating over a full array of names while checking `name in dictionary` causes unnecessary O(N) overhead per iteration. This is a common performance pattern when mapping between array indices and named joints/phases.
 **Action:** Always precompute a dictionary mapping names to indices (`name_to_idx = {name: i for i, name in enumerate(names)}`) outside the loop, or iterate over the dictionary items directly when populating fixed arrays, converting O(N) search to O(1) lookup.
 
 ## 2024-05-18 - Fast array construction via memory contiguity
+
 **Learning:** When building 2D NumPy arrays in loops, assigning values to non-contiguous memory slices (like `positions[:, j]`) causes cache misses and overhead.
 **Action:** Preallocate the array in a transposed format, assign data to contiguous rows (`positions_t[j]`), and return the transpose `.T` to significantly speed up memory-bound operations.
+
 ## 2024-05-18 - Caching derived arrays on singleton dataclasses
+
 **Learning:** In optimization loops or setup routines that are called frequently, rebuilding target arrays or lists (like `np.full(...)` combined with dictionary lookups and set operations) from singleton definitions (like predefined `ExerciseObjective`s) incurs unnecessary overhead.
 **Action:** When a frozen dataclass is used as a global or module-level singleton, use explicit caching mechanisms (like memoization into private instance attributes on `__post_init__` or using `@functools.cache` if appropriate) for expensive derived properties like `joint_names` or `phase_angles_array` to avoid rebuilding them repeatedly.
+
 ## 2025-02-18 - Finite difference velocities using scalar inversion
+
 **Learning:** `np.diff` allocates a new array and returns it, and calling `/ dt` on it performs a vectorized division which allocates another array (or modifies in-place if optimized, but np.diff itself creates one). Furthermore, `np.zeros_like` is slower than `np.empty_like` when we just plan to overwrite values anyway. When calculating finite difference velocities `(positions[1:] - positions[:-1]) / dt`, pre-allocating an empty array, computing the inverse of `dt` (`dt_inv = 1.0 / dt`), and doing scalar multiplication is approximately 40-50% faster than `np.zeros_like` and `np.diff` by removing loop and dispatch overhead.
 **Action:** When performing element-wise divisions with a scalar in NumPy, pre-calculate the scalar inverse and multiply. Also prefer `np.empty_like` over `np.zeros_like` if values are immediately overwritten.
+
 ## 2026-05-07 - Vectorize ND interpolation with searchsorted
+
 **Learning:** Using `np.interp` within a loop over array columns or dimensions incurs significant Python loop dispatch overhead. Vectorizing ND interpolation using `np.searchsorted` to find bin indices, combined with manual linear blending (`val0 + w1 * (val1 - val0)`), is ~40-50% faster than looping with `np.interp` over 1D slices.
 **Action:** Replace `for j in range(N): np.interp(...)` patterns with single vectorized `np.searchsorted` and math operations for large dimension arrays.
 
 ## 2024-05-19 - Surprising Python/NumPy array interpolation performance
-**Learning:** For interpolating joint angles across timesteps (a 2D operation), full vectorization using `np.searchsorted` and manual linear blending across all joints simultaneously is surprisingly ~3x *slower* than using a simple Python `for` loop over each joint calling `np.interp` on 1D slices, provided the loop avoids column-wise assignments into an array.
+
+**Learning:** For interpolating joint angles across timesteps (a 2D operation), full vectorization using `np.searchsorted` and manual linear blending across all joints simultaneously is surprisingly ~3x _slower_ than using a simple Python `for` loop over each joint calling `np.interp` on 1D slices, provided the loop avoids column-wise assignments into an array.
 **Action:** When building 2D NumPy arrays in loops, preallocating a transposed array with `np.empty()` and assigning to contiguous rows inside the loop (e.g., `arr[j] = ...`), before transposing the result back (`arr.T`), avoids significant overhead compared to both column-wise assignment and overly complex vectorization on typical array sizes.
 
 ## 2026-05-16 - Avoid nested lists for small fixed-size matrices
+
 **Learning:** For small, fixed-size matrices (e.g., 3x3 rotation matrices), passing nested lists to `np.array(..., dtype=float)` incurs significant list-inspection and dynamic memory allocation overhead. Preallocating an empty array with `np.zeros()` and directly assigning the non-zero scalar values is ~2x faster in hot paths.
 **Action:** When building small, fixed-size matrices in performance-critical code, preallocate the array with `np.zeros()` and explicitly set the non-zero elements.
 
 ## 2024-05-14 - Ineffective in-place array allocation
+
 **Learning:** Attempting to optimize an operation like `a - b` by using `out = np.empty_like(a)` followed by `np.subtract(a, b, out=out)` inside a function is ineffective and does not reduce memory allocations, as `np.empty_like()` still allocates a new array on every call. In-place operations only improve performance when writing into a pre-existing, pre-allocated array outside of the function or loop, or modifying slices of an already allocated array (like in finite diff interpolation).
-**Action:** Only use `np.subtract` with an `out` parameter when writing to an array or slice that has been allocated *before* the function call or loop iteration.
+**Action:** Only use `np.subtract` with an `out` parameter when writing to an array or slice that has been allocated _before_ the function call or loop iteration.
 
 ## 2024-05-18 - [NumPy Finite Difference Optimization]
+
 **Learning:** In finite difference calculations using NumPy slices (e.g. `arr[1:] - arr[:-1]`), allocating an intermediate array for the subtraction result can be avoided by using `np.subtract(..., out=...)` into a preallocated array.
 **Action:** Use `np.subtract(a, b, out=result)` instead of `result = a - b` when performance is critical and an output array is already allocated.
 
 ## 2026-05-19 - Caching repeated intermediate array computations
+
 **Learning:** During trajectory generation (e.g. `_build_phase_arrays`), computing `np.where(np.isnan(...))` on static arrays, or recreating `phase_times` via list comprehension over `objective.phases` every time is wasteful in hot loops, especially when the underlying objective arrays are immutable constants. Caching these arrays (like `phase_times` and `phase_angles_clean`) inside the `ExerciseObjective` dataclass reduces overhead in benchmarks (e.g., from ~268us to ~567ns for `test_benchmark_build_phase_arrays`).
 **Action:** Identify intermediate operations on static config arrays and pull them into the cached initialization, adding explicit getters on the configuration objects.
 
 ## 2026-05-07 - Vectorize ND interpolation with searchsorted
+
 **Learning:** Using `np.interp` within a loop over array columns or dimensions incurs significant Python loop dispatch overhead. Vectorizing ND interpolation using `np.searchsorted` to find bin indices, combined with manual linear blending (`val0 + w1 * (val1 - val0)`), is ~40-50% faster than looping with `np.interp` over 1D slices.
 **Action:** Replace `for j in range(N): np.interp(...)` patterns with single vectorized `np.searchsorted` and math operations for large dimension arrays.
 
 ## 2026-05-07 - Vectorize ND interpolation with searchsorted
+
 **Learning:** Using `np.interp` within a loop over array columns or dimensions incurs significant Python loop dispatch overhead. Vectorizing ND interpolation using `np.searchsorted` to find bin indices, combined with manual linear blending (`val0 + w1 * (val1 - val0)`), is ~40-50% faster than looping with `np.interp` over 1D slices. When performing this replacement, it's vital to remember that `np.interp` automatically performs flat extrapolation (clipping) outside the specified x-bounds; thus, your manual implementation must include `w1 = np.clip(w1, 0.0, 1.0)` to maintain mathematical parity and avoid unintended linear extrapolation.
 **Action:** Replace `for j in range(N): np.interp(...)` patterns with single vectorized `np.searchsorted` and math operations for large dimension arrays, while being sure to include `np.clip` on the blending weights to match `np.interp`'s default boundary condition.
 
 ## 2024-05-31 - Avoiding tuple allocation in dataclass validation loops
+
 **Learning:** Validating multiple dataclass attributes in `__post_init__` using a `for name, value in (("attr1", self.attr1), ...):` loop creates a new tuple and performs unpacking on every instantiation. This causes unnecessary overhead in hot paths where configuration objects are frequently created. Replacing the loop with explicit, unrolled `if` statements for each attribute reduces instantiation time by ~50%.
 **Action:** When validating a small, fixed number of attributes in `__post_init__`, unroll the loop into explicit `if` statements instead of iterating over dynamically created tuples of names and values.
 
 ## 2026-06-02 - [Avoid list/tuple allocation in hot contract validation loops]
+
 **Learning:** Validating multiple attributes or arguments in frequently called functions (like DbC contracts such as `ensure_positive_definite_inertia`) using a list of tuples loop (e.g., `for label, val in [("Ixx", ixx), ("Iyy", iyy), ...]:`) creates dynamic allocations and unpacks them on every call. In tight loops (like when building large physics models), this creates unnecessary overhead.
 **Action:** Unroll the loop into explicit `if` statements to avoid this memory allocation overhead and significantly speed up execution.
 
 ## 2026-06-03 - Vectorize ND interpolation with searchsorted and clipping
+
 **Learning:** Using `np.interp` within a loop over array columns or dimensions incurs significant Python loop dispatch overhead. Vectorizing ND interpolation using `np.searchsorted` to find bin indices, combined with manual linear blending (`val0 + w1 * (val1 - val0)`), is ~35% faster than looping with `np.interp` over 1D slices for typical joint trajectory matrices. When replacing `np.interp`, you must remember to add `w1 = np.clip(w1, 0.0, 1.0)` to maintain mathematical parity with `np.interp`'s default boundary condition (flat extrapolation).
 **Action:** Replace `for j in range(N): np.interp(...)` patterns with single vectorized `np.searchsorted` and math operations for large dimension arrays, while being sure to include `np.clip` on the blending weights to avoid unintended linear extrapolation outside specified bounds.
+
 ## 2023-06-10 - Avoid boolean array allocations and use in-place operations
+
 **Learning:** Using boolean indexing for conditional assignment (like `dt[dt == 0] = 1.0`) in a hot path allocates a temporary boolean array, creating significant memory overhead. Using `np.copyto` avoids this allocation. Similarly, complex math operations like `v0 + w1 * (v1 - v0)` allocate several intermediate arrays. Replacing them with in-place operations (`np.subtract`, `/=`, `*=`, `+=`) improves execution speed significantly.
 **Action:** When updating arrays conditionally in hot paths, use `np.copyto(..., where=...)`. Use in-place operations and `out=` arguments (`np.clip(..., out=...)`) to avoid intermediate array allocations during math operations.
 
 ## 2026-06-11 - Optimize array passing to Drake bounds
+
 **Learning:** Passing multi-dimensional NumPy arrays to PyDrake constraints (e.g., `AddBoundingBoxConstraint`) with `.flatten()` forces a full memory copy allocation.
 **Action:** Use `.ravel()` instead of `.flatten()` when supplying bounds or variable arrays to Drake, as it returns a contiguous view without intermediate allocation, significantly reducing overhead during solver setup.
+
 ## 2026-06-14 - Redundant array allocation and property access
+
 **Learning:** For minor overhead reduction in hot paths or validation workflows: 1) prefer the built-in `len(arr)` over `arr.shape[0]` to check the first dimension size of NumPy arrays, 2) derive parallel absolute time arrays via scalar multiplication (`time_fracs * total_time`) to avoid redundant `np.linspace` calls, and 3) cache repetitive property calculations (like `self.total_time`) directly via underlying attributes inside `__post_init__` to bypass `@property` method overhead.
 **Action:** Use scalar multiplication over `np.linspace` when generating parallel time sequences, use `len()` for checking array dimension size if it is only 1-D or only checking first dimension, and calculate/cache repetitive values in `__post_init__` directly rather than invoking property methods.
+
 ## 2024-06-15 - Array Allocation Overhead in Validation
+
 **Learning:** Instantiating a new NumPy array (`np.array([val1, val2])`) and calling `.all()` simply to validate that two scalar floats are finite creates measurable memory allocation and Python-to-C dispatch overhead.
 **Action:** Replace array creation for scalar validation with separate `math.isfinite()` checks for each scalar.
 
 ## 2026-06-25 - [Array Allocation Performance]
+
 **Learning:** `np.zeros(shape, dtype=float)` is significantly faster (~3x) than `np.zeros_like(arr)` when creating initialized zero arrays. `np.empty(shape, dtype=float)` is also slightly faster and more direct than `np.empty_like(arr)`.
 **Action:** When allocating new arrays, prefer explicit `np.zeros(shape, dtype)` and `np.empty(shape, dtype)` over their `*_like` equivalents in hot paths.
+
 ## 2026-06-25 - [Use ndarray methods and python math operators]
+
 **Learning:** Calling top-level NumPy functions like `np.clip()` and `np.subtract()` in hot paths incurs measurable `__array_function__` dispatch and global lookup overhead. Replacing them with direct ndarray method calls (e.g., `arr.clip(...)`) and standard Python math operators (e.g., `a - b`) speeds up execution significantly, provided the operation isn't writing into a pre-allocated array using the `out=` kwarg (in which case `np.subtract(..., out=...)` is still needed).
 **Action:** In frequently called loops, prefer `arr.clip(...)` over `np.clip(...)` and use `a - b` instead of `np.subtract(a, b)` for array math where intermediate arrays are acceptable or unavoidable.
+
 ## 2024-06-27 - Dataclass Slots and Caching
+
 **Learning:** Adding `slots=True` to frozen dataclasses is an effective optimization but removes the instance `__dict__`. This breaks dynamic attribute caching (e.g., using `object.__setattr__` to populate `_cached_*` attributes) unless those attributes are explicitly declared on the dataclass. Furthermore, declaring them requires `dataclasses.field(default=None, init=False, repr=False)` to prevent them from altering the constructor signature or leaking large array payloads into standard representations.
 **Action:** When adding `slots=True` to an existing dataclass, carefully scan its methods for any dynamically assigned variables (often caching patterns) and explicitly define them as `init=False, repr=False` fields.
 
 ## 2026-07-08 - [Avoid full-array clip overhead in searchsorted interpolation]
+
 **Learning:** When using `np.searchsorted` to map values within a known boundary, using `.clip()` on the entire index array incurs significant C-dispatch and memory scan overhead. While clamping just the rightmost boundary element (e.g. `if idx[-1] == max_idx: idx[-1] = ...`) seems like a good optimization, it introduces a dangerous regression because `np.searchsorted` may return out-of-bounds indices at other positions in the array if the input array (e.g., `time_fracs`) is not strictly monotonic or has trailing padded values. The safe optimization is to use boolean array indexing to clamp only the out-of-bounds values (e.g., `idx[idx == len(phase_times)] = len(phase_times) - 1`), which avoids full-array method overhead while remaining robust to any input distribution.
 **Action:** Replace full-array `.clip(...)` operations on `searchsorted` index results with targeted boolean assignments (e.g., `idx[idx == max_val] = target_val`) to safely optimize performance without introducing edge-case regressions.
 
 ## 2026-07-09 - [Avoid np.linspace overhead for multidimensional arrays]
+
 **Learning:** Using `np.linspace` with multidimensional start/end arrays is significantly slower than creating a 1D fraction array and applying manual linear blending.
 **Action:** When interpolating multi-dimensional arrays, compute a 1D `np.linspace` of fractions and use standard vector math (e.g. `start + fractions[:, np.newaxis] * (end - start)`) rather than passing the multidimensional arrays directly to `np.linspace`.
 
 ## 2026-07-15 - [Avoid np.where allocations in hot paths]
+
 **Learning:** Using `np.where(condition, arr, default)` allocates a new array for the output. For both mutable and immutable arrays, creating a copy (if necessary) and using boolean array indexing directly (e.g., `arr[~condition] = default`) avoids `np.where`'s C-level broadcasting overhead and is faster (~15-35%).
 **Action:** Replace `np.where()` with direct boolean masking assignment (`arr[mask] = val`) for replacing non-finite values or conditional array replacements.
 
 ## 2024-08-09 - Faster Array Replication for Bounding Boxes
+
 **Learning:** `np.tile(array, n_steps)` is significantly slower (~2.4x) than `np.repeat(array[np.newaxis, :], n_steps, axis=0).ravel()` for duplicating 1D arrays across multiple steps because `np.tile` allocates heavily in python space, while `np.repeat` leverages C-level broadcasting more efficiently.
 **Action:** When constructing flattened constraint bound arrays across multiple timesteps, use the `np.repeat(arr[np.newaxis, :], n_steps, axis=0).ravel()` pattern.
 
 ## 2024-06-25 - Avoid `np.searchsorted` for small trajectory arrays
+
 **Learning:** Despite synthetic benchmarks showing `np.searchsorted` as faster for large arrays, in this specific robotics domain context (`drake_models`) where the number of joints is typically small, `np.searchsorted` is ~3x slower than a simple Python loop calling `np.interp` on 1D slices for generating typical trajectories.
 **Action:** Do not blindly replace `np.interp` loops with vectorized `np.searchsorted` implementations. Always heed existing codebase comments warning against specific optimizations that have already been benchmarked and rejected.
 
 ## 2024-06-25 - Optimize Dictionary Lookups in Hot Loops
+
 **Learning:** In tight loops (like iterating over phases and joints in `_add_phase_tracking_costs`), performing `if key in dict: val = dict[key]` results in two hash map lookups.
 **Action:** Replace double lookups with `val = dict.get(key)` and checking `if val is not None:` to safely reduce overhead.
