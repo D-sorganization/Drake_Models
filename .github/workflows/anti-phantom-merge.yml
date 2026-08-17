@@ -38,11 +38,8 @@ jobs:
         run: |
           set -eo pipefail
 
-          # Fetch PR details via REST
-          PR_JSON=$(gh api "repos/$REPO/pulls/$PR" 2>/dev/null || echo "{}")
-
           # Override label takes precedence -- admins only
-          LABELS=$(echo "$PR_JSON" | jq -r '[.labels[].name] | join(",")' 2>/dev/null || echo "")
+          LABELS=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '[.labels[].name] | join(",")')
           if echo "$LABELS" | grep -qw "phantom-guard-override"; then
             ACTOR="${{ github.actor }}"
             PERM=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq .permission 2>/dev/null || echo "none")
@@ -55,11 +52,12 @@ jobs:
           fi
 
           # Fetch diff stats
-          ADDS=$(echo "$PR_JSON" | jq -r '.additions // 0')
-          DELS=$(echo "$PR_JSON" | jq -r '.deletions // 0')
-          FILES=$(echo "$PR_JSON" | jq -r '.changed_files // 0')
-          TITLE=$(echo "$PR_JSON" | jq -r '.title // ""')
-          BODY=$(echo "$PR_JSON" | jq -r '.body // ""')
+          STATS=$(gh pr view "$PR" --repo "$REPO" --json additions,deletions,changedFiles)
+          ADDS=$(echo "$STATS" | jq -r .additions)
+          DELS=$(echo "$STATS" | jq -r .deletions)
+          FILES=$(echo "$STATS" | jq -r .changedFiles)
+          TITLE=$(gh pr view "$PR" --repo "$REPO" --json title --jq .title)
+          BODY=$(gh pr view "$PR" --repo "$REPO" --json body --jq .body)
           PR_FILES=$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename')
 
           FAIL=""
