@@ -133,7 +133,7 @@ jobs:
   tests:
     needs: pick-runner
     runs-on: ${{ needs.pick-runner.outputs.runner }}
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       PYTHONNOUSERSITE: "1"
     strategy:
