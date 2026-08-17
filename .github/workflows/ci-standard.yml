@@ -42,23 +42,54 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@v5
         with:
           cache: "pip"
-          python-version: "3.11"
+          python-version: "3.12"
         env:
+          AGENT_TOOLSDIRECTORY: ${{ runner.temp }}/_tool_cache
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      - run: pip install -e .
-      - run: pip install ruff>=0.14.0 bandit>=1.7.7 pytest>=9.0.3 pytest-cov>=7.1.0
-      - run: pip install --ignore-installed mypy>=1.15.0 types-PyYAML
+      - name: Install Dependencies
+        shell: bash
+        run: |
+          python -m venv .venv
+          if [ -d .venv/Scripts ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
 
       - name: Lint
-        run: ruff check src scripts tests examples benchmarks
+        shell: bash
+        run: |
+          if [ -d .venv/Scripts ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          ruff check src scripts tests examples benchmarks
 
       - name: Check Formatting (ruff)
-        run: ruff format --check src scripts tests examples benchmarks
+        shell: bash
+        run: |
+          if [ -d .venv/Scripts ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          ruff format --check src scripts tests examples benchmarks
 
-      - run: mypy src --config-file pyproject.toml
+      - name: Type Check (mypy)
+        shell: bash
+        run: |
+          if [ -d .venv/Scripts ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          mypy src --config-file pyproject.toml
 
       - name: Verify No Placeholders
         run: |
@@ -90,7 +121,14 @@ jobs:
           pip-audit --skip-editable --ignore-vuln CVE-2026-3219 --ignore-vuln PYSEC-2026-3447
 
       - name: Bandit Security Scan
-        run: bandit -r src/ -ll -ii --format txt
+        shell: bash
+        run: |
+          if [ -d .venv/Scripts ]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          bandit -r src/ -ll -ii --format txt
 
   tests:
     needs: pick-runner
@@ -107,11 +145,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
           cache: "pip"
         env:
+          AGENT_TOOLSDIRECTORY: ${{ runner.temp }}/_tool_cache
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       - name: Install Dependencies
@@ -154,10 +193,5 @@ jobs:
     runs-on: d-sorg-fleet
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       - name: Run local-only workflow guard
-        run: python scripts/check_local_only_workflows.py
+        run: python3 scripts/check_local_only_workflows.py
