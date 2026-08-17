@@ -20,50 +20,20 @@ permissions:
   contents: read
 
 jobs:
-  # Dispatcher: route to hosted runners on public repos.
-  # This repo is public, so standard GitHub-hosted runners are free and
-  # unmetered. Pinning the dispatcher itself to the fleet meant every
-  # downstream job waited for a self-hosted slot before it could even learn
-  # where to run. Private repos still fall through to the fleet, so no Actions
-  # minutes are ever billed.
-  #
-  # Reverting: set the repo variable CI_RUNNER_MODE=local.
+  # Dispatcher: route to self-hosted if available
   pick-runner:
-    runs-on:
-      ${{ !github.event.repository.private && vars.CI_RUNNER_MODE != 'local' && 'ubuntu-latest' ||
-      'd-sorg-fleet' }}
-    timeout-minutes: 3
+    runs-on: d-sorg-fleet
+    timeout-minutes: 2
     outputs:
       runner: ${{ steps.check.outputs.runner }}
-      mode: ${{ steps.check.outputs.mode }}
     steps:
-      - name: Select runner target without API polling
+      - name: Check for self-hosted runner
         id: check
-        shell: bash
         env:
-          CI_RUNNER_MODE: ${{ vars.CI_RUNNER_MODE }}
-          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
-          RUNNER_LABEL: d-sorg-fleet
+          GH_TOKEN: ${{ secrets.RUNNER_CHECK_TOKEN }}
         run: |
-          mode="${CI_RUNNER_MODE:-auto}"
-          if [ "$REPOSITORY_PRIVATE" != "true" ] && [ "$mode" != "local" ]; then
-            mode="hosted"
-            runner="ubuntu-latest"
-          else
-            mode="local"
-            runner="$RUNNER_LABEL"
-          fi
           mkdir -p "$(dirname "$GITHUB_OUTPUT")"
-          {
-            echo "runner=$runner"
-            echo "mode=$mode"
-          } >> "$GITHUB_OUTPUT"
-          {
-            echo "## Runner Selection"
-            echo "- requested mode: \`${CI_RUNNER_MODE:-unset}\`"
-            echo "- selected target: \`$runner\` (\`$mode\`)"
-            echo "- GitHub API calls: \`0\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "runner=d-sorg-fleet" >> "$GITHUB_OUTPUT"
   quality-gate:
     needs: pick-runner
     runs-on: ${{ needs.pick-runner.outputs.runner }}
@@ -72,11 +42,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@v5
         with:
           cache: "pip"
-          python-version: "3.11"
+          python-version: "3.12"
         env:
+          AGENT_TOOLSDIRECTORY: ${{ runner.temp }}/_tool_cache
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       - run: pip install -e .
       - run: pip install ruff>=0.14.0 bandit>=1.7.7 pytest>=9.0.3 pytest-cov>=7.1.0
@@ -137,11 +108,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
           cache: "pip"
         env:
+          AGENT_TOOLSDIRECTORY: ${{ runner.temp }}/_tool_cache
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       - name: Install Dependencies
@@ -184,10 +156,5 @@ jobs:
     runs-on: d-sorg-fleet
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       - name: Run local-only workflow guard
-        run: python scripts/check_local_only_workflows.py
+        run: python3 scripts/check_local_only_workflows.py
