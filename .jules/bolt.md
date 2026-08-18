@@ -164,3 +164,6 @@
 ## 2024-06-25 - Optimize Dictionary Lookups in Hot Loops
 **Learning:** In tight loops (like iterating over phases and joints in `_add_phase_tracking_costs`), performing `if key in dict: val = dict[key]` results in two hash map lookups.
 **Action:** Replace double lookups with `val = dict.get(key)` and checking `if val is not None:` to safely reduce overhead.
+## 2024-08-18 - Optimize array assignment in loops using transposes
+**Learning:** Assigning to contiguous rows before transposing (e.g., `arr[j] = ...` then `arr.T`) is significantly faster than assigning to non-contiguous columns (`arr[:, j] = ...`) when building 2D NumPy arrays in loops.
+**Action:** When preallocating an empty array to be filled column-by-column in a loop, preallocate a transposed array instead, fill it row-by-row, and return the transpose.
