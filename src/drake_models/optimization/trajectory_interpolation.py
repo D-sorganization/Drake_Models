@@ -53,10 +53,14 @@ def _interpolate_joint_positions(
     # Although np.searchsorted can be faster in synthetic benchmarks for large arrays,
     # codebase benchmarks prove it is ~3x slower for generating typical trajectories
     # in this application, due to overhead for small joint dimensions.
-    result = np.empty((len(time_fracs), n_joints), dtype=phase_angles_clean.dtype)
+    # ⚡ Bolt: Memory locality optimization
+    # Preallocating a transposed array and assigning contiguous rows (result[j] = ...)
+    # before transposing back (result.T) is significantly faster than assigning to
+    # non-contiguous columns (result[:, j] = ...).
+    result = np.empty((n_joints, len(time_fracs)), dtype=phase_angles_clean.dtype)
     for j in range(n_joints):
-        result[:, j] = np.interp(time_fracs, phase_times, phase_angles_clean[:, j])
-    return result
+        result[j] = np.interp(time_fracs, phase_times, phase_angles_clean[:, j])
+    return result.T
 
 
 def _finite_diff_velocities(positions: np.ndarray, dt: float) -> np.ndarray:
