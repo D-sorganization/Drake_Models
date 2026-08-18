@@ -94,7 +94,7 @@ jobs:
       - name: Verify No Placeholders
         run: |
           violations=$(
-            find . \( -path "./.git" -o -path "./.mypy_cache" -o -path "./.ruff_cache" -o -path "./__pycache__" -o -path "./scripts" \) -prune -o -type f -name "*.py" -print0 \
+            find . \( -path "./.git" -o -path "./.mypy_cache" -o -path "./.ruff_cache" -o -path "./__pycache__" -o -path "./scripts" -o -path "./.venv*" -o -path "./.audit-venv*" \) -prune -o -type f -name "*.py" -print0 \
               | xargs -0 grep -nE "TODO|FIXME" || true
           )
           if [ -n "$violations" ]; then
