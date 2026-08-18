@@ -104,20 +104,15 @@ jobs:
           fi
 
       - name: Security Audit
-        timeout-minutes: 5
+        timeout-minutes: 10
         shell: bash
         run: |
-          python -m venv .audit-venv
-          if [ -d .audit-venv/Scripts ]; then
-            source .audit-venv/Scripts/activate
+          if [ -d .venv/Scripts ]; then
+            source .venv/Scripts/activate
           else
-            source .audit-venv/bin/activate
+            source .venv/bin/activate
           fi
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade "setuptools>=83.0.0"
-          python -m pip install -e ".[dev]"
-          python -m pip install --upgrade "setuptools>=83.0.0"
-          python -m pip install pip-audit
+          python -m pip install --upgrade "setuptools>=83.0.0" pip-audit
           pip-audit --skip-editable --ignore-vuln CVE-2026-3219 --ignore-vuln PYSEC-2026-3447
 
       - name: Bandit Security Scan
@@ -138,7 +133,6 @@ jobs:
       PYTHONNOUSERSITE: "1"
     strategy:
       fail-fast: false
-      max-parallel: 1
       matrix:
         python: ["3.10", "3.11", "3.12"]
     steps:
