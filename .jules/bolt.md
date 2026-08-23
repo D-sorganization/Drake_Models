@@ -222,3 +222,7 @@
 
 **Learning:** When building 2D NumPy arrays in loops, assigning values to non-contiguous columns (e.g. `arr[:, j] = ...`) incurs significant cache miss and strided assignment overhead compared to assigning to contiguous rows (e.g., `arr[j] = ...`).
 **Action:** When filling 2D arrays element-by-element or slice-by-slice in loops, preallocate a transposed shape, assign to contiguous rows (`arr[j] = ...`), and return the transposed view (`arr.T`). This can yield a >10% speedup on small arrays due to better memory locality.
+
+## 2024-08-23 - [Optimization in Cost Functions and Transposition for Interpolation]
+**Learning:** When computing costs or differences involving weights, adding an early return (e.g., `if weight == 0.0: return 0.0`) avoids unnecessary math (like `np.vdot`) and array allocations (like `diff = pos - target`), significantly speeding up the function execution when the weight is zero. Also, when repeatedly reading columns from a 2D NumPy array inside a loop (e.g., `arr[:, j]`), transposing the array outside the loop and reading its rows (`arr_T[j]`) improves memory locality and eliminates slice object instantiation overhead, resulting in faster execution.
+**Action:** Always implement early returns for 0.0 weights to avoid unnecessary array allocations and vdot computations. Also transpose 2D arrays outside loops when indexing across columns to improve memory locality and speed.

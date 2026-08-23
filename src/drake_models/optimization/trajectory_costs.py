@@ -9,6 +9,8 @@ def compute_control_cost(torques: np.ndarray, weight: float = 1e-3) -> float:
     """Quadratic control cost: ``weight * sum(u^2)``."""
     if weight < 0:
         raise ValueError(f"weight must be non-negative, got {weight}")
+    if weight == 0.0:
+        return 0.0
     # Optimize: np.vdot avoids intermediate array allocation and is ~4-5x faster than np.sum(torques**2)
     return float(weight * np.vdot(torques, torques))
 
@@ -21,6 +23,8 @@ def compute_state_cost(
     """Quadratic state tracking cost: ``weight * sum((q - q_target)^2)``."""
     if weight < 0:
         raise ValueError(f"weight must be non-negative, got {weight}")
+    if weight == 0.0:
+        return 0.0
     diff = positions - target
     # Optimize: np.vdot avoids intermediate array allocation and is ~2x faster than np.sum(diff**2)
     return float(weight * np.vdot(diff, diff))
@@ -34,6 +38,8 @@ def compute_terminal_cost(
     """Terminal cost on final state: ``weight * sum((q_T - q_target)^2)``."""
     if weight < 0:
         raise ValueError(f"weight must be non-negative, got {weight}")
+    if weight == 0.0:
+        return 0.0
     diff = final_positions - target
     # Optimize: np.vdot avoids intermediate array allocation and is ~2x faster than np.sum(diff**2)
     return float(weight * np.vdot(diff, diff))
