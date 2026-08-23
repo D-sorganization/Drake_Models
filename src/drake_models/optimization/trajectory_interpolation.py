@@ -58,8 +58,9 @@ def _interpolate_joint_positions(
     # before transposing back (result.T) is significantly faster than assigning to
     # non-contiguous columns (result[:, j] = ...).
     result = np.empty((n_joints, len(time_fracs)), dtype=phase_angles_clean.dtype)
+    angles_T = phase_angles_clean.T
     for j in range(n_joints):
-        result[j] = np.interp(time_fracs, phase_times, phase_angles_clean[:, j])
+        result[j] = np.interp(time_fracs, phase_times, angles_T[j])
     return result.T
 
 
