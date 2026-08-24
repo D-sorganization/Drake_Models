@@ -36,10 +36,13 @@ def cylinder_inertia(
     require_positive(radius, "radius")
     require_positive(length, "length")
 
+    # ⚡ Bolt: Inline square and fraction computation
+    # avoids python exponentiation and redundant divisions in hot paths
+    r_sq = radius * radius
     # Axial (about Z)
-    izz = 0.5 * mass * radius**2
+    izz = 0.5 * mass * r_sq
     # Transverse (about X and Y)
-    ixx = iyy = (1.0 / 12.0) * mass * (3.0 * radius**2 + length**2)
+    ixx = iyy = (mass / 12.0) * (3.0 * r_sq + length * length)
 
     ensure_positive_definite_inertia(ixx, iyy, izz, "cylinder")
     return (ixx, iyy, izz)
@@ -70,9 +73,11 @@ def hollow_cylinder_inertia(
             f"inner_radius ({inner_radius:.4f}) must be less than "
             f"outer_radius ({outer_radius:.4f})"
         )
-    r_sq_sum = inner_radius**2 + outer_radius**2
+    # ⚡ Bolt: Inline square and fraction computation
+    # avoids python exponentiation and redundant divisions in hot paths
+    r_sq_sum = inner_radius * inner_radius + outer_radius * outer_radius
     izz = 0.5 * mass * r_sq_sum  # axial
-    ixx = iyy = (1.0 / 12.0) * mass * (3.0 * r_sq_sum + length**2)  # transverse
+    ixx = iyy = (mass / 12.0) * (3.0 * r_sq_sum + length * length)  # transverse
 
     ensure_positive_definite_inertia(ixx, iyy, izz, "hollow_cylinder")
     return ixx, iyy, izz
@@ -90,9 +95,16 @@ def rectangular_prism_inertia(
     require_positive(height, "height")
     require_positive(depth, "depth")
 
-    ixx = (1.0 / 12.0) * mass * (depth**2 + height**2)
-    iyy = (1.0 / 12.0) * mass * (width**2 + height**2)
-    izz = (1.0 / 12.0) * mass * (width**2 + depth**2)
+    # ⚡ Bolt: Inline square and fraction computation
+    # avoids python exponentiation and redundant divisions in hot paths
+    m_12 = mass / 12.0
+    w_sq = width * width
+    h_sq = height * height
+    d_sq = depth * depth
+
+    ixx = m_12 * (d_sq + h_sq)
+    iyy = m_12 * (w_sq + h_sq)
+    izz = m_12 * (w_sq + d_sq)
 
     ensure_positive_definite_inertia(ixx, iyy, izz, "rectangular_prism")
     return (ixx, iyy, izz)
@@ -103,7 +115,9 @@ def sphere_inertia(mass: float, radius: float) -> tuple[float, float, float]:
     require_positive(mass, "mass")
     require_positive(radius, "radius")
 
-    i = (2.0 / 5.0) * mass * radius**2
+    # ⚡ Bolt: Inline square and fraction computation
+    # avoids python exponentiation and redundant divisions in hot paths
+    i = 0.4 * mass * (radius * radius)
     ensure_positive_definite_inertia(i, i, i, "sphere")
     return (i, i, i)
 
@@ -140,11 +154,14 @@ def parallel_axis_shift(
     # ⚡ Bolt: Extracting components explicitly and using manual sum-of-squares
     # avoids np.dot dispatch overhead and is ~3-4x faster for 3-vectors
     dx, dy, dz = float(d[0]), float(d[1]), float(d[2])
-    d_sq = dx * dx + dy * dy + dz * dz
 
-    ixx = inertia[0] + mass * (d_sq - dx * dx)
-    iyy = inertia[1] + mass * (d_sq - dy * dy)
-    izz = inertia[2] + mass * (d_sq - dz * dz)
+    # ⚡ Bolt: Algebraically simplify terms (e.g. d_sq - dx*dx to dy*dy + dz*dz)
+    # reduces redundant arithmetic operations in hot paths
+    dx2, dy2, dz2 = dx * dx, dy * dy, dz * dz
+
+    ixx = inertia[0] + mass * (dy2 + dz2)
+    iyy = inertia[1] + mass * (dx2 + dz2)
+    izz = inertia[2] + mass * (dx2 + dy2)
 
     return (ixx, iyy, izz)
 
