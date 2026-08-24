@@ -236,3 +236,7 @@
 
 **Learning:** Extracting a single function call like `_require_finite_scalar(value, name)` inside another frequently called function (like `require_positive`) adds measurable Python frame allocation overhead. For very small, frequently executed preconditions, inlining the `math.isfinite()` check directly improves performance by roughly 20%.
 **Action:** Inline `math.isfinite()` directly into precondition functions instead of hiding it behind a private helper function if it is heavily invoked (like in `require_positive` and `require_non_negative`).
+## 2026-08-24 - [Avoid temporary benchmark scripts in codebase]
+
+**Learning:** When developing optimizations, it's common to write short scripts to test performance (e.g. `test_perf.py`). Committing these to the root directory is bad practice and pollutes the repository.
+**Action:** Always delete temporary testing and benchmarking scripts before committing, or put them in the project's designated benchmarking directory (`tests/benchmarks/`) if they are valuable enough to be tracked.
