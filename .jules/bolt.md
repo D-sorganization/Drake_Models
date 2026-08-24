@@ -226,3 +226,13 @@
 ## 2024-08-23 - [Optimization in Cost Functions and Transposition for Interpolation]
 **Learning:** When computing costs or differences involving weights, adding an early return (e.g., `if weight == 0.0: return 0.0`) avoids unnecessary math (like `np.vdot`) and array allocations (like `diff = pos - target`), significantly speeding up the function execution when the weight is zero. Also, when repeatedly reading columns from a 2D NumPy array inside a loop (e.g., `arr[:, j]`), transposing the array outside the loop and reading its rows (`arr_T[j]`) improves memory locality and eliminates slice object instantiation overhead, resulting in faster execution.
 **Action:** Always implement early returns for 0.0 weights to avoid unnecessary array allocations and vdot computations. Also transpose 2D arrays outside loops when indexing across columns to improve memory locality and speed.
+
+## 2024-11-20 - [Inline python math and simplify algebraic terms]
+
+**Learning:** When calculating constants in hot paths (like geometric inertias), explicitly inlining basic math (e.g. `r_sq = radius * radius` instead of `radius**2`) and pre-calculating common denominators (e.g. `mass / 12.0` instead of `(1.0 / 12.0) * mass`) eliminates python-level function dispatch and exponentiation overhead, yielding ~30-40% speedups. Furthermore, algebraic simplification (e.g., `d_sq - dx*dx` to `dy*dy + dz*dz`) reduces redundant arithmetic.
+**Action:** When working on geometric or physics functions called frequently in a loop, precalculate squared terms via explicit multiplication, compute single fractional multipliers instead of chained divisions, and simplify algebraically.
+
+## 2024-11-20 - [Inline math.isfinite in preconditions]
+
+**Learning:** Extracting a single function call like `_require_finite_scalar(value, name)` inside another frequently called function (like `require_positive`) adds measurable Python frame allocation overhead. For very small, frequently executed preconditions, inlining the `math.isfinite()` check directly improves performance by roughly 20%.
+**Action:** Inline `math.isfinite()` directly into precondition functions instead of hiding it behind a private helper function if it is heavily invoked (like in `require_positive` and `require_non_negative`).

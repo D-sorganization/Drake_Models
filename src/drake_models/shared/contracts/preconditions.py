@@ -34,14 +34,20 @@ def _require_finite_scalar(value: float, name: str) -> None:
 
 def require_positive(value: float, name: str) -> None:
     """Require *value* to be strictly positive."""
-    _require_finite_scalar(value, name)
+    # ⚡ Bolt: Inline math.isfinite check to avoid function call overhead
+    # since this check is called very frequently during model generation.
+    if not math.isfinite(value):
+        raise ValueError(f"{name} must be finite, got {value}")
     if value <= 0:
         raise ValueError(f"{name} must be positive, got {value}")
 
 
 def require_non_negative(value: float, name: str) -> None:
     """Require *value* >= 0."""
-    _require_finite_scalar(value, name)
+    # ⚡ Bolt: Inline math.isfinite check to avoid function call overhead
+    # since this check is called very frequently during model generation.
+    if not math.isfinite(value):
+        raise ValueError(f"{name} must be finite, got {value}")
     if value < 0:
         raise ValueError(f"{name} must be non-negative, got {value}")
 
