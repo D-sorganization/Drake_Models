@@ -240,3 +240,8 @@
 
 **Learning:** When developing optimizations, it's common to write short scripts to test performance (e.g. `test_perf.py`). Committing these to the root directory is bad practice and pollutes the repository.
 **Action:** Always delete temporary testing and benchmarking scripts before committing, or put them in the project's designated benchmarking directory (`tests/benchmarks/`) if they are valuable enough to be tracked.
+
+## 2026-08-29 - [Avoid O(N) list allocations for array counts]
+
+**Learning:** Calling methods like `len(objective.joint_names())` inside hot paths implicitly triggers the dynamic generation and memory allocation of a list, resulting in measurable O(N) overhead.
+**Action:** Always derive counts directly from the `.shape` properties of pre-existing NumPy arrays (e.g., `arr.shape[1]`) to ensure O(1) performance and zero list-allocation overhead in hot paths.
