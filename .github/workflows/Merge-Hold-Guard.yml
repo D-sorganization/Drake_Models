@@ -158,6 +158,7 @@ jobs:
           revoked_total=0
           escalated_total=0
           failures=0
+          mkdir -p .mhg_tmp
 
           while IFS= read -r RAW_PR; do
             PR="$(printf '%s' "$RAW_PR" | tr -cd '0-9')"
@@ -209,7 +210,7 @@ jobs:
             # One timeline fetch serves both the hold signal and the escalation
             # counter. Only non-bot actors count toward the hold, so the guard's
             # own revocations (github-actions[bot]) can never manufacture one.
-            TIMELINE=/tmp/mhg-timeline-$PR.json
+            TIMELINE=".mhg_tmp/mhg-timeline-$PR.json"
             gh api "repos/$REPO/issues/$PR/timeline?per_page=100" --paginate \
               --jq '.[] | select(.event == "auto_merge_disabled")
                         | "\((.actor.type // "User"))\t\(.created_at)"' \
@@ -232,7 +233,7 @@ jobs:
 
             # ---- signal 4: unacknowledged deletion of tracked files ----------
             # One paginated fetch, reused for both the count and the sample.
-            REMOVED_FILE=/tmp/mhg-removed-$PR.txt
+            REMOVED_FILE=".mhg_tmp/mhg-removed-$PR.txt"
             gh api "repos/$REPO/pulls/$PR/files?per_page=100" --paginate \
               --jq '.[] | select(.status == "removed") | .filename' \
               > "$REMOVED_FILE" 2>/dev/null || : > "$REMOVED_FILE"
@@ -319,8 +320,8 @@ jobs:
                   printf 'This PR has now been **converted to a draft**, because auto-merge was re-armed %s time(s) against the same head commit. GitHub will not let auto-merge be enabled on a draft, so the hold is enforceable rather than advisory. Run `gh pr ready %s` when the PR is genuinely ready.\n\n' "$PRIOR_REVOCATIONS" "$PR"
                 fi
                 printf 'Auto-merge will be revoked again on every re-arm until the hold is cleared. The guard never merges and never pushes.\n'
-              } > /tmp/mhg-comment-$PR.md
-              gh pr comment "$PR" --repo "$REPO" --body-file /tmp/mhg-comment-$PR.md >/dev/null \
+              } > ".mhg_tmp/mhg-comment-$PR.md"
+              gh pr comment "$PR" --repo "$REPO" --body-file ".mhg_tmp/mhg-comment-$PR.md" >/dev/null \
                 || echo "::warning::Could not comment on PR #$PR."
             fi
           done <<< "$PRS"
