@@ -263,3 +263,20 @@
 ## 2026-09-01 - [No space left on device error in CI #2]
 **Learning:** Even using `${RUNNER_TEMP:-/tmp}/` failed if `RUNNER_TEMP` points to the same underlying partition that has no space left, or if another process exhausts it. However, the root cause might be the string interpolation or how `RUNNER_TEMP` behaves when unset. Looking closer at the logs: "line 59: /tmp/mhg-timeline-324.json: No space left on device". Wait, the `RUNNER_TEMP` environment variable was NOT available in the second run because `RUNNER_TEMP` is not explicitly exported into the `env:` block of the workflow!
 **Action:** When using GitHub Actions environment variables like `RUNNER_TEMP` inside a `run:` script, they must be referenced correctly either by `env:` injection or via `${{ runner.temp }}`.
+
+## 2026-09-01 - [No space left on device error in CI #3]
+**Learning:** Adding `RUNNER_TEMP_DIR: ${{ runner.temp }}` to the env variables still didn't resolve the `/tmp/mhg-timeline-324.json: No space left on device` error because `RUNNER_TEMP_DIR` evaluates to empty if it's empty, thus `:-/tmp` defaulted it back to `/tmp`. Wait, why did it say `/tmp/mhg-timeline-324.json`? Because `RUNNER_TEMP_DIR` was empty. Wait, `runner.temp` might be empty. But GitHub Actions actually injects `RUNNER_TEMP` globally into every step environment! So `${RUNNER_TEMP:-/tmp}` was fine, but `RUNNER_TEMP` wasn't set, or it evaluated to `/tmp`. Oh, wait! The log says `RUNNER_TEMP_DIR: ${{ runner.temp }}` was evaluated but it wasn't printed out! Let me check the job output from before: `env: ... RUNNER_TEMP_DIR: ${{ runner.temp }}` - wait, `RUNNER_TEMP_DIR` is not in the env block output at all in the latest log!! Wait, look at the last log:
+`env:`
+`  GH_TOKEN: ***`
+`  REPO: D-sorganization/Drake_Models`
+`  PRS: 324`
+`RUNNER_TEMP_DIR` is NOT in the `env` block! Why? Because the `env` in `.github/workflows/Merge-Hold-Guard.yml` might be defined at the job level or I only patched it in one place! Let me check the file carefully.
+**Action:** Always check all places where the bash script is duplicated or loops are present in GitHub Actions workflows.
+
+## 2026-09-01 - [No space left on device error in CI #4]
+**Learning:** `RUNNER_TEMP` environment variable represents the path to a temporary directory created for the runner. However, if the runner itself is running out of disk space on the partition that holds `RUNNER_TEMP` (which might be the same as `/tmp`), then replacing `/tmp/` with `RUNNER_TEMP` won't fundamentally solve the issue if the disk is full! But looking at `df -h` or simply standard workflow cleanup: usually, GitHub Actions Linux runners have plenty of space, but self-hosted runners might not. Wait, if `runner.temp` is completely missing, then `RUNNER_TEMP_DIR` evaluates to an empty string, and `:-/tmp` defaults to `/tmp`. Wait! What if we use a directory local to the repository instead of `/tmp`? The repository directory is checked out in `GITHUB_WORKSPACE`, which usually has plenty of space or at least is cleaned up properly.
+**Action:** Replace `/tmp` with `.` (the current working directory) or `_tmp` in the workspace to avoid absolute path permission/space issues on self-hosted runners that might restrict or exhaust `/tmp`.
+
+## 2026-09-01 - [No space left on device error in CI #5]
+**Learning:** Replacing `/tmp` with `.mhg_tmp` correctly localized the tmp files inside the workspace (which has more storage limits than `/tmp`), completely solving the "No space left on device" error during the "Revoke auto-merge on held PRs" GitHub workflow.
+**Action:** Prefer local workspace temporary directories instead of `/tmp` in GitHub action shell scripts, especially when self-hosted runners might use a restricted memory-backed `/tmp` drive.
