@@ -12,6 +12,7 @@ _seg() accessor that derives (mass, length, radius) from a BodyModelSpec.
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass
 
 from drake_models.shared.contracts.preconditions import (
@@ -114,7 +115,7 @@ _SEGMENT_TABLE: dict[str, dict[str, float]] = {
 # ---------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class BodyModelSpec:
     """Anthropometric specification for the full-body model.
 
@@ -123,11 +124,26 @@ class BodyModelSpec:
 
     total_mass: float = 80.0
     height: float = 1.75
+    _cached_segments: dict[str, tuple[float, float, float]] | None = dataclasses.field(
+        default=None, init=False, repr=False
+    )
 
     def __post_init__(self) -> None:
         """Validate that total_mass and height are strictly positive."""
         require_positive(self.total_mass, "total_mass")
         require_positive(self.height, "height")
+
+        # ⚡ Bolt: Cache redundant configuration math on initialization
+        # Pre-calculating segment properties eliminates repetitive float multiplications
+        # during heavy model generation workflows.
+        cache = {}
+        for name, s in _SEGMENT_TABLE.items():
+            cache[name] = (
+                self.total_mass * s["mass_frac"],
+                self.height * s["length_frac"],
+                self.height * s["radius_frac"],
+            )
+        object.__setattr__(self, "_cached_segments", cache)
 
 
 # ---------------------------------------------------------------------------
@@ -137,8 +153,6 @@ class BodyModelSpec:
 
 def _seg(spec: BodyModelSpec, name: str) -> tuple[float, float, float]:
     """Return (mass, length, radius) for a named segment."""
-    s = _SEGMENT_TABLE[name]
-    mass = spec.total_mass * s["mass_frac"]
-    length = spec.height * s["length_frac"]
-    radius = spec.height * s["radius_frac"]
-    return mass, length, radius
+    # ⚡ Bolt: Fast dictionary lookup replaces float multiplication on every call
+    assert spec._cached_segments is not None
+    return spec._cached_segments[name]

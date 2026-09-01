@@ -245,3 +245,8 @@
 
 **Learning:** Calling methods like `len(objective.joint_names())` inside hot paths implicitly triggers the dynamic generation and memory allocation of a list, resulting in measurable O(N) overhead.
 **Action:** Always derive counts directly from the `.shape` properties of pre-existing NumPy arrays (e.g., `arr.shape[1]`) to ensure O(1) performance and zero list-allocation overhead in hot paths.
+
+## 2026-08-30 - [Precalculate static configuration properties on frozen dataclasses]
+
+**Learning:** Computing properties (like deriving `mass, length, radius` from `height` and `total_mass` in `_seg`) repeatedly on demand inside tight model-generation loops leads to a measurable amount of redundant float operations. Since the input dataclass (`BodyModelSpec`) is immutable (`frozen=True`), these derived properties never change.
+**Action:** Use `__post_init__` to pre-calculate these static arrays or dictionaries once and use `object.__setattr__` to inject them into the frozen dataclass. This transforms expensive loop computations into O(1) attribute or dictionary lookups.
