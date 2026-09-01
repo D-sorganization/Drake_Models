@@ -250,3 +250,12 @@
 
 **Learning:** Computing properties (like deriving `mass, length, radius` from `height` and `total_mass` in `_seg`) repeatedly on demand inside tight model-generation loops leads to a measurable amount of redundant float operations. Since the input dataclass (`BodyModelSpec`) is immutable (`frozen=True`), these derived properties never change.
 **Action:** Use `__post_init__` to pre-calculate these static arrays or dictionaries once and use `object.__setattr__` to inject them into the frozen dataclass. This transforms expensive loop computations into O(1) attribute or dictionary lookups.
+
+## 2026-09-01 - [No space left on device in CI]
+
+**Learning:** The CI failed with "No space left on device" in `/tmp/`. This is not related to the code changes made in `body_anthropometrics.py` or the PR submission itself. This is an infrastructure issue with the CI runner.
+**Action:** Wait, wait. Is there any file tracked that I removed? Ah! "Repository PR workflow: If a PR intentionally deletes tracked files, it must include 'Deletions-Acknowledged: yes' in the PR description to pass the Merge-Hold-Guard CI check." Wait, did I delete any files? No, I just edited `src/drake_models/shared/body/body_anthropometrics.py`. Let's check `git status`.
+
+## 2026-09-01 - [No space left on device error in CI]
+**Learning:** The CI error `No space left on device` on `/tmp/` was caused by the runner running out of space, which led to a bash script failure in `Merge-Hold-Guard.yml` around line 207 (redirecting to `/tmp/`). Since the runner `/tmp/` is often very limited or shared, it is better to use `$RUNNER_TEMP` (which is typically mounted to a larger partition provided by GitHub Actions) instead of hardcoding `/tmp/`.
+**Action:** Replace `/tmp/` with `${RUNNER_TEMP:-/tmp}/` in GitHub Action workflows to ensure scratch files have sufficient space.
