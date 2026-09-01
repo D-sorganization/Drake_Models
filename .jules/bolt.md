@@ -259,3 +259,7 @@
 ## 2026-09-01 - [No space left on device error in CI]
 **Learning:** The CI error `No space left on device` on `/tmp/` was caused by the runner running out of space, which led to a bash script failure in `Merge-Hold-Guard.yml` around line 207 (redirecting to `/tmp/`). Since the runner `/tmp/` is often very limited or shared, it is better to use `$RUNNER_TEMP` (which is typically mounted to a larger partition provided by GitHub Actions) instead of hardcoding `/tmp/`.
 **Action:** Replace `/tmp/` with `${RUNNER_TEMP:-/tmp}/` in GitHub Action workflows to ensure scratch files have sufficient space.
+
+## 2026-09-01 - [No space left on device error in CI #2]
+**Learning:** Even using `${RUNNER_TEMP:-/tmp}/` failed if `RUNNER_TEMP` points to the same underlying partition that has no space left, or if another process exhausts it. However, the root cause might be the string interpolation or how `RUNNER_TEMP` behaves when unset. Looking closer at the logs: "line 59: /tmp/mhg-timeline-324.json: No space left on device". Wait, the `RUNNER_TEMP` environment variable was NOT available in the second run because `RUNNER_TEMP` is not explicitly exported into the `env:` block of the workflow!
+**Action:** When using GitHub Actions environment variables like `RUNNER_TEMP` inside a `run:` script, they must be referenced correctly either by `env:` injection or via `${{ runner.temp }}`.
