@@ -280,3 +280,7 @@
 ## 2026-09-01 - [No space left on device error in CI #5]
 **Learning:** Replacing `/tmp` with `.mhg_tmp` correctly localized the tmp files inside the workspace (which has more storage limits than `/tmp`), completely solving the "No space left on device" error during the "Revoke auto-merge on held PRs" GitHub workflow.
 **Action:** Prefer local workspace temporary directories instead of `/tmp` in GitHub action shell scripts, especially when self-hosted runners might use a restricted memory-backed `/tmp` drive.
+
+## 2026-09-02 - [Avoid boolean array indexing for conditional assignments]
+**Learning:** Using boolean array indexing for conditional assignments (e.g., `arr[~np.isfinite(arr)] = val`) in hot paths allocates intermediate boolean mask arrays, increases memory overhead, and is slower than using `np.copyto` with a `where` mask (e.g., `np.copyto(arr, val, where=~np.isfinite(arr))`).
+**Action:** Replace boolean indexing for assignments with `np.copyto(..., where=...)` when replacing elements conditionally in heavily executed methods to avoid temporary mask allocations and speed up execution.

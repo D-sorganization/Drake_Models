@@ -202,10 +202,13 @@ def _add_joint_and_actuator_bounds(
     u_lower = plant.GetEffortLowerLimits()
     u_upper = plant.GetEffortUpperLimits()
 
-    q_lower[~np.isfinite(q_lower)] = -1e9
-    q_upper[~np.isfinite(q_upper)] = 1e9
-    u_lower[~np.isfinite(u_lower)] = -1e9
-    u_upper[~np.isfinite(u_upper)] = 1e9
+    # ⚡ Bolt: Avoid boolean array indexing for conditional assignments
+    # np.copyto with a where mask is faster and avoids temporary mask array
+    # assignments like arr[~np.isfinite(arr)] = val which allocate intermediate arrays.
+    np.copyto(q_lower, -1e9, where=~np.isfinite(q_lower))
+    np.copyto(q_upper, 1e9, where=~np.isfinite(q_upper))
+    np.copyto(u_lower, -1e9, where=~np.isfinite(u_lower))
+    np.copyto(u_upper, 1e9, where=~np.isfinite(u_upper))
 
     # Optimize: Use vectorized BoundingBox constraints instead of looping
     # to avoid significant python loop and expression overhead.
