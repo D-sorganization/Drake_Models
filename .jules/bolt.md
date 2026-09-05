@@ -284,3 +284,7 @@
 ## 2026-09-02 - [Avoid boolean array indexing for conditional assignments]
 **Learning:** Using boolean array indexing for conditional assignments (e.g., `arr[~np.isfinite(arr)] = val`) in hot paths allocates intermediate boolean mask arrays, increases memory overhead, and is slower than using `np.copyto` with a `where` mask (e.g., `np.copyto(arr, val, where=~np.isfinite(arr))`).
 **Action:** Replace boolean indexing for assignments with `np.copyto(..., where=...)` when replacing elements conditionally in heavily executed methods to avoid temporary mask allocations and speed up execution.
+
+## 2026-09-05 - [Early Return in Optimization Cost Functions]
+**Learning:** When adding multiple trajectory tracking or control costs to a mathematical program via loops, adding an explicit check to early-return or `continue` when the weight is 0.0 avoids substantial matrix allocation overhead and solver setup time.
+**Action:** Always add early returns in programmatic optimization loops where a 0.0 cost/weight implies no constraint or cost is added to avoid unnecessary matrix allocation overhead.
