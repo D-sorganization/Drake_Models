@@ -38,6 +38,8 @@ def _drake_array(value: Any) -> np.ndarray:
 
 def _add_control_costs(prog: Any, u: np.ndarray, n_steps: int, weight: float) -> None:
     """Add per-timestep quadratic control costs to *prog*."""
+    if weight == 0.0:
+        return
     n_u = u.shape[1]
     # Optimize: pre-calculate constant Q and b matrices outside the loop
     # to avoid allocation overhead for every knot point.
@@ -238,6 +240,9 @@ def _add_phase_tracking_costs(
     terminal_weight: float,
 ) -> None:
     """Add phase-tracking quadratic costs to *prog*."""
+    if state_weight == 0.0 and terminal_weight == 0.0:
+        return
+
     joint_names = objective.joint_names()
     # ⚡ Bolt: Replace O(N) list.index() lookup in the inner loop with an O(1) dictionary lookup
     joint_name_to_idx = {name: idx for idx, name in enumerate(joint_names)}
@@ -250,6 +255,10 @@ def _add_phase_tracking_costs(
     np.fill_diagonal(Q_terminal, terminal_weight)
 
     for phase in objective.phases:
+        weight = terminal_weight if phase is objective.phases[-1] else state_weight
+        if weight == 0.0:
+            continue
+
         k = int(phase.time_fraction * (n_steps - 1))
         target = np.zeros(n_q)
         for jname, angle in phase.joint_angles.items():
@@ -258,7 +267,6 @@ def _add_phase_tracking_costs(
             if idx is not None and idx < n_q:
                 target[idx] = angle
 
-        weight = terminal_weight if phase is objective.phases[-1] else state_weight
         Q = Q_terminal if phase is objective.phases[-1] else Q_state
 
         prog.AddQuadraticCost(
