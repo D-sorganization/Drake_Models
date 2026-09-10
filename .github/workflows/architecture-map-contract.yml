@@ -34,7 +34,7 @@ env:
 jobs:
   validate-map:
     name: Validate Architecture Map Contract
-    runs-on: ${{ vars.RUNNER_TARGET == 'local' && 'd-sorg-fleet' || 'ubuntu-latest' }}
+    runs-on: d-sorg-fleet
     timeout-minutes: 5
 
     steps:
