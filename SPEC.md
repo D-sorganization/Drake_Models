@@ -106,10 +106,17 @@ Continuous integration is expected to enforce:
 
 CI should stay compatible with documentation-only changes and should not require `pydrake` for the base suite.
 
-## Maintenance Rules
+## Architecture Map Contract
 
-- Keep geometry, inertia, and XML generation in `shared/`.
-- Do not duplicate anthropometric tables or barbell constants in exercise modules.
-- Keep public APIs stable when possible; prefer compatibility facades over breaking import paths.
-- Update this spec when the maintained package layout, supported exercises, or validation expectations change.
+The repository maintains an automated architecture contract per Epic #1594:
+
+- **Canonical Map**: `docs/architecture/C4.md` containing `C4Context` and `C4Container` Mermaid diagrams.
+- **Traceability**: Feature Map table linking key capabilities to component paths, public interfaces, and test evidence.
+- **Contract Enforcement**: `scripts/architecture_map_contract.py` validates required sections and table structures via CI (`.github/workflows/architecture-map-contract.yml`).
+
+## Change Log
+
+| Date | PR | Summary |
+| --- | --- | --- |
+| 2026-09-10 | #1598 | Adopt maintainable Mermaid C4 architecture-map contract |
 

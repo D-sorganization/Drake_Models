@@ -19,6 +19,8 @@ Drake (pydrake) multibody models for five classical barbell exercises:
 
 ## Architecture
 
+The canonical architecture map, system context, container boundaries, and feature traceability are maintained in [`docs/architecture/C4.md`](docs/architecture/C4.md) per Epic #1594.
+
 Models are generated as **SDFormat (SDF 1.8)** XML using the Z-up convention (Drake default). The SDF files can be loaded into Drake via `Parser().AddModels()`.
 
 ```
