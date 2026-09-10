@@ -18,6 +18,19 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Active
 
+### DL-#1598 · Adopt Mermaid C4 Architecture Map Contract
+
+- **State:** in_progress
+- **Owner:** local
+- **Issue:** #1598 (https://github.com/D-sorganization/Repository_Management/issues/1598)
+- **Branch:** docs/1598-c4-architecture-map
+- **PR:** not created
+- **Paths:** `docs/architecture/C4.md`, `scripts/architecture_map_contract.py`, `tests/scripts/test_architecture_map_contract.py`, `.github/workflows/architecture-map-contract.yml`
+- **Started:** 2026-09-10
+- **Last verified:** 2026-09-10 (`b872fa3`)
+- **Next step:** Run linters, open PR, and enable auto-merge.
+- **Summary:** Establish canonical Mermaid C4 architecture maps (C4Context, C4Container, Feature Map, Architecture Change Log) with automated CI contract enforcement per Epic #1594.
+
 ### DL-0001 · Temp Pr 244
 
 - **State:** parked

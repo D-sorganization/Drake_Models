@@ -21,6 +21,7 @@
 - **DbC** -- Design-by-Contract: preconditions validate inputs (raise `ValueError`), postconditions validate outputs (raise `AssertionError`).
 - **DRY** -- Single source of truth. Geometry, inertia, XML generation defined once in `shared/`.
 - **LoD** -- Law of Demeter: callers use public APIs only; never reach into internal data structures.
+- **Architecture Map Contract** -- Maintain `docs/architecture/C4.md` (C4Context, C4Container, Feature Map, Architecture Change Log). Validate via `python scripts/architecture_map_contract.py`.
 
 ## Drake-Specific
 
