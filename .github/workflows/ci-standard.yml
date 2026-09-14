@@ -39,10 +39,10 @@ jobs:
     runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@v5
         with:
           cache: "pip"
           python-version: "3.12"
@@ -136,10 +136,10 @@ jobs:
       matrix:
         python: ["3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
           cache: "pip"
@@ -187,6 +187,6 @@ jobs:
     name: Reject hosted runner routing
     runs-on: d-sorg-fleet
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
       - name: Run local-only workflow guard
         run: python3 scripts/check_local_only_workflows.py

@@ -119,4 +119,4 @@ The repository maintains an automated architecture contract per Epic #1594:
 | Date | PR | Summary |
 | --- | --- | --- |
 | 2026-09-10 | #1598 | Adopt maintainable Mermaid C4 architecture-map contract |
-
+- 2026-09-14: Downgraded non-existent workflow action versions to @v4/@v5 across workflows (#333).
