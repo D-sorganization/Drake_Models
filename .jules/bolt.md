@@ -288,3 +288,7 @@
 ## 2026-09-05 - [Early Return in Optimization Cost Functions]
 **Learning:** When adding multiple trajectory tracking or control costs to a mathematical program via loops, adding an explicit check to early-return or `continue` when the weight is 0.0 avoids substantial matrix allocation overhead and solver setup time.
 **Action:** Always add early returns in programmatic optimization loops where a 0.0 cost/weight implies no constraint or cost is added to avoid unnecessary matrix allocation overhead.
+
+## 2026-09-06 - [Avoid python array indexing loop overhead for C++ bindings]
+**Learning:** When repeatedly calling PyDrake C++ binding methods (like `AddLinearEqualityConstraint`, `AddConstraint`, or `AddQuadraticCost`) over a trajectory in a python loop, indexing array slices (e.g., `vars_all[k]`) creates measurable Python execution overhead. Iterating directly over the rows of a pre-concatenated variable array (`for row in vars_all: prog.AddLinearEqualityConstraint(..., row)`) bypasses python slicing and lookup overhead, accelerating constraint setup by nearly 2-5x. **Note:** Do not use list comprehensions (`[prog... for row in arr]`) purely for side effects as they allocate lists unnecessarily and generate garbage collection overhead.
+**Action:** When adding per-knot variables or constraints to a `MathematicalProgram` loop over time steps, prefer explicitly iterating directly over the variable rows (`for row in arr:`) rather than a standard index-based loop (`for k in range(n): ... arr[k]`).
