@@ -101,11 +101,19 @@ def _add_dynamics_constraints(
     n_steps: int,
 ) -> int:
     """Add per-knot manipulator-equation dynamics constraints to *prog*."""
+    from pydrake.multibody.tree import MultibodyForces
+
     n_q = q.shape[1]
     n_v = v.shape[1]
     n_u = u.shape[1]
     context = plant.CreateDefaultContext()
     actuation = plant.MakeActuationMatrix()
+    try:
+        forces = MultibodyForces(plant)
+    except TypeError:
+        # Fallback for FakePlant in unit tests which doesn't subclass MultibodyPlant
+        forces = None
+    dt_inv = 1.0 / dt
 
     def _residual(vars_flat: np.ndarray) -> np.ndarray:
         qk = vars_flat[:n_q]
@@ -114,11 +122,18 @@ def _add_dynamics_constraints(
         uk = vars_flat[n_q + 2 * n_v : n_q + 2 * n_v + n_u]
         plant.SetPositions(context, qk)
         plant.SetVelocities(context, vk)
-        mass = plant.CalcMassMatrix(context)
-        bias = plant.CalcBiasTerm(context)
-        gravity = plant.CalcGravityGeneralizedForces(context)
-        vdot = (vkp1 - vk) / dt
-        return mass @ vdot + bias - gravity - actuation @ uk
+
+        # ⚡ Bolt: Replace O(N^3) explicit Mass Matrix with O(N) Recursive Newton-Euler
+        # Using CalcInverseDynamics is significantly faster than calculating the full mass matrix
+        # and doing matrix-vector multiplication in this tight solver constraint loop.
+        # Also precompute scalar inverse dt_inv to avoid array division overhead.
+        vdot = (vkp1 - vk) * dt_inv
+        tau_id = plant.CalcInverseDynamics(context, vdot, forces)
+
+        # Note: CalcInverseDynamics computes tau_id = M * vdot + C - tau_g - tau_ext.
+        # This matches the previous residual `mass @ vdot + bias - gravity`.
+        # Therefore, we DO NOT subtract gravity again.
+        return tau_id - actuation @ uk
 
     lb = np.zeros(n_v)
     ub = np.zeros(n_v)

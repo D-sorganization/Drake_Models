@@ -92,6 +92,11 @@ class FakePlant:
     def CalcGravityGeneralizedForces(self, _context: object) -> np.ndarray:
         return np.zeros(2)
 
+    def CalcInverseDynamics(
+        self, _context: object, vdot: np.ndarray, _forces: object
+    ) -> np.ndarray:
+        return self.CalcMassMatrix(_context) @ vdot + self.CalcBiasTerm(_context)
+
     def GetPositionLowerLimits(self) -> np.ndarray:
         return np.array([-np.inf, -1.5])
 
