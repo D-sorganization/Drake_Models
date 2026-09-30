@@ -47,10 +47,10 @@ class RecordingProgram:
 
     def AddConstraint(self, residual: Any, lb: np.ndarray, ub: np.ndarray, vars: np.ndarray) -> None:
         class Call:
-            def __init__(self, r, l, u, v):
+            def __init__(self, r: Any, low: np.ndarray, up: np.ndarray, v: np.ndarray):
                 self.residual = r
-                self.lower = l
-                self.upper = u
+                self.lower = low
+                self.upper = up
                 self.variables = v
 
         self.constraints.append(Call(residual, lb, ub, vars))
