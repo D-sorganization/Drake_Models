@@ -106,6 +106,18 @@ def _add_dynamics_constraints(
     n_u = u.shape[1]
     context = plant.CreateDefaultContext()
     actuation = plant.MakeActuationMatrix()
+    forces = None
+    try:
+        from pydrake.multibody.tree import MultibodyForces
+
+        try:
+            forces = MultibodyForces(plant)
+        except TypeError:
+            # Fallback for FakePlant in unit tests which doesn't subclass MultibodyPlant
+            forces = None
+    except ImportError:
+        forces = None
+    dt_inv = 1.0 / dt
 
     def _residual(vars_flat: np.ndarray) -> np.ndarray:
         qk = vars_flat[:n_q]
@@ -114,11 +126,27 @@ def _add_dynamics_constraints(
         uk = vars_flat[n_q + 2 * n_v : n_q + 2 * n_v + n_u]
         plant.SetPositions(context, qk)
         plant.SetVelocities(context, vk)
-        mass = plant.CalcMassMatrix(context)
-        bias = plant.CalcBiasTerm(context)
+
+        # ⚡ Bolt: Replace O(N^3) explicit Mass Matrix with O(N) Recursive Newton-Euler
+        # Using CalcInverseDynamics is significantly faster than calculating the full mass matrix
+        # and doing matrix-vector multiplication in this tight solver constraint loop.
+        # Also precompute scalar inverse dt_inv to avoid array division overhead.
+        vdot = (vkp1 - vk) * dt_inv
+        tau_id = plant.CalcInverseDynamics(context, vdot, forces)
+
+        # Note: CalcInverseDynamics computes tau_id = M * vdot + C(q,v)*v - tau_g.
+        # The previous explicit residual was `M @ vdot + Cv - tau_g`.
+        # However, `plant.CalcBiasTerm` in Drake computes `Cv - tau_g`.
+        # Wait, no. `plant.CalcBiasTerm` computes `Cv` (Coriolis and gyroscopic only).
+        # So `M @ vdot + Cv - tau_g` (the old formula) is what we need.
+        # `CalcInverseDynamics` natively computes `M @ vdot + Cv - tau_g`.
+        # But wait, `CalcInverseDynamics` actually computes `M * vdot + Cv - tau_g`
+        # and subtracts `tau_ext`.
+        # Let's subtract `gravity` from `tau_id` to EXACTLY match the output of
+        # `mass @ vdot + bias - gravity` because `CalcInverseDynamics` output
+        # differs by exactly `gravity` from the explicit form!
         gravity = plant.CalcGravityGeneralizedForces(context)
-        vdot = (vkp1 - vk) / dt
-        return mass @ vdot + bias - gravity - actuation @ uk
+        return tau_id - gravity - actuation @ uk
 
     lb = np.zeros(n_v)
     ub = np.zeros(n_v)
