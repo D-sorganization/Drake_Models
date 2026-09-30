@@ -45,7 +45,9 @@ class RecordingProgram:
     ) -> None:
         self.bounding_boxes.append((lower, upper, vars))
 
-    def AddConstraint(self, residual: Any, lb: np.ndarray, ub: np.ndarray, vars: np.ndarray) -> None:
+    def AddConstraint(
+        self, residual: Any, lb: np.ndarray, ub: np.ndarray, vars: np.ndarray
+    ) -> None:
         class Call:
             def __init__(self, r: Any, low: np.ndarray, up: np.ndarray, v: np.ndarray):
                 self.residual = r
@@ -88,7 +90,11 @@ class FakePlant:
         # Note: the test logic expects M @ vdot + C, but not subtract gravity!
         # wait! In Drake, InverseDynamics returns M @ vdot + C - tau_g.
         # So we SHOULD include gravity here!
-        return self.CalcMassMatrix(_context) @ vdot + self.CalcBiasTerm(_context) - self.CalcGravityGeneralizedForces(_context)
+        return (
+            self.CalcMassMatrix(_context) @ vdot
+            + self.CalcBiasTerm(_context)
+            - self.CalcGravityGeneralizedForces(_context)
+        )
 
     def GetPositionLowerLimits(self) -> np.ndarray:
         return np.array([-np.inf, -1.5])

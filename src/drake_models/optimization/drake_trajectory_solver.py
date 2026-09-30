@@ -101,17 +101,21 @@ def _add_dynamics_constraints(
     n_steps: int,
 ) -> int:
     """Add per-knot manipulator-equation dynamics constraints to *prog*."""
-    from pydrake.multibody.tree import MultibodyForces
-
     n_q = q.shape[1]
     n_v = v.shape[1]
     n_u = u.shape[1]
     context = plant.CreateDefaultContext()
     actuation = plant.MakeActuationMatrix()
+    forces = None
     try:
-        forces = MultibodyForces(plant)
-    except TypeError:
-        # Fallback for FakePlant in unit tests which doesn't subclass MultibodyPlant
+        from pydrake.multibody.tree import MultibodyForces
+
+        try:
+            forces = MultibodyForces(plant)
+        except TypeError:
+            # Fallback for FakePlant in unit tests which doesn't subclass MultibodyPlant
+            forces = None
+    except ImportError:
         forces = None
     dt_inv = 1.0 / dt
 
