@@ -268,15 +268,9 @@ def load_ledger(path: Path | str) -> dict[str, Any]:
     return ledger
 
 
-def reconcile(
-    divergences: list[Divergence], ledger: dict[str, Any]
-) -> tuple[list[Divergence], list[str]]:
-    """Split divergences into (unexpected, stale_ledger_keys).
-
-    Every ledger entry must cite an issue. Patterns may use ``*`` wildcards.
-    A ledger entry matching no current divergence is stale: the gap was fixed
-    and the entry must be deleted (the ledger only ratchets down).
-    """
+def _validated_entries(ledger: dict[str, Any]) -> dict[str, Any]:
+    """Precondition: schema matches; every entry cites an issue; any
+    ``exercises`` scope is a non-empty list of exercise names."""
     if ledger.get("schema") != LEDGER_SCHEMA:
         raise ValueError(f"ledger schema must be {LEDGER_SCHEMA!r}")
     entries: dict[str, Any] = ledger.get("divergences", {})
@@ -284,12 +278,91 @@ def reconcile(
         issue = entry.get("issue") if isinstance(entry, dict) else None
         if not isinstance(issue, str) or not _ISSUE_REF.search(issue):
             raise ValueError(f"ledger entry {key!r} must cite an issue (#N or URL)")
+        scope = entry.get("exercises", ["*"])
+        if not (scope and isinstance(scope, list)) or not all(
+            isinstance(s, str) and s for s in scope
+        ):
+            raise ValueError(f"ledger entry {key!r}: exercises must list names")
+    return entries
+
+
+def _match(
+    divergences: Sequence[Divergence], entries: dict[str, Any], exercise: str | None
+) -> tuple[list[Divergence], set[str]]:
+    """Return (unexpected divergences, ledger keys that absorbed one)."""
+    scoped = {
+        p
+        for p, e in entries.items()
+        if "exercises" not in e or (exercise is not None and exercise in e["exercises"])
+    }
     used: set[str] = set()
     unexpected: list[Divergence] = []
     for div in divergences:
-        hits = [p for p in entries if fnmatch.fnmatchcase(div.key, p)]
-        if hits:
-            used.update(hits)
-        else:
+        hits = [p for p in scoped if fnmatch.fnmatchcase(div.key, p)]
+        used.update(hits)
+        if not hits:
             unexpected.append(div)
+    return unexpected, used
+
+
+def reconcile(
+    divergences: list[Divergence],
+    ledger: dict[str, Any],
+    exercise: str | None = None,
+) -> tuple[list[Divergence], list[str]]:
+    """Split divergences into (unexpected, stale_ledger_keys).
+
+    Every ledger entry must cite an issue. Patterns may use ``*`` wildcards.
+    An entry with an ``exercises`` list absorbs divergences only from those
+    exercises, so it never matches when ``exercise`` is None. A ledger entry
+    matching no current divergence is stale: the gap was fixed and the entry
+    must be deleted (the ledger only ratchets down). To find stale entries
+    across several exercises, use :func:`reconcile_all`.
+    """
+    entries = _validated_entries(ledger)
+    unexpected, used = _match(divergences, entries, exercise)
     return unexpected, sorted(set(entries) - used)
+
+
+def _stale_keys(
+    entries: dict[str, Any], hits_by_exercise: dict[str, set[str]]
+) -> set[str]:
+    """Stale ledger keys. An unscoped entry is stale as ``key`` when nothing
+    used it. A scoped entry is stale as ``key`` only when every exercise in its
+    scope was checked and none used it; otherwise each checked member that no
+    longer uses it is stale as ``key@exercise`` (unchecked members never are).
+    """
+    used = set().union(*hits_by_exercise.values())
+    stale: set[str] = set()
+    for key, entry in entries.items():
+        if "exercises" not in entry:
+            if key not in used:
+                stale.add(key)
+            continue
+        scope = entry["exercises"]
+        missed = [
+            x for x in scope if x in hits_by_exercise and key not in hits_by_exercise[x]
+        ]
+        if len(missed) == len(scope):
+            stale.add(key)
+        else:
+            stale.update(f"{key}@{x}" for x in missed)
+    return stale
+
+
+def reconcile_all(
+    by_exercise: dict[str, list[Divergence]], ledger: dict[str, Any]
+) -> tuple[dict[str, list[Divergence]], list[str]]:
+    """Reconcile every exercise's divergences against one ledger.
+
+    Returns ({exercise: unexpected} for exercises with any, stale keys); see
+    :func:`_stale_keys` for when a scoped entry or one of its members is stale.
+    """
+    entries = _validated_entries(ledger)
+    unexpected: dict[str, list[Divergence]] = {}
+    hits_by_exercise: dict[str, set[str]] = {}
+    for exercise, divs in by_exercise.items():
+        found, hits_by_exercise[exercise] = _match(divs, entries, exercise)
+        if found:
+            unexpected[exercise] = found
+    return unexpected, sorted(_stale_keys(entries, hits_by_exercise))

@@ -94,16 +94,17 @@ def _divergences(exercise: str) -> list[conformance.Divergence]:
 def test_no_unexpected_divergence(exercise: str) -> None:
     """Every divergence from the standard must be in the issue-tracked ledger."""
     unexpected, _stale = conformance.reconcile(
-        _divergences(exercise), conformance.load_ledger(LEDGER)
+        _divergences(exercise), conformance.load_ledger(LEDGER), exercise=exercise
     )
     assert not unexpected, [(d.key, d.message) for d in unexpected]
 
 
 def test_ledger_has_no_stale_entries() -> None:
-    """A ledger entry matching no divergence in ANY exercise must be deleted."""
+    """A ledger entry, or a scoped exercise of one, that no longer diverges
+    must be deleted."""
     ledger = conformance.load_ledger(LEDGER)
-    all_divs = [d for ex in EXERCISE_IDS for d in _divergences(ex)]
-    _unexpected, stale = conformance.reconcile(all_divs, ledger)
+    by_exercise = {ex: _divergences(ex) for ex in EXERCISE_IDS}
+    _unexpected, stale = conformance.reconcile_all(by_exercise, ledger)
     assert not stale, stale
 
 
