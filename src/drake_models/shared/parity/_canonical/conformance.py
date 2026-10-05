@@ -268,21 +268,32 @@ def load_ledger(path: Path | str) -> dict[str, Any]:
     return ledger
 
 
-def _validated_entries(ledger: dict[str, Any]) -> dict[str, Any]:
-    """Precondition: schema matches; every entry cites an issue; any
+def _is_name_list(value: Any) -> bool:
+    """True for a non-empty list of non-empty strings."""
+    return (
+        isinstance(value, list)
+        and bool(value)
+        and all(isinstance(s, str) and s for s in value)
+    )
+
+
+def _check_entry(key: str, entry: Any) -> None:
+    """Precondition for one ledger entry: it cites an issue, and any
     ``exercises`` scope is a non-empty list of exercise names."""
+    issue = entry.get("issue") if isinstance(entry, dict) else None
+    if not isinstance(issue, str) or not _ISSUE_REF.search(issue):
+        raise ValueError(f"ledger entry {key!r} must cite an issue (#N or URL)")
+    if "exercises" in entry and not _is_name_list(entry["exercises"]):
+        raise ValueError(f"ledger entry {key!r}: exercises must list names")
+
+
+def _validated_entries(ledger: dict[str, Any]) -> dict[str, Any]:
+    """Precondition: the schema matches and every entry passes ``_check_entry``."""
     if ledger.get("schema") != LEDGER_SCHEMA:
         raise ValueError(f"ledger schema must be {LEDGER_SCHEMA!r}")
     entries: dict[str, Any] = ledger.get("divergences", {})
     for key, entry in entries.items():
-        issue = entry.get("issue") if isinstance(entry, dict) else None
-        if not isinstance(issue, str) or not _ISSUE_REF.search(issue):
-            raise ValueError(f"ledger entry {key!r} must cite an issue (#N or URL)")
-        scope = entry.get("exercises", ["*"])
-        if not (scope and isinstance(scope, list)) or not all(
-            isinstance(s, str) and s for s in scope
-        ):
-            raise ValueError(f"ledger entry {key!r}: exercises must list names")
+        _check_entry(key, entry)
     return entries
 
 
