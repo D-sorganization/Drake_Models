@@ -1,0 +1,7 @@
+{
+  "files": {
+    "biomech_parity_standard.json": "d668cd3a0467fb12f519c5102d671949f4cf053624e012f3305b18eaabed8236",
+    "conformance.py": "7e2e9245b6dcbcfd3218017225bee3e0805ce333c7e9356512234c73ac63f3b4"
+  },
+  "source": "Repository_Management/shared_scripts/model_parity"
+}

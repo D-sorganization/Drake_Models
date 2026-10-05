@@ -8,7 +8,6 @@ import pytest
 from drake_models.shared.utils.sdf_helpers import (
     _add_ground_contact_collision,
     add_fixed_joint,
-    add_floating_joint,
     add_ground_plane_contact,
     add_link,
     add_revolute_joint,
@@ -315,31 +314,6 @@ class TestAddRevoluteJoint:
         limit = joint.find("axis/limit")  # type: ignore
         assert "-1.570800" in limit.find("lower").text  # type: ignore
         assert "1.570800" in limit.find("upper").text  # type: ignore
-
-
-class TestAddFloatingJoint:
-    def test_creates_floating_joint(self) -> None:
-        model = ET.Element("model")
-        joint = add_floating_joint(
-            model,
-            name="ground_pelvis",
-            parent="world",
-            child="pelvis",
-        )
-        assert joint.get("type") == "floating"  # type: ignore
-        assert joint.find("parent").text == "world"  # type: ignore
-        assert joint.find("child").text == "pelvis"  # type: ignore
-
-    def test_has_pose(self) -> None:
-        model = ET.Element("model")
-        joint = add_floating_joint(
-            model,
-            name="free",
-            parent="world",
-            child="body",
-            pose=(0, 0, 1.0, 0, 0, 0),
-        )
-        assert "1.000000" in joint.find("pose").text  # type: ignore
 
 
 class TestAddFixedJoint:

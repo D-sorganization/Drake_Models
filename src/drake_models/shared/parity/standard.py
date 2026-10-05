@@ -1,62 +1,68 @@
-"""Cross-repo parity standard — canonical biomechanical parameters."""
+"""Cross-repo parity standard -- canonical biomechanical parameters.
+
+Every value is derived from the vendored canonical bundle
+(``_canonical/biomech_parity_standard.json``) via
+:func:`conformance.load_standard`; nothing is duplicated here (issue #359).
+"""
 
 from __future__ import annotations
 
 import math
+from typing import Any
 
-from drake_models.shared.body.body_anthropometrics import _SEGMENT_TABLE
+from drake_models.shared.parity._canonical import conformance
 
+STANDARD: dict[str, Any] = conformance.load_standard()
 
-def _rad(deg: float) -> float:
-    """Convert degrees to radians (used internally by JOINT_LIMITS)."""
-    return math.radians(deg)
+_ANTHRO = STANDARD["anthropometrics"]
+STANDARD_BODY_MASS: float = float(_ANTHRO["body_mass_kg"])
+STANDARD_HEIGHT: float = float(_ANTHRO["height_m"])
 
-
-STANDARD_BODY_MASS = 80.0
-STANDARD_HEIGHT = 1.75
-
-# Derived from the canonical Winter (2009) segment table in
-# drake_models.shared.body.body_anthropometrics to avoid duplication.
-SEGMENT_MASS_FRACTIONS = {
-    name: row["mass_frac"] for name, row in _SEGMENT_TABLE.items()
+# Winter (2009) segment table, shape ``{name: {mass_frac, length_frac,
+# radius_frac}}`` (bilateral segments listed once), plus the bilateral flag.
+SEGMENT_TABLE: dict[str, dict[str, float]] = {
+    name: {
+        "mass_frac": float(row["mass_frac"]),
+        "length_frac": float(row["length_frac"]),
+        "radius_frac": float(row["radius_frac"]),
+    }
+    for name, row in _ANTHRO["segments"].items()
 }
-SEGMENT_LENGTH_FRACTIONS = {
-    name: row["length_frac"] for name, row in _SEGMENT_TABLE.items()
+SEGMENT_BILATERAL: dict[str, bool] = {
+    name: bool(row["bilateral"]) for name, row in _ANTHRO["segments"].items()
 }
-JOINT_LIMITS = {
-    "hip_flex": (_rad(-30), _rad(120)),
-    "hip_adduct": (_rad(-45), _rad(30)),
-    "hip_rotate": (_rad(-45), _rad(45)),
-    "knee_flex": (_rad(-150), _rad(0)),
-    "ankle_flex": (_rad(-20), _rad(50)),
-    "ankle_invert": (_rad(-20), _rad(20)),
-    "shoulder_flex": (_rad(-60), _rad(180)),
-    "shoulder_adduct": (_rad(-30), _rad(180)),
-    "shoulder_rotate": (_rad(-90), _rad(90)),
-    "elbow_flex": (_rad(0), _rad(150)),
-    "wrist_flex": (_rad(-70), _rad(70)),
-    "wrist_deviate": (_rad(-20), _rad(30)),
-    "lumbar_flex": (_rad(-30), _rad(45)),
-    "lumbar_lateral": (_rad(-30), _rad(30)),
-    "lumbar_rotate": (_rad(-30), _rad(30)),
-    "neck_flex": (_rad(-30), _rad(30)),
-}
+SEGMENT_MASS_FRACTIONS = {n: r["mass_frac"] for n, r in SEGMENT_TABLE.items()}
+SEGMENT_LENGTH_FRACTIONS = {n: r["length_frac"] for n, r in SEGMENT_TABLE.items()}
+
+
+def _joint_limits() -> dict[str, tuple[float, float]]:
+    """Return ``{base_name: (lo_rad, hi_rad)}`` from the bundle coordinates.
+
+    Names are the side-less coordinate names the module has always exported
+    (``hip_flex``, ``knee_flex``, ...); the left-side limits are used because
+    the bundle defines identical limits for both sides.
+    """
+    limits: dict[str, tuple[float, float]] = {}
+    for coord in STANDARD["coordinates"]:
+        lo, hi = (math.radians(v) for v in coord["limits_deg"])
+        limits[coord["name"].replace("_{side}", "")] = (lo, hi)
+    return limits
+
+
+JOINT_LIMITS = _joint_limits()
+_MENS = STANDARD["barbell"]["mens"]
 MENS_BARBELL = {
-    "total_length": 2.20,
-    "shaft_length": 1.31,
-    "shaft_diameter": 0.028,
-    "sleeve_diameter": 0.050,
-    "bar_mass": 20.0,
+    "total_length": _MENS["total_length_m"],
+    "shaft_length": _MENS["shaft_length_m"],
+    "shaft_diameter": _MENS["shaft_diameter_m"],
+    "sleeve_diameter": _MENS["sleeve_diameter_m"],
+    "bar_mass": _MENS["bar_mass_kg"],
 }
-FOOT_CONTACT_DIMS = {"length": 0.26, "width": 0.10, "height": 0.02}
-GROUND_FRICTION = {"static": 0.8, "dynamic": 0.6}
+FOOT_CONTACT_DIMS = dict(STANDARD["contact"]["foot_box_m"])
+GROUND_FRICTION = dict(STANDARD["contact"]["ground_friction"])
+# Legacy keys (``back_squat`` for ``squat``); values from the bundle.
 EXERCISE_PHASE_COUNTS = {
-    "back_squat": 3,
-    "deadlift": 3,
-    "bench_press": 3,
-    "snatch": 5,
-    "clean_and_jerk": 5,
-    "gait": 8,
-    "sit_to_stand": 6,
+    spec.get("legacy_key", name): int(spec["phase_count"])
+    for name, spec in STANDARD["exercises"].items()
 }
-GRAVITY = (0.0, 0.0, -9.80665)
+GRAVITY = (0.0, 0.0, -float(STANDARD["frame"]["gravity_mps2"]))

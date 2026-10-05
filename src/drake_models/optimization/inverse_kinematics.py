@@ -130,14 +130,9 @@ def _build_ik_plant(sdf_string: str) -> Any:
 
     Returns the plant.  Callers must have pydrake available.
     """
-    from pydrake.all import AddMultibodyPlantSceneGraph, DiagramBuilder, Parser
+    from drake_models.loader import load_sdf
 
-    builder = DiagramBuilder()
-    plant, _scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.0)
-    parser = Parser(plant)
-    parser.AddModelsFromString(sdf_string, "sdf")
-    plant.Finalize()
-    return plant
+    return load_sdf(sdf_string, "ik", apply_pose=False).plant
 
 
 def _refine_keyframe(

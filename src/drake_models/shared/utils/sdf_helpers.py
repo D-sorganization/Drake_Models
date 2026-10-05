@@ -17,6 +17,9 @@ import xml.etree.ElementTree as ET
 # extensions (see drake.mit.edu).
 DRAKE_NS = "drake.mit.edu"
 ET.register_namespace("drake", DRAKE_NS)
+# Namespace for repo-specific custom elements (ignored by the SDF parser).
+BIOMECH_NS = "biomech.d-sorganization.github.io"
+ET.register_namespace("biomech", BIOMECH_NS)
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +27,16 @@ logger = logging.getLogger(__name__)
 def _drake_tag(local: str) -> str:
     """Return a fully-qualified tag name in the Drake namespace."""
     return f"{{{DRAKE_NS}}}{local}"
+
+
+def biomech_tag(local: str) -> str:
+    """Return a fully-qualified tag name in the biomech custom namespace."""
+    return f"{{{BIOMECH_NS}}}{local}"
+
+
+def _pose_frame(parent: str) -> str:
+    """Return the ``relative_to`` frame name for a joint whose parent is *parent*."""
+    return "__model__" if parent == "world" else parent
 
 
 def vec3_str(x: float, y: float, z: float) -> str:
@@ -215,7 +228,8 @@ def add_revolute_joint(
     joint = ET.SubElement(model, "joint", name=name, type="revolute")
     ET.SubElement(joint, "parent").text = parent
     ET.SubElement(joint, "child").text = child
-    ET.SubElement(joint, "pose").text = pose_str(*pose)
+    # The pose is the joint frame in the PARENT link frame; see sdf_poses.
+    ET.SubElement(joint, "pose", relative_to=_pose_frame(parent)).text = pose_str(*pose)
 
     axis = ET.SubElement(joint, "axis")
     ET.SubElement(axis, "xyz").text = vec3_str(*axis_xyz)
@@ -223,26 +237,6 @@ def add_revolute_joint(
     ET.SubElement(limit, "lower").text = f"{lower_limit:.6f}"
     ET.SubElement(limit, "upper").text = f"{upper_limit:.6f}"
 
-    return joint
-
-
-def add_floating_joint(
-    model: ET.Element,
-    *,
-    name: str,
-    parent: str,
-    child: str,
-    pose: tuple[float, float, float, float, float, float] = (0, 0, 0, 0, 0, 0),
-) -> ET.Element:
-    """Append a <joint type='floating'> (6-DOF) to *model* and return it.
-
-    Note: Drake supports the 'floating' joint type in SDF to allow
-    unconstrained 6-DOF motion relative to the parent frame.
-    """
-    joint = ET.SubElement(model, "joint", name=name, type="floating")
-    ET.SubElement(joint, "parent").text = parent
-    ET.SubElement(joint, "child").text = child
-    ET.SubElement(joint, "pose").text = pose_str(*pose)
     return joint
 
 
@@ -258,7 +252,8 @@ def add_fixed_joint(
     joint = ET.SubElement(model, "joint", name=name, type="fixed")
     ET.SubElement(joint, "parent").text = parent
     ET.SubElement(joint, "child").text = child
-    ET.SubElement(joint, "pose").text = pose_str(*pose)
+    # The pose is the joint frame in the PARENT link frame; see sdf_poses.
+    ET.SubElement(joint, "pose", relative_to=_pose_frame(parent)).text = pose_str(*pose)
     return joint
 
 
@@ -411,10 +406,13 @@ def add_collision_filter_group(
     Returns:
         The created filter group element.
     """
-    group = ET.SubElement(model, _drake_tag("collision_filter_group"), name=name)
+    # Drake/sdformat require unique names across the model scope, and joints
+    # such as ``elbow_l`` already use the natural group names.
+    group_name = f"{name}_filter"
+    group = ET.SubElement(model, _drake_tag("collision_filter_group"), name=group_name)
     for member in members:
         ET.SubElement(group, _drake_tag("member")).text = member
-    ET.SubElement(group, _drake_tag("ignored_collision_filter_group")).text = name
+    ET.SubElement(group, _drake_tag("ignored_collision_filter_group")).text = group_name
 
     return group
 

@@ -132,15 +132,12 @@ class TestAllExercisesBuild:
         ALL_BUILDERS,
         ids=[n for n, _ in ALL_BUILDERS],  # type: ignore
     )
-    def test_has_floating_joint(self, name: Any, builder: Any) -> None:
-        # The bench press welds the pelvis to a fixed bench pad rather than
-        # using a free floating joint, so it legitimately has zero floating joints.
-        if name == "bench_press":
-            pytest.skip("bench_press uses a weld constraint instead of floating joint")
+    def test_no_floating_joint_type(self, name: Any, builder: Any) -> None:
+        """``floating`` is not valid SDF; Drake floats unjointed bodies itself."""
         xml_str = builder()
         root = ET.fromstring(xml_str)
         floating = [j for j in root.findall(".//joint") if j.get("type") == "floating"]  # type: ignore
-        assert len(floating) >= 1
+        assert floating == []
 
     @pytest.mark.parametrize(
         "name,builder",

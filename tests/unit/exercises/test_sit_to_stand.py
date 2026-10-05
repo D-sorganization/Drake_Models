@@ -9,6 +9,7 @@ from drake_models.exercises.sit_to_stand.sit_to_stand_model import (
     build_sit_to_stand_model,
 )
 from drake_models.shared.body import BodyModelSpec
+from drake_models.shared.utils.sdf_helpers import biomech_tag
 
 
 class TestSitToStandModelBuilder:
@@ -66,20 +67,20 @@ class TestSitToStandModelBuilder:
     def test_has_initial_pose(self) -> None:
         xml_str = build_sit_to_stand_model()
         root = ET.fromstring(xml_str)
-        initial_pose = root.find(".//initial_pose")
+        initial_pose = root.find(f".//{biomech_tag('initial_pose')}")
         assert initial_pose is not None
         assert initial_pose.get("name") == "seated"
-        joints = initial_pose.findall("joint")
+        joints = initial_pose.findall(biomech_tag("joint"))
         assert len(joints) > 0
 
     def test_initial_pose_seated_angles(self) -> None:
         """Seated position should have ~90 degrees hip and knee flexion."""
         xml_str = build_sit_to_stand_model()
         root = ET.fromstring(xml_str)
-        initial_pose = root.find(".//initial_pose")
+        initial_pose = root.find(f".//{biomech_tag('initial_pose')}")
         assert initial_pose is not None
         joint_values = {}
-        for j in initial_pose.findall("joint"):
+        for j in initial_pose.findall(biomech_tag("joint")):
             assert j.text is not None
             joint_values[j.get("name")] = float(j.text)
         assert abs(joint_values["hip_l_flex"] - math.radians(90)) < 0.01

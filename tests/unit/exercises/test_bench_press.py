@@ -10,6 +10,7 @@ from drake_models.exercises.bench_press.bench_press_model import (
     BenchPressModelBuilder,
     build_bench_press_model,
 )
+from drake_models.shared.utils.sdf_helpers import biomech_tag
 
 
 class TestBenchPressModelBuilder:
@@ -82,10 +83,10 @@ class TestBenchPressModelBuilder:
     def test_has_initial_pose(self) -> None:
         xml_str = build_bench_press_model()
         root = ET.fromstring(xml_str)
-        initial_pose = root.find(".//initial_pose")
+        initial_pose = root.find(f".//{biomech_tag('initial_pose')}")
         assert initial_pose is not None
         assert initial_pose.get("name") == "lockout"
-        joints = initial_pose.findall("joint")
+        joints = initial_pose.findall(biomech_tag("joint"))
         assert len(joints) > 0, "initial_pose must contain at least one joint element"
 
     def test_default_config(self) -> None:

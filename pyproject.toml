@@ -29,6 +29,7 @@ drake = [
     "drake",
 ]
 dev = [
+    "drake",
     "pytest>=9.0.3",
     "pytest-benchmark>=4.0.0",
     "pytest-cov>=7.1.0",

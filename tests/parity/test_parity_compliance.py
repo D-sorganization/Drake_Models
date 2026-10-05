@@ -155,19 +155,19 @@ class TestExercisePhases:
     """Verify canonical exercise phase counts."""
 
     def test_back_squat_phases(self) -> None:
-        assert EXERCISE_PHASE_COUNTS["back_squat"] == 3
+        assert EXERCISE_PHASE_COUNTS["back_squat"] == 5
 
     def test_deadlift_phases(self) -> None:
-        assert EXERCISE_PHASE_COUNTS["deadlift"] == 3
+        assert EXERCISE_PHASE_COUNTS["deadlift"] == 5
 
     def test_bench_press_phases(self) -> None:
-        assert EXERCISE_PHASE_COUNTS["bench_press"] == 3
+        assert EXERCISE_PHASE_COUNTS["bench_press"] == 5
 
     def test_snatch_phases(self) -> None:
-        assert EXERCISE_PHASE_COUNTS["snatch"] == 5
+        assert EXERCISE_PHASE_COUNTS["snatch"] == 6
 
     def test_clean_and_jerk_phases(self) -> None:
-        assert EXERCISE_PHASE_COUNTS["clean_and_jerk"] == 5
+        assert EXERCISE_PHASE_COUNTS["clean_and_jerk"] == 8
 
     def test_gait_phases(self) -> None:
         assert EXERCISE_PHASE_COUNTS["gait"] == 8

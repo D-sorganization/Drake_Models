@@ -1,0 +1,91 @@
+{
+  "schema": "biomech-parity-standard/v1",
+  "version": "1.0.0",
+  "description": "Canonical cross-engine parameters for the MuJoCo, Drake, Pinocchio and OpenSim exercise model packs. Edit ONLY in Repository_Management/shared_scripts/model_parity/; every model pack vendors a byte-identical copy.",
+  "frame": {
+    "canonical_up_axis": "+Z",
+    "canonical_forward_axis": "+X",
+    "gravity_mps2": 9.80665,
+    "engine_frames": {
+      "mujoco": "z_up",
+      "drake": "z_up",
+      "pinocchio": "z_up",
+      "opensim": "y_up"
+    },
+    "to_canonical": {
+      "z_up": [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+      "y_up": [[1, 0, 0], [0, 0, -1], [0, 1, 0]]
+    }
+  },
+  "anthropometrics": {
+    "source": "Winter (2009), 50th percentile male",
+    "body_mass_kg": 80.0,
+    "height_m": 1.75,
+    "segments": {
+      "pelvis": {"mass_frac": 0.142, "length_frac": 0.100, "radius_frac": 0.085, "bilateral": false},
+      "torso": {"mass_frac": 0.355, "length_frac": 0.288, "radius_frac": 0.080, "bilateral": false},
+      "head": {"mass_frac": 0.081, "length_frac": 0.130, "radius_frac": 0.060, "bilateral": false},
+      "upper_arm": {"mass_frac": 0.028, "length_frac": 0.186, "radius_frac": 0.023, "bilateral": true},
+      "forearm": {"mass_frac": 0.016, "length_frac": 0.146, "radius_frac": 0.018, "bilateral": true},
+      "hand": {"mass_frac": 0.006, "length_frac": 0.050, "radius_frac": 0.020, "bilateral": true},
+      "thigh": {"mass_frac": 0.100, "length_frac": 0.245, "radius_frac": 0.037, "bilateral": true},
+      "shank": {"mass_frac": 0.047, "length_frac": 0.246, "radius_frac": 0.025, "bilateral": true},
+      "foot": {"mass_frac": 0.014, "length_frac": 0.040, "radius_frac": 0.025, "bilateral": true}
+    }
+  },
+  "root": {"joint": "free", "dof": 6},
+  "coordinates": [
+    {"name": "lumbar_flex", "limits_deg": [-30, 45]},
+    {"name": "lumbar_lateral", "limits_deg": [-30, 30]},
+    {"name": "lumbar_rotate", "limits_deg": [-30, 30]},
+    {"name": "neck_flex", "limits_deg": [-30, 30]},
+    {"name": "shoulder_{side}_flex", "limits_deg": [-60, 180]},
+    {"name": "shoulder_{side}_adduct", "limits_deg": [-30, 180]},
+    {"name": "shoulder_{side}_rotate", "limits_deg": [-90, 90]},
+    {"name": "elbow_{side}_flex", "limits_deg": [0, 150]},
+    {"name": "wrist_{side}_flex", "limits_deg": [-70, 70]},
+    {"name": "wrist_{side}_deviate", "limits_deg": [-20, 30]},
+    {"name": "hip_{side}_flex", "limits_deg": [-30, 120]},
+    {"name": "hip_{side}_adduct", "limits_deg": [-45, 30]},
+    {"name": "hip_{side}_rotate", "limits_deg": [-45, 45]},
+    {"name": "knee_{side}_flex", "limits_deg": [-150, 0]},
+    {"name": "ankle_{side}_flex", "limits_deg": [-20, 50]},
+    {"name": "ankle_{side}_invert", "limits_deg": [-20, 20]}
+  ],
+  "sides": ["l", "r"],
+  "barbell": {
+    "mens": {
+      "total_length_m": 2.20,
+      "shaft_length_m": 1.31,
+      "shaft_diameter_m": 0.028,
+      "sleeve_diameter_m": 0.050,
+      "bar_mass_kg": 20.0
+    }
+  },
+  "contact": {
+    "foot_box_m": {"length": 0.26, "width": 0.10, "height": 0.02},
+    "ground_friction": {"static": 0.8, "dynamic": 0.6},
+    "single_coefficient_engines_use": "static"
+  },
+  "exercises": {
+    "squat": {"phase_count": 5, "legacy_key": "back_squat"},
+    "deadlift": {"phase_count": 5},
+    "bench_press": {"phase_count": 5},
+    "snatch": {"phase_count": 6},
+    "clean_and_jerk": {"phase_count": 8},
+    "gait": {"phase_count": 8},
+    "sit_to_stand": {"phase_count": 6}
+  },
+  "capabilities": {
+    "keys": ["load_in_engine", "forward_kinematics", "inverse_kinematics", "forward_dynamics", "inverse_dynamics", "contact_grf", "urdf_import", "urdf_export", "video_export"],
+    "levels": ["none", "partial", "full"]
+  },
+  "tolerances": {
+    "mass_rel": 1e-6,
+    "limit_abs_rad": 1e-4,
+    "gravity_abs_mps2": 1e-6,
+    "friction_abs": 1e-6,
+    "cross_engine_position_abs_m": 0.02,
+    "standing_grf_rel": 0.05
+  }
+}
