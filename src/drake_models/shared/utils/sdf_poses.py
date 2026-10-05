@@ -53,6 +53,69 @@ def _pose_values(transform: NDArray[np.float64]) -> tuple[float, ...]:
     return (x, y, z, float(roll), float(pitch), float(yaw))
 
 
+_JointEdge = tuple[str, str, ET.Element]
+
+
+def _joint_edges(model: ET.Element) -> list[_JointEdge]:
+    """Return ``(parent, child, pose)`` for every joint that has all three."""
+    edges: list[_JointEdge] = []
+    for j in model.findall("joint"):
+        parent, child, pose = j.findtext("parent"), j.findtext("child"), j.find("pose")
+        if parent and child and pose is not None:
+            edges.append((parent, child, pose))
+    return edges
+
+
+def _seed_roots(
+    pending: list[_JointEdge],
+    links: dict[str | None, ET.Element],
+    world: dict[str, NDArray[np.float64]],
+) -> None:
+    """Place unjointed parent links (the free roots) at the model origin."""
+    roots = {p for p, _c, _ in pending} - {c for _p, c, _ in pending}
+    roots = {r for r in roots if r in links}
+    if not roots:
+        raise ValueError("joint tree has a cycle or unknown parent link")
+    world.update({r: np.eye(4) for r in roots})
+
+
+def _compose_world_transforms(
+    edges: list[_JointEdge], links: dict[str | None, ET.Element]
+) -> dict[str, NDArray[np.float64]]:
+    """Walk the joint tree and return each reachable link's model-frame pose."""
+    world: dict[str, NDArray[np.float64]] = {_WORLD: np.eye(4)}
+    pending = edges
+    while pending:
+        ready, waiting = _split_ready(pending, world)
+        if not ready:
+            _seed_roots(pending, links, world)
+            continue
+        for parent, child, pose in ready:
+            world[child] = world[parent] @ _transform(_floats(pose.text))
+        pending = waiting
+    return world
+
+
+def _split_ready(
+    pending: list[_JointEdge], world: dict[str, NDArray[np.float64]]
+) -> tuple[list[_JointEdge], list[_JointEdge]]:
+    """Split edges into those whose parent is placed and those still waiting."""
+    ready = [e for e in pending if e[0] in world]
+    waiting = [e for e in pending if e[0] not in world]
+    return ready, waiting
+
+
+def _floats(text: str | None) -> list[float]:
+    return [float(v) for v in (text or "").split()]
+
+
+def _write_link_pose(el: ET.Element, values: tuple[float, ...]) -> None:
+    old = el.find("pose")
+    if old is not None:
+        el.remove(old)
+    ET.SubElement(el, "pose").text = pose_str(*values)
+
+
 def resolve_link_poses(model: ET.Element) -> dict[str, tuple[float, ...]]:
     """Write ``<pose>`` on every jointed link and return the poses by link name.
 
@@ -62,36 +125,10 @@ def resolve_link_poses(model: ET.Element) -> dict[str, tuple[float, ...]]:
     resolved link (a cycle or a missing parent link).
     """
     links = {el.get("name"): el for el in model.findall("link")}
-    joints = [
-        (j.findtext("parent"), j.findtext("child"), j.find("pose"))
-        for j in model.findall("joint")
-    ]
-    world: dict[str, NDArray[np.float64]] = {_WORLD: np.eye(4)}
-    pending = [(p, c, pose) for p, c, pose in joints if p and c and pose is not None]
-    while pending:
-        remaining = [item for item in pending if item[0] not in world]
-        if len(remaining) == len(pending):
-            # parents that are unjointed links are the roots: identity.
-            roots = {p for p, _c, _ in pending} - {c for _p, c, _ in pending}
-            roots = {r for r in roots if r in links}
-            if not roots:
-                raise ValueError("joint tree has a cycle or unknown parent link")
-            world.update({str(r): np.eye(4) for r in roots})
-            continue
-        for parent, child, pose in pending:
-            if parent in world and child is not None:
-                raw = [float(v) for v in (pose.text or "").split()]
-                world[child] = world[str(parent)] @ _transform(raw)
-        pending = remaining
+    world = _compose_world_transforms(_joint_edges(model), links)
     resolved: dict[str, tuple[float, ...]] = {}
     for name, transform in world.items():
-        if name == _WORLD or name not in links:
-            continue
-        values = _pose_values(transform)
-        resolved[name] = values
-        el = links[name]
-        old = el.find("pose")
-        if old is not None:
-            el.remove(old)
-        ET.SubElement(el, "pose").text = pose_str(*values)
+        if name in links:
+            resolved[name] = _pose_values(transform)
+            _write_link_pose(links[name], resolved[name])
     return resolved

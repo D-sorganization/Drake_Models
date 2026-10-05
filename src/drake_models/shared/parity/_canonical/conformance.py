@@ -46,11 +46,6 @@ class Divergence:
     message: str
 
 
-# --------------------------------------------------------------------------
-# Standard access
-# --------------------------------------------------------------------------
-
-
 def load_standard(path: Path | str | None = None) -> dict[str, Any]:
     """Load and validate the parity standard JSON."""
     std_path = Path(path) if path is not None else _DEFAULT_STANDARD
@@ -107,11 +102,6 @@ def to_canonical(
     rot = std["frame"]["to_canonical"][frames[engine]]
     x, y, z = vec
     return tuple(r[0] * x + r[1] * y + r[2] * z for r in rot)
-
-
-# --------------------------------------------------------------------------
-# Single-fingerprint conformance
-# --------------------------------------------------------------------------
 
 
 def _close(a: float, b: float, abs_tol: float = 0.0, rel_tol: float = 0.0) -> bool:
@@ -191,47 +181,57 @@ def _check_friction(fp: dict[str, Any], std: dict[str, Any]) -> list[Divergence]
     return [Divergence("ground_friction", want, got, f"friction {got} != {want}")]
 
 
-def _check_scalars(fp: dict[str, Any], std: dict[str, Any]) -> list[Divergence]:
+def _gravity_matches(g: Any, std: dict[str, Any]) -> bool:
+    g_ref = (0.0, 0.0, -std["frame"]["gravity_mps2"])
+    tol = std["tolerances"]["gravity_abs_mps2"]
+    if g is None or len(g) != 3:
+        return False
+    return all(_close(a, b, abs_tol=tol) for a, b in zip(g, g_ref, strict=True))
+
+
+def _check_identity(fp: dict[str, Any], std: dict[str, Any]) -> list[Divergence]:
+    """Standard hash, human body mass, root joint and gravity."""
     out: list[Divergence] = []
     want_mass = std["anthropometrics"]["body_mass_kg"]
     body_mass = fp.get("body_mass_kg")
-    if body_mass is not None and not _close(
-        float(body_mass), want_mass, rel_tol=std["tolerances"]["mass_rel"]
-    ):
+    rel = std["tolerances"]["mass_rel"]
+    if body_mass is not None and not _close(float(body_mass), want_mass, rel_tol=rel):
         out.append(Divergence("body_mass_kg", want_mass, body_mass, "human body mass"))
-    if fp.get("standard_sha256") != standard_sha256_for(std):
+    want_sha = standard_sha256_for(std)
+    if fp.get("standard_sha256") != want_sha:
         out.append(
             Divergence(
                 "standard_sha256",
-                standard_sha256_for(std),
+                want_sha,
                 fp.get("standard_sha256"),
                 "vendored standard differs from canonical bytes",
             )
         )
-    if fp.get("root_joint") != std["root"]["joint"]:
-        out.append(
-            Divergence("root_joint", std["root"]["joint"], fp.get("root_joint"), "root")
-        )
-    g_ref = (0.0, 0.0, -std["frame"]["gravity_mps2"])
+    root = std["root"]["joint"]
+    if fp.get("root_joint") != root:
+        out.append(Divergence("root_joint", root, fp.get("root_joint"), "root"))
     g = fp.get("gravity_canonical")
-    g_tol = std["tolerances"]["gravity_abs_mps2"]
-    if (
-        g is None
-        or len(g) != 3
-        or any(not _close(a, b, abs_tol=g_tol) for a, b in zip(g, g_ref, strict=True))
-    ):
-        out.append(Divergence("gravity_canonical", list(g_ref), g, "gravity"))
+    if not _gravity_matches(g, std):
+        g_ref = [0.0, 0.0, -std["frame"]["gravity_mps2"]]
+        out.append(Divergence("gravity_canonical", g_ref, g, "gravity"))
+    return out
+
+
+def _check_optional(fp: dict[str, Any], std: dict[str, Any]) -> list[Divergence]:
+    """Phase count and standing GRF, checked only when the fingerprint has them."""
+    out: list[Divergence] = []
     phases = fp.get("phase_count")
     want = std["exercises"].get(fp.get("exercise"), {}).get("phase_count")
     if phases is not None and phases != want:
         out.append(Divergence("phase_count", want, phases, "objective phase count"))
     weight, grf = fp.get("standing_weight_n"), fp.get("standing_vertical_grf_n")
-    if weight is not None and grf is not None:
-        rel = std["tolerances"]["standing_grf_rel"]
-        if not _close(float(grf), float(weight), rel_tol=rel):
-            out.append(
-                Divergence("standing_grf", weight, grf, "standing GRF != weight")
-            )
+    rel = std["tolerances"]["standing_grf_rel"]
+    if (
+        weight is not None
+        and grf is not None
+        and not _close(float(grf), float(weight), rel_tol=rel)
+    ):
+        out.append(Divergence("standing_grf", weight, grf, "standing GRF != weight"))
     return out
 
 
@@ -251,16 +251,12 @@ def check_fingerprint(fp: dict[str, Any], std: dict[str, Any]) -> list[Divergenc
     if not fp.get("loaded_in_engine"):
         return [Divergence("load_in_engine", True, False, str(fp.get("load_error")))]
     return (
-        _check_scalars(fp, std)
+        _check_identity(fp, std)
+        + _check_optional(fp, std)
         + _check_segments(fp, std)
         + _check_coordinates(fp, std)
         + _check_friction(fp, std)
     )
-
-
-# --------------------------------------------------------------------------
-# Divergence ledger
-# --------------------------------------------------------------------------
 
 
 def load_ledger(path: Path | str) -> dict[str, Any]:

@@ -20,6 +20,7 @@ import logging
 import math
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 from . import conformance as c
@@ -27,6 +28,8 @@ from . import conformance as c
 logger = logging.getLogger(__name__)
 
 Vec3 = Sequence[float]
+_NO_ALIASES: Mapping[str, str] = MappingProxyType({})
+_NO_EXTRAS: Mapping[str, Any] = MappingProxyType({})
 _CORE_KEYS = frozenset(
     {
         "schema", "engine", "engine_version", "exercise", "standard_sha256",
@@ -67,11 +70,11 @@ def assemble_fingerprint(
     coordinate_limits_rad: Mapping[str, tuple[float, float]],
     segment_origins_engine_m: Mapping[str, Vec3],
     capabilities: Mapping[str, str],
-    coordinate_aliases: Mapping[str, str] | None = None,
-    segment_aliases: Mapping[str, str] | None = None,
+    coordinate_aliases: Mapping[str, str] = _NO_ALIASES,
+    segment_aliases: Mapping[str, str] = _NO_ALIASES,
     ground_friction: float | Mapping[str, float] | None = None,
     phase_count: int | None = None,
-    extras: Mapping[str, Any] | None = None,
+    extras: Mapping[str, Any] = _NO_EXTRAS,
 ) -> dict[str, Any]:
     """Build a ``model-fingerprint/v1`` dict from raw engine measurements.
 
@@ -84,22 +87,13 @@ def assemble_fingerprint(
     finite; ``extras`` never overwrite a core key.
     """
     human = set(c.expected_segments(std))
-    masses = _canonicalize(segment_masses_kg, segment_aliases or {}, "segment")
-    masses = {k: float(v) for k, v in masses.items() if k in human}
-    limits = _canonicalize(coordinate_limits_rad, coordinate_aliases or {}, "coord")
-    origins = _canonicalize(segment_origins_engine_m, segment_aliases or {}, "segment")
-    origins = {k: c.to_canonical(std, engine, v) for k, v in origins.items()}
-    pelvis = origins.get("pelvis", (0.0, 0.0, 0.0))
-    rebased = {
-        k: [a - b for a, b in zip(v, pelvis, strict=True)]
-        for k, v in origins.items()
-        if k in human
-    }
+    masses = _human_masses(segment_masses_kg, segment_aliases, human)
+    limits = _canonicalize(coordinate_limits_rad, coordinate_aliases, "coord")
+    origins = _human_origins(
+        std, engine, segment_origins_engine_m, segment_aliases, human
+    )
     gravity = list(c.to_canonical(std, engine, gravity_engine))
-    _require_finite(list(masses.values()), "segment masses")
-    _require_finite([x for lim in limits.values() for x in lim], "coordinate limits")
-    _require_finite([x for v in rebased.values() for x in v], "segment origins")
-    _require_finite(gravity, "gravity")
+    _check_finite(masses, limits, origins, gravity)
     fp: dict[str, Any] = {
         "schema": c.FINGERPRINT_SCHEMA,
         "engine": engine,
@@ -116,18 +110,60 @@ def assemble_fingerprint(
             k: {"limits_rad": [float(lo), float(hi)]}
             for k, (lo, hi) in sorted(limits.items())
         },
-        "segment_origins_neutral_m": dict(sorted(rebased.items())),
+        "segment_origins_neutral_m": dict(sorted(origins.items())),
         "capabilities": dict(capabilities),
     }
-    if ground_friction is not None:
-        fp["ground_friction"] = ground_friction
-    if phase_count is not None:
-        fp["phase_count"] = phase_count
-    for key, value in (extras or {}).items():
-        if key in _CORE_KEYS:
-            raise ValueError(f"extras may not overwrite core key {key!r}")
-        fp[key] = value
+    optional = {"ground_friction": ground_friction, "phase_count": phase_count}
+    fp.update({k: v for k, v in optional.items() if v is not None})
+    _merge_extras(fp, extras)
     return fp
+
+
+def _check_finite(
+    masses: Mapping[str, float],
+    limits: Mapping[str, tuple[float, float]],
+    origins: Mapping[str, list[float]],
+    gravity: list[float],
+) -> None:
+    """Postcondition: every measured number in the fingerprint is finite."""
+    _require_finite(list(masses.values()), "segment masses")
+    _require_finite([x for lim in limits.values() for x in lim], "coordinate limits")
+    _require_finite([x for v in origins.values() for x in v], "segment origins")
+    _require_finite(gravity, "gravity")
+
+
+def _human_masses(
+    raw: Mapping[str, float], aliases: Mapping[str, str], human: set[str]
+) -> dict[str, float]:
+    """Canonical-name masses of the human segments only."""
+    named = _canonicalize(raw, aliases, "segment")
+    return {k: float(v) for k, v in named.items() if k in human}
+
+
+def _human_origins(
+    std: dict[str, Any],
+    engine: str,
+    raw: Mapping[str, Vec3],
+    aliases: Mapping[str, str],
+    human: set[str],
+) -> dict[str, list[float]]:
+    """Human segment origins in the canonical frame, re-based on the pelvis."""
+    named = _canonicalize(raw, aliases, "segment")
+    canon = {k: c.to_canonical(std, engine, v) for k, v in named.items()}
+    pelvis = canon.get("pelvis", (0.0, 0.0, 0.0))
+    return {
+        k: [a - b for a, b in zip(v, pelvis, strict=True)]
+        for k, v in canon.items()
+        if k in human
+    }
+
+
+def _merge_extras(fp: dict[str, Any], extras: Mapping[str, Any]) -> None:
+    """Add adapter-specific fields; never overwrite a core key."""
+    clashes = sorted(set(extras) & _CORE_KEYS)
+    if clashes:
+        raise ValueError(f"extras may not overwrite core key(s) {clashes}")
+    fp.update(extras)
 
 
 def failed_fingerprint(
