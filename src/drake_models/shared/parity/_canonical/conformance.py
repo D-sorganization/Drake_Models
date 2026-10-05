@@ -12,28 +12,31 @@ engine-specific ``fingerprint()`` that loads its generated model in the REAL
 engine and reports what the engine sees (schema ``model-fingerprint/v1``).
 This module compares that fingerprint against the standard and against a
 per-repo divergence ledger that lists every known, issue-tracked deviation.
-Shared fingerprint assembly and the CLI live in ``assemble.py``.
+Shared fingerprint assembly and the CLI live in ``assemble.py``; the divergence
+ledger lives in ``ledger.py`` and is re-exported here.
 """
 
 from __future__ import annotations
 
-import fnmatch
 import hashlib
 import json
 import math
-import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+# Re-exported: packs call conformance.load_ledger / reconcile / reconcile_all.
+from .ledger import LEDGER_SCHEMA as LEDGER_SCHEMA
+from .ledger import load_ledger as load_ledger
+from .ledger import reconcile as reconcile
+from .ledger import reconcile_all as reconcile_all
+
 STANDARD_FILENAME = "biomech_parity_standard.json"
 STANDARD_SCHEMA = "biomech-parity-standard/v1"
 FINGERPRINT_SCHEMA = "model-fingerprint/v1"
-LEDGER_SCHEMA = "parity-divergences/v1"
 
 _DEFAULT_STANDARD = Path(__file__).with_name(STANDARD_FILENAME)
-_ISSUE_REF = re.compile(r"(#\d+|https://github\.com/\S+/issues/\d+)")
 
 
 @dataclass(frozen=True)
@@ -257,123 +260,3 @@ def check_fingerprint(fp: dict[str, Any], std: dict[str, Any]) -> list[Divergenc
         + _check_coordinates(fp, std)
         + _check_friction(fp, std)
     )
-
-
-def load_ledger(path: Path | str) -> dict[str, Any]:
-    """Load a ``parity_divergences.json`` ledger (missing file = empty ledger)."""
-    p = Path(path)
-    if not p.exists():
-        return {"schema": LEDGER_SCHEMA, "divergences": {}}
-    ledger: dict[str, Any] = json.loads(p.read_text(encoding="utf-8"))
-    return ledger
-
-
-def _is_name_list(value: Any) -> bool:
-    """True for a non-empty list of non-empty strings."""
-    return (
-        isinstance(value, list)
-        and bool(value)
-        and all(isinstance(s, str) and s for s in value)
-    )
-
-
-def _check_entry(key: str, entry: Any) -> None:
-    """Precondition for one ledger entry: it cites an issue, and any
-    ``exercises`` scope is a non-empty list of exercise names."""
-    issue = entry.get("issue") if isinstance(entry, dict) else None
-    if not isinstance(issue, str) or not _ISSUE_REF.search(issue):
-        raise ValueError(f"ledger entry {key!r} must cite an issue (#N or URL)")
-    if "exercises" in entry and not _is_name_list(entry["exercises"]):
-        raise ValueError(f"ledger entry {key!r}: exercises must list names")
-
-
-def _validated_entries(ledger: dict[str, Any]) -> dict[str, Any]:
-    """Precondition: the schema matches and every entry passes ``_check_entry``."""
-    if ledger.get("schema") != LEDGER_SCHEMA:
-        raise ValueError(f"ledger schema must be {LEDGER_SCHEMA!r}")
-    entries: dict[str, Any] = ledger.get("divergences", {})
-    for key, entry in entries.items():
-        _check_entry(key, entry)
-    return entries
-
-
-def _match(
-    divergences: Sequence[Divergence], entries: dict[str, Any], exercise: str | None
-) -> tuple[list[Divergence], set[str]]:
-    """Return (unexpected divergences, ledger keys that absorbed one)."""
-    scoped = {
-        p
-        for p, e in entries.items()
-        if "exercises" not in e or (exercise is not None and exercise in e["exercises"])
-    }
-    used: set[str] = set()
-    unexpected: list[Divergence] = []
-    for div in divergences:
-        hits = [p for p in scoped if fnmatch.fnmatchcase(div.key, p)]
-        used.update(hits)
-        if not hits:
-            unexpected.append(div)
-    return unexpected, used
-
-
-def reconcile(
-    divergences: list[Divergence],
-    ledger: dict[str, Any],
-    exercise: str | None = None,
-) -> tuple[list[Divergence], list[str]]:
-    """Split divergences into (unexpected, stale_ledger_keys).
-
-    Every ledger entry must cite an issue. Patterns may use ``*`` wildcards.
-    An entry with an ``exercises`` list absorbs divergences only from those
-    exercises, so it never matches when ``exercise`` is None. A ledger entry
-    matching no current divergence is stale: the gap was fixed and the entry
-    must be deleted (the ledger only ratchets down). To find stale entries
-    across several exercises, use :func:`reconcile_all`.
-    """
-    entries = _validated_entries(ledger)
-    unexpected, used = _match(divergences, entries, exercise)
-    return unexpected, sorted(set(entries) - used)
-
-
-def _stale_keys(
-    entries: dict[str, Any], hits_by_exercise: dict[str, set[str]]
-) -> set[str]:
-    """Stale ledger keys. An unscoped entry is stale as ``key`` when nothing
-    used it. A scoped entry is stale as ``key`` only when every exercise in its
-    scope was checked and none used it; otherwise each checked member that no
-    longer uses it is stale as ``key@exercise`` (unchecked members never are).
-    """
-    used = set().union(*hits_by_exercise.values())
-    stale: set[str] = set()
-    for key, entry in entries.items():
-        if "exercises" not in entry:
-            if key not in used:
-                stale.add(key)
-            continue
-        scope = entry["exercises"]
-        missed = [
-            x for x in scope if x in hits_by_exercise and key not in hits_by_exercise[x]
-        ]
-        if len(missed) == len(scope):
-            stale.add(key)
-        else:
-            stale.update(f"{key}@{x}" for x in missed)
-    return stale
-
-
-def reconcile_all(
-    by_exercise: dict[str, list[Divergence]], ledger: dict[str, Any]
-) -> tuple[dict[str, list[Divergence]], list[str]]:
-    """Reconcile every exercise's divergences against one ledger.
-
-    Returns ({exercise: unexpected} for exercises with any, stale keys); see
-    :func:`_stale_keys` for when a scoped entry or one of its members is stale.
-    """
-    entries = _validated_entries(ledger)
-    unexpected: dict[str, list[Divergence]] = {}
-    hits_by_exercise: dict[str, set[str]] = {}
-    for exercise, divs in by_exercise.items():
-        found, hits_by_exercise[exercise] = _match(divs, entries, exercise)
-        if found:
-            unexpected[exercise] = found
-    return unexpected, sorted(_stale_keys(entries, hits_by_exercise))
