@@ -1,0 +1,46 @@
+# spec-check.yml - Specification Freshness Enforcement
+name: Spec Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spec-freshness:
+    name: Verify SPEC.md freshness
+    runs-on: ${{ !github.event.repository.private && vars.CI_RUNNER_MODE != 'local' && 'ubuntu-latest' || 'd-sorg-fleet' }}
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'spec-exempt') }}
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check if source files changed without SPEC.md update
+        id: check
+        shell: bash
+        run: |
+          python3 scripts/ci/check_spec_freshness.py --base "origin/${{ github.base_ref }}" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Fail if spec is stale
+        if: steps.check.outputs.needs_update == 'true'
+        shell: bash
+        run: |
+          echo "::error::Source files changed but SPEC.md was not updated."
+          exit 1
