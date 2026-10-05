@@ -13,9 +13,10 @@ from __future__ import annotations
 
 import importlib
 import logging
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Any
+
+import defusedxml.ElementTree as DefusedET
 
 from drake_models.shared.body.body_anthropometrics import PELVIS_STANDING_HEIGHT
 from drake_models.shared.parity.standard import GRAVITY
@@ -51,9 +52,10 @@ def parse_initial_pose(sdf_xml: str) -> InitialPose | None:
     """Return the ``biomech:initial_pose`` block of *sdf_xml*, or ``None``.
 
     Raises:
-        ValueError: If a joint angle is not a finite number.
+        ValueError: If a joint angle is not a finite number, or *sdf_xml*
+            declares entities (rejected by defusedxml).
     """
-    model = ET.fromstring(sdf_xml).find("model")
+    model = DefusedET.fromstring(sdf_xml).find("model")
     pose = None if model is None else model.find(biomech_tag("initial_pose"))
     if pose is None:
         return None
