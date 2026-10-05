@@ -13,7 +13,7 @@ Virtual links (zero-mass, for compound joint chains):
   wrist_{l,r}_virtual_1
 
 Joints (multi-DOF via compound revolute chains):
-  ground_pelvis (floating -- 6 DOF),
+  pelvis root (implicit 6-DOF free body in Drake; no SDF joint),
   lumbar_flex, lumbar_lateral, lumbar_rotate (3-DOF),
   neck (revolute),
   shoulder_{l,r}_flex, shoulder_{l,r}_adduct, shoulder_{l,r}_rotate (3-DOF),

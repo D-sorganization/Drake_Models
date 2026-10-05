@@ -114,10 +114,31 @@ The repository maintains an automated architecture contract per Epic #1594:
 - **Traceability**: Feature Map table linking key capabilities to component paths, public interfaces, and test evidence.
 - **Contract Enforcement**: `scripts/architecture_map_contract.py` validates required sections and table structures via CI (`.github/workflows/architecture-map-contract.yml`).
 
+## Engine Parity Contract
+
+Cross-engine parameters come from the fleet parity standard vendored at
+`src/drake_models/shared/parity/_canonical/` (`biomech_parity_standard.json`,
+`conformance.py`, `assemble.py`, `MANIFEST.json`). The canonical source is
+`Repository_Management/shared_scripts/model_parity/`; vendored files are never
+edited here and `tests/parity/` verifies their hashes against `MANIFEST.json`.
+
+- `shared/parity/standard.py` and the body segment table are computed from the
+  bundle; no constants are duplicated.
+- `shared/parity/fingerprint.py` loads every exercise's generated SDFormat model in
+  the real drake engine and reports a `model-fingerprint/v1`
+  (`python -m drake_models.shared.parity.fingerprint --all --out DIR`).
+- `tests/parity/test_engine_conformance.py` runs in default CI with the engine
+  installed and fails on any divergence from the standard that is not listed,
+  with an issue reference, in `shared/parity/parity_divergences.json`. Ledger
+  entries that no longer diverge fail as stale, so the ledger only shrinks.
+- `model_pack.yaml` declares honest `capabilities` levels (`none`, `partial`,
+  `full`); `full` requires a public API and a real-engine test as evidence.
+
 ## Change Log
 
 | Date | PR | Summary |
 | --- | --- | --- |
+| 2026-10-05 | #359 | Generated SDF now parses in pydrake (namespaced initial pose, no floating joint type, unique filter-group names, bilateral parent links, poses relative_to parent); new loader applies pose and canonical gravity; real-engine parity conformance against the fleet standard. |
 | 2026-09-10 | #1598 | Adopt maintainable Mermaid C4 architecture-map contract |
 - 2026-09-14: Downgraded non-existent workflow action versions to @v4/@v5 across workflows (#333).
 - 2026-09-14: Fix expression collision in local-only-runner-guard workflow (#335).

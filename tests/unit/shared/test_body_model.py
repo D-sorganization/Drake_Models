@@ -75,24 +75,17 @@ class TestCreateFullBody:
     def test_creates_joints(self, model: Any) -> None:
         create_full_body(model)
         joints = model.findall("joint")
-        # 1 floating + 3 lumbar + 1 neck + 6 shoulder + 2 elbow + 4 wrist
-        # + 6 hip + 2 knee + 4 ankle = 29 joints
-        assert len(joints) >= 29
+        # 3 lumbar + 1 neck + 6 shoulder + 2 elbow + 4 wrist
+        # + 6 hip + 2 knee + 4 ankle = 28 joints (pelvis root is implicit)
+        assert len(joints) >= 28
 
-    def test_pelvis_has_floating_joint(self, model: Any) -> None:
+    def test_pelvis_is_unjointed_free_root(self, model: Any) -> None:
+        """No SDF joint targets the pelvis: Drake adds the 6-DOF free body."""
         create_full_body(model)
-        floating_joints = [
-            j for j in model.findall("joint") if j.get("type") == "floating"
-        ]
-        assert len(floating_joints) == 1
-        assert floating_joints[0].get("name") == "ground_pelvis"
-
-    def test_floating_joint_connects_world(self, model: Any) -> None:
-        create_full_body(model)
-        for j in model.findall("joint"):
-            if j.get("name") == "ground_pelvis":
-                assert j.find("parent").text == "world"
-                assert j.find("child").text == "pelvis"
+        assert [j for j in model.findall("joint") if j.get("type") == "floating"] == []
+        assert [
+            j for j in model.findall("joint") if j.find("child").text == "pelvis"
+        ] == []
 
     def test_has_bilateral_limbs(self, model: Any) -> None:
         create_full_body(model)

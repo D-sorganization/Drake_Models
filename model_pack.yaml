@@ -22,3 +22,13 @@ exercises:
     path: src/drake_models/exercises/gait
   - id: sit_to_stand
     path: src/drake_models/exercises/sit_to_stand
+capabilities:
+  load_in_engine: {level: full, evidence: tests/parity/test_engine_conformance.py}
+  forward_kinematics: {level: none, evidence: null}  # no public FK API
+  inverse_kinematics: {level: partial, evidence: src/drake_models/optimization/inverse_kinematics.py}  # solver defines no end-effector targets
+  forward_dynamics: {level: partial, evidence: src/drake_models/optimization/drake_trajectory_solver.py}  # only inside the trajectory solver
+  inverse_dynamics: {level: partial, evidence: src/drake_models/optimization/drake_trajectory_solver.py}  # only inside the trajectory solver
+  contact_grf: {level: partial, evidence: src/drake_models/shared/utils/sdf_helpers.py}  # hydroelastic contact defined in SDF, GRF not exposed
+  urdf_import: {level: none, evidence: null}
+  urdf_export: {level: none, evidence: null}
+  video_export: {level: none, evidence: null}

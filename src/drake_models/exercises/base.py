@@ -18,12 +18,15 @@ from dataclasses import dataclass, field
 
 from drake_models.shared.barbell import BarbellSpec, create_barbell_links
 from drake_models.shared.body import BodyModelSpec, create_full_body
+from drake_models.shared.body.body_anthropometrics import PELVIS_STANDING_HEIGHT
 from drake_models.shared.contracts.postconditions import ensure_valid_xml
 from drake_models.shared.utils.sdf_helpers import (
     add_collision_filter_group,
     add_ground_plane_contact,
+    biomech_tag,
     serialize_model,
 )
+from drake_models.shared.utils.sdf_poses import resolve_link_poses
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +88,8 @@ class ExerciseModelBuilder(ABC):
 
         Override in subclasses to ``"fixed"`` when the exercise constrains
         the pelvis via an external body (e.g. bench press weld through bench).
-        Default is ``"floating"`` (6-DOF free joint).
+        Default is ``"floating"``: no SDF joint is emitted and Drake adds a
+        6-DOF free body for the unjointed pelvis.
         """
         return "floating"
 
@@ -95,17 +99,21 @@ class ExerciseModelBuilder(ABC):
         pose_name: str,
         joint_angles: dict[str, float],
     ) -> ET.Element:
-        """Append an ``<initial_pose name='...'>`` block to *model*.
+        """Append a ``<biomech:initial_pose name='...'>`` block to *model*.
+
+        Plain ``<initial_pose>`` is not valid SDF (Drake rejects it); a
+        namespaced custom element is ignored by the parser and applied by
+        :mod:`drake_models.loader` after parsing.
 
         Creates one ``<joint name='...'>{angle}</joint>`` child per entry in
         *joint_angles*.  Returns the created ``<initial_pose>`` element.
 
         DRY: all five exercise builders share this identical XML-building loop.
         """
-        initial_pose = ET.SubElement(model, "initial_pose")
+        initial_pose = ET.SubElement(model, biomech_tag("initial_pose"))
         initial_pose.set("name", pose_name)
         for joint_name, angle in joint_angles.items():
-            joint_el = ET.SubElement(initial_pose, "joint")
+            joint_el = ET.SubElement(initial_pose, biomech_tag("joint"))
             joint_el.set("name", joint_name)
             joint_el.text = f"{angle:.6f}"
         return initial_pose
@@ -285,6 +293,9 @@ class ExerciseModelBuilder(ABC):
         self.attach_barbell(model, body_links, barbell_links)
         self.set_initial_pose(model)
         self._add_collision_filters(model)
+        resolve_link_poses(
+            model, {"pelvis": (0.0, 0.0, PELVIS_STANDING_HEIGHT, 0.0, 0.0, 0.0)}
+        )
         xml_str = serialize_model(root)
         ensure_valid_xml(xml_str)  # postcondition: well-formed XML
         return xml_str

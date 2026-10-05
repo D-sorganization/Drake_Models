@@ -26,6 +26,7 @@ from drake_models.exercises.squat.squat_model import (
 )
 from drake_models.shared.barbell import BarbellSpec
 from drake_models.shared.body import BodyModelSpec
+from drake_models.shared.utils.sdf_helpers import biomech_tag
 
 
 class TestExtremeAnthropometrics:
@@ -148,7 +149,7 @@ class TestAllExercisesProduceInitialPose:
     def test_has_initial_pose(self, builder_fn: object) -> None:
         xml_str = builder_fn()  # type: ignore[operator]
         root = ET.fromstring(xml_str)
-        initial_pose = root.find(".//initial_pose")  # type: ignore
+        initial_pose = root.find(f".//{biomech_tag('initial_pose')}")  # type: ignore
         assert initial_pose is not None, f"{builder_fn} missing initial_pose"
 
 

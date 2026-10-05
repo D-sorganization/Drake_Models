@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 from drake_models.shared.body.body_anthropometrics import (
     BodyModelSpec,
     _seg,
+    is_bilateral,
 )
 from drake_models.shared.utils.geometry import (
     cylinder_inertia,
@@ -102,7 +103,9 @@ def _add_bilateral_limb(
 
     for side, sign in [("l", -1.0), ("r", 1.0)]:
         link_name = f"{seg_name}_{side}"
-        parent_link = f"{parent_name}_{side}" if "_" in parent_name else parent_name
+        parent_link = (
+            f"{parent_name}_{side}" if is_bilateral(parent_name) else parent_name
+        )
         created[link_name] = _make_cylinder_segment_link(
             model, name=link_name, mass=mass, length=length, radius=radius
         )
@@ -253,7 +256,9 @@ def _add_compound_3dof_bilateral(
 
     for side, sign in [("l", -1.0), ("r", 1.0)]:
         link_name = f"{seg_name}_{side}"
-        parent_link = f"{parent_name}_{side}" if "_" in parent_name else parent_name
+        parent_link = (
+            f"{parent_name}_{side}" if is_bilateral(parent_name) else parent_name
+        )
         created[link_name] = _make_cylinder_segment_link(
             model, name=link_name, mass=mass, length=length, radius=radius
         )
@@ -350,7 +355,9 @@ def _add_compound_2dof_bilateral(
 
     for side, sign in [("l", -1.0), ("r", 1.0)]:
         link_name = f"{seg_name}_{side}"
-        parent_link = f"{parent_name}_{side}" if "_" in parent_name else parent_name
+        parent_link = (
+            f"{parent_name}_{side}" if is_bilateral(parent_name) else parent_name
+        )
         created[link_name] = _make_cylinder_segment_link(
             model, name=link_name, mass=mass, length=length, radius=radius
         )

@@ -8,6 +8,7 @@ from drake_models.exercises.gait.gait_model import (
     build_gait_model,
 )
 from drake_models.shared.body import BodyModelSpec
+from drake_models.shared.utils.sdf_helpers import biomech_tag
 
 
 class TestGaitModelBuilder:
@@ -47,20 +48,20 @@ class TestGaitModelBuilder:
     def test_has_initial_pose(self) -> None:
         xml_str = build_gait_model()
         root = ET.fromstring(xml_str)
-        initial_pose = root.find(".//initial_pose")
+        initial_pose = root.find(f".//{biomech_tag('initial_pose')}")
         assert initial_pose is not None
         assert initial_pose.get("name") == "mid_stride"
-        joints = initial_pose.findall("joint")
+        joints = initial_pose.findall(biomech_tag("joint"))
         assert len(joints) > 0, "initial_pose must contain at least one joint element"
 
     def test_initial_pose_has_asymmetric_hips(self) -> None:
         """Mid-stride should have different left/right hip angles."""
         xml_str = build_gait_model()
         root = ET.fromstring(xml_str)
-        initial_pose = root.find(".//initial_pose")
+        initial_pose = root.find(f".//{biomech_tag('initial_pose')}")
         assert initial_pose is not None
         joint_values = {}
-        for j in initial_pose.findall("joint"):
+        for j in initial_pose.findall(biomech_tag("joint")):
             assert j.text is not None
             joint_values[j.get("name")] = float(j.text)
         assert joint_values["hip_l_flex"] != joint_values["hip_r_flex"]

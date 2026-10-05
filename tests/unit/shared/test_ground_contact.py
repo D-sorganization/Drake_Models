@@ -278,7 +278,7 @@ class TestCollisionFilterGroup:
             model, name="hip_l", members=["pelvis", "thigh_l"]
         )
         assert group.tag == _dtag("collision_filter_group")
-        assert group.get("name") == "hip_l"
+        assert group.get("name") == "hip_l_filter"
 
     def test_has_members(self, model: Any) -> None:
         group = add_collision_filter_group(
@@ -298,4 +298,4 @@ class TestCollisionFilterGroup:
         )
         ignored = group.find("drake:ignored_collision_filter_group", _NS)
         assert ignored is not None
-        assert ignored.text == "hip_l"
+        assert ignored.text == "hip_l_filter"

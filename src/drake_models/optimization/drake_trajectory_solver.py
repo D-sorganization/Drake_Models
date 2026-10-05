@@ -19,16 +19,9 @@ from drake_models.optimization.trajectory_types import (
 
 def _build_drake_plant(sdf_string: str, dt: float) -> object:
     """Load *sdf_string* into a finalised Drake MultibodyPlant."""
-    from pydrake.multibody.parsing import Parser
-    from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
-    from pydrake.systems.framework import DiagramBuilder
+    from drake_models.loader import load_sdf
 
-    builder = DiagramBuilder()
-    plant, _scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=dt)
-    parser = Parser(plant)
-    parser.AddModelsFromString(sdf_string, "sdf")
-    plant.Finalize()
-    return plant
+    return load_sdf(sdf_string, "trajectory", time_step=dt, apply_pose=False).plant
 
 
 def _drake_array(value: Any) -> np.ndarray:

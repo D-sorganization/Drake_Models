@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from drake_models.shared.contracts.preconditions import (
     require_positive,
 )
+from drake_models.shared.parity.standard import SEGMENT_BILATERAL, SEGMENT_TABLE
 
 # ---------------------------------------------------------------------------
 # Geometry / placement constants
@@ -96,18 +97,9 @@ FOOT_CONTACT_HEIGHT: float = 0.02  # along Z (thickness)
 # Winter (2009) segment table
 # ---------------------------------------------------------------------------
 
-# Segment mass fractions and length/radius fractions of total height.
-_SEGMENT_TABLE: dict[str, dict[str, float]] = {
-    "pelvis": {"mass_frac": 0.142, "length_frac": 0.100, "radius_frac": 0.085},
-    "torso": {"mass_frac": 0.355, "length_frac": 0.288, "radius_frac": 0.080},
-    "head": {"mass_frac": 0.081, "length_frac": 0.130, "radius_frac": 0.060},
-    "upper_arm": {"mass_frac": 0.028, "length_frac": 0.186, "radius_frac": 0.023},
-    "forearm": {"mass_frac": 0.016, "length_frac": 0.146, "radius_frac": 0.018},
-    "hand": {"mass_frac": 0.006, "length_frac": 0.050, "radius_frac": 0.020},
-    "thigh": {"mass_frac": 0.100, "length_frac": 0.245, "radius_frac": 0.037},
-    "shank": {"mass_frac": 0.047, "length_frac": 0.246, "radius_frac": 0.025},
-    "foot": {"mass_frac": 0.014, "length_frac": 0.040, "radius_frac": 0.025},
-}
+# Derived from the vendored canonical bundle (single source of truth); the
+# dict shape ``{name: {mass_frac, length_frac, radius_frac}}`` is unchanged.
+_SEGMENT_TABLE: dict[str, dict[str, float]] = SEGMENT_TABLE
 
 
 # ---------------------------------------------------------------------------
@@ -149,6 +141,11 @@ class BodyModelSpec:
 # ---------------------------------------------------------------------------
 # Segment property accessor
 # ---------------------------------------------------------------------------
+
+
+def is_bilateral(segment: str) -> bool:
+    """Return whether *segment* exists per side (canonical bundle flag)."""
+    return SEGMENT_BILATERAL[segment]
 
 
 def _seg(spec: BodyModelSpec, name: str) -> tuple[float, float, float]:

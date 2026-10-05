@@ -9,6 +9,7 @@ from drake_models.exercises.deadlift.deadlift_model import (
     DeadliftModelBuilder,
     build_deadlift_model,
 )
+from drake_models.shared.utils.sdf_helpers import biomech_tag
 
 
 class TestDeadliftModelBuilder:
@@ -65,10 +66,10 @@ class TestDeadliftModelBuilder:
     def test_has_initial_pose(self) -> None:
         xml_str = build_deadlift_model()
         root = ET.fromstring(xml_str)
-        initial_pose = root.find(".//initial_pose")
+        initial_pose = root.find(f".//{biomech_tag('initial_pose')}")
         assert initial_pose is not None
         assert initial_pose.get("name") == "setup"
-        joints = initial_pose.findall("joint")
+        joints = initial_pose.findall(biomech_tag("joint"))
         assert len(joints) > 0, "initial_pose must contain at least one joint element"
 
     def test_default_plate_mass(self) -> None:

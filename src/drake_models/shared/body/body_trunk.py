@@ -17,7 +17,6 @@ from drake_models.shared.body.body_anthropometrics import (
     LUMBAR_ROTATE_LOWER,
     LUMBAR_ROTATE_UPPER,
     NECK_RANGE_LIMIT,
-    PELVIS_STANDING_HEIGHT,
     BodyModelSpec,
     _seg,
 )
@@ -26,7 +25,6 @@ from drake_models.shared.utils.geometry import (
     rectangular_prism_inertia,
 )
 from drake_models.shared.utils.sdf_helpers import (
-    add_floating_joint,
     add_link,
     add_revolute_joint,
     add_virtual_link,
@@ -42,7 +40,7 @@ def _build_pelvis(
     spec: BodyModelSpec,
     pelvis_joint_type: str,
 ) -> dict[str, ET.Element]:
-    """Stage 1: Create pelvis link and optional world joint.
+    """Stage 1: Create the pelvis link (the free root, or welded by the exercise).
 
     Returns dict with the 'pelvis' link element.
     """
@@ -60,18 +58,13 @@ def _build_pelvis(
         visual_geometry=make_box_geometry(p_rad * 2, p_rad * 2, p_len),
         collision_geometry=make_box_geometry(p_rad * 2, p_rad * 2, p_len),
     )
-    if pelvis_joint_type == "fixed":
-        logger.debug(
-            "Skipping world->pelvis joint; exercise builder will weld pelvis externally"
-        )
-    else:
-        add_floating_joint(
-            model,
-            name="ground_pelvis",
-            parent="world",
-            child="pelvis",
-            pose=(0, 0, PELVIS_STANDING_HEIGHT, 0, 0, 0),
-        )
+    # No world->pelvis joint is emitted in either case: SDF has no "floating"
+    # joint type; Drake gives an unjointed link a 6-DOF free body automatically.
+    # The standing height is applied by ``drake_models.loader`` (issue #359).
+    logger.debug(
+        "Pelvis root: %s (no explicit joint; Drake adds a free body if unwelded)",
+        pelvis_joint_type,
+    )
     return links
 
 
