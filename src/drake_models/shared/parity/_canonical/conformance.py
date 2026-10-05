@@ -3,16 +3,16 @@
 
 CANONICAL SOURCE: Repository_Management/shared_scripts/model_parity/.
 Model packs (MuJoCo_Models, Drake_Models, Pinocchio_Models, OpenSim_Models)
-vendor a byte-identical copy of this file and of
+vendor byte-identical copies of this file, ``assemble.py`` and
 ``biomech_parity_standard.json``; never edit a vendored copy. Run
 ``python -m shared_scripts.model_parity.sync --check <repo>`` to detect drift.
 
 The checker is engine-agnostic and stdlib-only. Each model pack supplies an
 engine-specific ``fingerprint()`` that loads its generated model in the REAL
 engine and reports what the engine sees (schema ``model-fingerprint/v1``).
-This module compares that fingerprint against the standard, against other
-engines' fingerprints, and against a per-repo divergence ledger that lists
-every known, issue-tracked deviation.
+This module compares that fingerprint against the standard and against a
+per-repo divergence ledger that lists every known, issue-tracked deviation.
+Shared fingerprint assembly and the CLI live in ``assemble.py``.
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ import hashlib
 import json
 import math
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -97,7 +98,7 @@ def expected_coordinates(std: dict[str, Any]) -> dict[str, tuple[float, float]]:
 
 
 def to_canonical(
-    std: dict[str, Any], engine: str, vec: tuple[float, float, float] | list[float]
+    std: dict[str, Any], engine: str, vec: Sequence[float]
 ) -> tuple[float, float, float]:
     """Rotate a vector from an engine's world frame into the canonical Z-up frame."""
     frames = std["frame"]["engine_frames"]
@@ -290,46 +291,3 @@ def reconcile(
         else:
             unexpected.append(div)
     return unexpected, sorted(set(entries) - used)
-
-
-# --------------------------------------------------------------------------
-# Cross-engine comparison
-# --------------------------------------------------------------------------
-
-
-def compare_fingerprints(
-    fingerprints: list[dict[str, Any]], std: dict[str, Any]
-) -> list[Divergence]:
-    """Compare loaded fingerprints of the same exercise pairwise across engines."""
-    loaded = sorted(
-        (fp for fp in fingerprints if fp.get("loaded_in_engine")),
-        key=lambda fp: str(fp["engine"]),
-    )
-    tol_m = std["tolerances"]["mass_rel"]
-    tol_x = std["tolerances"]["cross_engine_position_abs_m"]
-    out: list[Divergence] = []
-    for i, a in enumerate(loaded):
-        for b in loaded[i + 1 :]:
-            if a.get("exercise") != b.get("exercise"):
-                continue
-            tag = f"cross.{a['engine']}~{b['engine']}"
-            for seg in sorted(set(a["segments"]) & set(b["segments"])):
-                ma, mb = a["segments"][seg]["mass_kg"], b["segments"][seg]["mass_kg"]
-                if not _close(ma, mb, rel_tol=tol_m, abs_tol=1e-9):
-                    out.append(
-                        Divergence(f"{tag}.segment.{seg}.mass_kg", ma, mb, "mass")
-                    )
-            pa = a.get("segment_origins_neutral_m") or {}
-            pb = b.get("segment_origins_neutral_m") or {}
-            for seg in sorted(set(pa) & set(pb)):
-                if math.dist(pa[seg], pb[seg]) > tol_x:
-                    out.append(
-                        Divergence(
-                            f"{tag}.segment.{seg}.origin_m",
-                            pa[seg],
-                            pb[seg],
-                            f"{seg} origin differs by "
-                            f"{math.dist(pa[seg], pb[seg]):.3f} m",
-                        )
-                    )
-    return out

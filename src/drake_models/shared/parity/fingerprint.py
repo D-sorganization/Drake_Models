@@ -9,14 +9,9 @@ from Python constants.  Run ``python -m drake_models.shared.parity.fingerprint
 
 from __future__ import annotations
 
-import argparse
 import importlib
 import importlib.metadata
-import json
 import logging
-import math
-import sys
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -25,6 +20,12 @@ from drake_models.__main__ import BUILDER_FUNCTIONS, EXERCISES
 from drake_models.loader import LoadedExercise, load_sdf
 from drake_models.model_pack import list_exercises, manifest
 from drake_models.shared.parity._canonical import conformance
+from drake_models.shared.parity._canonical.assemble import (
+    assemble_fingerprint,
+    capabilities_from_manifest,
+    failed_fingerprint,
+    run_fingerprint_cli,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,56 +57,34 @@ def _instance_bodies(loaded: LoadedExercise) -> list[Any]:
     return [plant.get_body(i) for i in plant.GetBodyIndices(loaded.model_instance)]
 
 
-def _human_bodies(loaded: LoadedExercise, std: dict[str, Any]) -> dict[str, Any]:
-    """Return ``{canonical_segment: body}`` for the 15 human segments only.
-
-    Zero-mass virtual links of compound joints, the barbell, bench and ground
-    are not in the standard's segment list and are excluded by name.
-    """
-    wanted = conformance.expected_segments(std)
-    out: dict[str, Any] = {}
-    for body in _instance_bodies(loaded):
-        name = SEGMENT_ALIASES.get(body.name(), body.name())
-        if name in wanted:
-            out[name] = body
-    return out
-
-
-def _coordinates(plant: Any, std: dict[str, Any]) -> dict[str, Any]:
-    """Return ``{canonical_coordinate: {"limits_rad": [lo, hi]}}`` from joints."""
-    wanted = conformance.expected_coordinates(std)
-    out: dict[str, Any] = {}
+def _coordinate_limits(plant: Any) -> dict[str, tuple[float, float]]:
+    """Return raw ``{joint_name: (lo, hi)}`` for every 1-DOF revolute joint."""
+    out: dict[str, tuple[float, float]] = {}
     for index in plant.GetJointIndices():
         joint = plant.get_joint(index)
-        name = COORDINATE_ALIASES.get(joint.name(), joint.name())
-        if joint.type_name() == "revolute" and name in wanted:
-            lo = float(joint.position_lower_limits()[0])
-            hi = float(joint.position_upper_limits()[0])
-            out[name] = {"limits_rad": [lo, hi]}
+        if joint.type_name() == "revolute":
+            out[joint.name()] = (
+                float(joint.position_lower_limits()[0]),
+                float(joint.position_upper_limits()[0]),
+            )
     return out
 
 
-def _neutral_origins(
-    loaded: LoadedExercise, bodies: dict[str, Any], std: dict[str, Any]
-) -> dict[str, list[float]]:
-    """World origin of each segment at q=0 / free bodies at identity, minus pelvis."""
+def _neutral_origins(loaded: LoadedExercise) -> dict[str, list[float]]:
+    """Raw world origins of every body at q=0, free bodies at identity."""
     plant = loaded.plant
+    bodies = _instance_bodies(loaded)
     q = np.zeros(plant.num_positions())
-    for body in _instance_bodies(loaded):
+    for body in bodies:
         if body.is_floating_base_body():
             q[body.floating_positions_start()] = 1.0  # unit quaternion w
     context = plant.CreateDefaultContext()
     plant.SetPositions(context, q)
-    origins = {
-        name: np.asarray(plant.EvalBodyPoseInWorld(context, body).translation())
-        for name, body in bodies.items()
-    }
-    pelvis = origins["pelvis"]
     return {
-        name: [
-            float(v) for v in conformance.to_canonical(std, ENGINE, tuple(pos - pelvis))
+        b.name(): [
+            float(v) for v in plant.EvalBodyPoseInWorld(context, b).translation()
         ]
-        for name, pos in origins.items()
+        for b in bodies
     }
 
 
@@ -143,99 +122,50 @@ def _phase_count(exercise: str, std: dict[str, Any]) -> int | None:
         return None
 
 
-def _capabilities() -> dict[str, str]:
-    """Return ``{key: level}`` from the ``capabilities`` block of the manifest."""
-    block = manifest().get("capabilities", {})
-    return {key: str(spec["level"]) for key, spec in block.items()}
-
-
 def _engine_version() -> str:
     """Return the installed Drake version string."""
     return importlib.metadata.version("drake")
 
 
-def _measure(
-    loaded: LoadedExercise, exercise: str, std: dict[str, Any]
-) -> dict[str, Any]:
-    """Return the engine-measured fingerprint fields for a loaded model."""
-    plant = loaded.plant
-    bodies = _human_bodies(loaded, std)
-    segments = {n: {"mass_kg": float(b.default_mass())} for n, b in bodies.items()}
-    pelvis = bodies["pelvis"]
-    gravity = [float(v) for v in plant.gravity_field().gravity_vector()]
-    out: dict[str, Any] = {
-        "loaded_in_engine": True,
-        "load_error": None,
-        "root_joint": "free" if pelvis.is_floating_base_body() else "fixed",
-        "gravity_canonical": list(conformance.to_canonical(std, ENGINE, gravity)),
-        "body_mass_kg": sum(v["mass_kg"] for v in segments.values()),
-        "segments": segments,
-        "coordinates": _coordinates(plant, std),
-        "segment_origins_neutral_m": _neutral_origins(loaded, bodies, std),
-    }
-    friction = _ground_friction(loaded)
-    if friction is not None:
-        out["ground_friction"] = friction
-    phases = _phase_count(exercise, std)
-    if phases is not None:
-        out["phase_count"] = phases
-    return out
-
-
 def fingerprint(exercise: str) -> dict[str, Any]:
     """Build *exercise*, load it in real Drake and return its fingerprint.
-
-    Postconditions: ``schema`` is ``model-fingerprint/v1`` and, when loaded,
-    every segment mass is finite.  Any load exception yields
-    ``loaded_in_engine=False`` with ``load_error`` set.
 
     Raises:
         ValueError: If *exercise* is not a known exercise id.
     """
     std = conformance.load_standard()
-    fp: dict[str, Any] = {
-        "schema": conformance.FINGERPRINT_SCHEMA,
-        "engine": ENGINE,
-        "engine_version": _engine_version(),
-        "exercise": exercise,
-        "standard_sha256": conformance.standard_sha256(),
-        "capabilities": _capabilities(),
-        "loaded_in_engine": False,
-        "load_error": None,
-    }
+    version = _engine_version()
     sdf = _build_sdf(exercise)
     try:
         loaded = load_sdf(sdf, exercise)
-        fp.update(_measure(loaded, exercise, std))
+        plant = loaded.plant
+        pelvis = plant.GetBodyByName("pelvis", loaded.model_instance)
+        return assemble_fingerprint(
+            engine=ENGINE,
+            engine_version=version,
+            exercise=exercise,
+            std=std,
+            root_joint="free" if pelvis.is_floating_base_body() else "fixed",
+            gravity_engine=[float(v) for v in plant.gravity_field().gravity_vector()],
+            segment_masses_kg={
+                b.name(): float(b.default_mass()) for b in _instance_bodies(loaded)
+            },
+            coordinate_limits_rad=_coordinate_limits(plant),
+            segment_origins_engine_m=_neutral_origins(loaded),
+            capabilities=capabilities_from_manifest(manifest(), std),
+            coordinate_aliases=COORDINATE_ALIASES,
+            segment_aliases=SEGMENT_ALIASES,
+            ground_friction=_ground_friction(loaded),
+            phase_count=_phase_count(exercise, std),
+        )
     except Exception as exc:  # noqa: BLE001 - any engine failure is reported
         logger.warning("Drake load failed for %s: %s", exercise, exc)
-        fp.update({"loaded_in_engine": False, "load_error": str(exc)})
-        return fp
-    masses = [v["mass_kg"] for v in fp["segments"].values()]
-    assert all(math.isfinite(m) for m in masses), "non-finite segment mass"
-    return fp
+        return failed_fingerprint(ENGINE, version, exercise, exc)
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI: write fingerprints as JSON (``--exercise X`` or ``--all``)."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--exercise", choices=sorted(EXERCISES))
-    group.add_argument("--all", action="store_true")
-    parser.add_argument("--out", type=Path, default=None, help="output directory")
-    args = parser.parse_args(argv)
-    exercises = list_exercises() if args.all else [args.exercise]
-    failed = 0
-    for exercise in exercises:
-        fp = fingerprint(exercise)
-        failed += 0 if fp["loaded_in_engine"] else 1
-        text = json.dumps(fp, indent=2, sort_keys=True)
-        if args.out is None:
-            sys.stdout.write(text + "\n")
-            continue
-        args.out.mkdir(parents=True, exist_ok=True)
-        (args.out / f"{ENGINE}_{exercise}.json").write_text(text + "\n")
-    return 1 if failed else 0
+    """CLI: ``--exercise X | --all --out DIR`` (shared canonical runner)."""
+    return run_fingerprint_cli(argv, fingerprint, list_exercises(), ENGINE)
 
 
 if __name__ == "__main__":
