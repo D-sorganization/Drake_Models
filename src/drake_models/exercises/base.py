@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 
 from drake_models.shared.barbell import BarbellSpec, create_barbell_links
 from drake_models.shared.body import BodyModelSpec, create_full_body
+from drake_models.shared.body.body_anthropometrics import PELVIS_STANDING_HEIGHT
 from drake_models.shared.contracts.postconditions import ensure_valid_xml
 from drake_models.shared.utils.sdf_helpers import (
     add_collision_filter_group,
@@ -292,7 +293,9 @@ class ExerciseModelBuilder(ABC):
         self.attach_barbell(model, body_links, barbell_links)
         self.set_initial_pose(model)
         self._add_collision_filters(model)
-        resolve_link_poses(model)
+        resolve_link_poses(
+            model, {"pelvis": (0.0, 0.0, PELVIS_STANDING_HEIGHT, 0.0, 0.0, 0.0)}
+        )
         xml_str = serialize_model(root)
         ensure_valid_xml(xml_str)  # postcondition: well-formed XML
         return xml_str

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import math
 import xml.etree.ElementTree as ET
+from collections.abc import Mapping, Sequence
 
 import numpy as np
 from numpy.typing import NDArray
@@ -70,17 +71,26 @@ def _seed_roots(
     pending: list[_JointEdge],
     links: dict[str | None, ET.Element],
     world: dict[str, NDArray[np.float64]],
+    root_poses: Mapping[str, Sequence[float]],
 ) -> None:
-    """Place unjointed parent links (the free roots) at the model origin."""
+    """Place unjointed parent links (the free roots) at their default pose.
+
+    A root listed in *root_poses* (``x y z roll pitch yaw``) starts there;
+    any other root starts at the model origin.
+    """
     roots = {p for p, _c, _ in pending} - {c for _p, c, _ in pending}
     roots = {r for r in roots if r in links}
     if not roots:
         raise ValueError("joint tree has a cycle or unknown parent link")
-    world.update({r: np.eye(4) for r in roots})
+    for r in roots:
+        pose = root_poses.get(r)
+        world[r] = np.eye(4) if pose is None else _transform(list(pose))
 
 
 def _compose_world_transforms(
-    edges: list[_JointEdge], links: dict[str | None, ET.Element]
+    edges: list[_JointEdge],
+    links: dict[str | None, ET.Element],
+    root_poses: Mapping[str, Sequence[float]],
 ) -> dict[str, NDArray[np.float64]]:
     """Walk the joint tree and return each reachable link's model-frame pose."""
     world: dict[str, NDArray[np.float64]] = {_WORLD: np.eye(4)}
@@ -88,7 +98,7 @@ def _compose_world_transforms(
     while pending:
         ready, waiting = _split_ready(pending, world)
         if not ready:
-            _seed_roots(pending, links, world)
+            _seed_roots(pending, links, world, root_poses)
             continue
         for parent, child, pose in ready:
             world[child] = world[parent] @ _transform(_floats(pose.text))
@@ -116,16 +126,20 @@ def _write_link_pose(el: ET.Element, values: tuple[float, ...]) -> None:
     ET.SubElement(el, "pose").text = pose_str(*values)
 
 
-def resolve_link_poses(model: ET.Element) -> dict[str, tuple[float, ...]]:
+def resolve_link_poses(
+    model: ET.Element, root_poses: Mapping[str, Sequence[float]] | None = None
+) -> dict[str, tuple[float, ...]]:
     """Write ``<pose>`` on every jointed link and return the poses by link name.
 
-    Links without a parent joint (the free root, an unattached barbell) keep
-    the model-frame identity.  Joints whose parent is ``world`` are taken as
+    Links without a parent joint (the free root, an unattached barbell) start
+    at their entry in *root_poses*, else at the model-frame identity. Drake
+    takes a free body's link ``<pose>`` as its default pose, so a plain
+    ``Parser`` load keeps the standing height (#359).  Joints whose parent is ``world`` are taken as
     world-relative.  Raises ``ValueError`` if a joint chain never reaches a
     resolved link (a cycle or a missing parent link).
     """
     links = {el.get("name"): el for el in model.findall("link")}
-    world = _compose_world_transforms(_joint_edges(model), links)
+    world = _compose_world_transforms(_joint_edges(model), links, root_poses or {})
     resolved: dict[str, tuple[float, ...]] = {}
     for name, transform in world.items():
         if name in links:

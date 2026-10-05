@@ -1,7 +1,9 @@
 """Real-engine load test (pydrake) for every exercise in ``model_pack.yaml``.
 
-Not marked ``slow`` / ``live_simulation`` / ``requires_drake``: pydrake is in
-the ``dev`` extra so this runs in the default lane (issue #359).
+pydrake is in the ``dev`` extra, so CI runs this module in the default lane
+(issue #359). Without pydrake the whole module is skipped (AGENTS.md: tests
+must not require pydrake). It is deliberately not marked ``requires_drake``,
+which the CI lane deselects.
 """
 
 from __future__ import annotations
@@ -13,15 +15,20 @@ from importlib import resources
 from pathlib import Path
 
 import pytest
-from pydrake.multibody.parsing import Parser
-from pydrake.multibody.plant import MultibodyPlant
 
-from drake_models.__main__ import EXERCISES
-from drake_models.loader import load_sdf
-from drake_models.model_pack import list_exercises, manifest
-from drake_models.shared.body.body_anthropometrics import PELVIS_STANDING_HEIGHT
-from drake_models.shared.parity._canonical import conformance
-from drake_models.shared.parity.fingerprint import _build_sdf, fingerprint
+pytest.importorskip("pydrake")
+
+from pydrake.multibody.parsing import Parser  # noqa: E402
+from pydrake.multibody.plant import MultibodyPlant  # noqa: E402
+
+from drake_models.__main__ import EXERCISES  # noqa: E402
+from drake_models.loader import load_sdf  # noqa: E402
+from drake_models.model_pack import list_exercises, manifest  # noqa: E402
+from drake_models.shared.body.body_anthropometrics import (
+    PELVIS_STANDING_HEIGHT,  # noqa: E402
+)
+from drake_models.shared.parity._canonical import conformance  # noqa: E402
+from drake_models.shared.parity.fingerprint import _build_sdf, fingerprint  # noqa: E402
 
 EXERCISE_IDS = list_exercises()
 # 28 human coordinates + 7 positions (quaternion + translation) per free body.
@@ -55,6 +62,20 @@ def test_exercise_loads_in_drake(exercise: str, tmp_path: Path) -> None:
     expected = HUMAN_COORDINATES + FREE_BODIES[exercise] * FREE_BODY_POSITIONS
     assert plant.num_positions() == expected
     assert plant.num_bodies() > 16
+
+
+@pytest.mark.parametrize("exercise", [e for e in EXERCISE_IDS if FREE_BODIES[e] > 0])
+def test_raw_parse_keeps_pelvis_standing_height(exercise: str, tmp_path: Path) -> None:
+    """Loading the SDF with a plain Parser (no load_sdf) keeps the pelvis height."""
+    sdf = tmp_path / f"{exercise}.sdf"
+    sdf.write_text(_build_sdf(exercise), encoding="utf-8")
+    plant = MultibodyPlant(time_step=0.0)
+    Parser(plant).AddModels(str(sdf))
+    plant.Finalize()
+    context = plant.CreateDefaultContext()
+    pelvis = plant.GetBodyByName("pelvis")
+    z = plant.EvalBodyPoseInWorld(context, pelvis).translation()[2]
+    assert z == pytest.approx(PELVIS_STANDING_HEIGHT, abs=1e-9)
 
 
 # --- Conformance against the canonical bundle -------------------------------
