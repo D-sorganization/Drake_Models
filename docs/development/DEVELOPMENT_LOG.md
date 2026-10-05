@@ -67,6 +67,19 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Shipped (Last 90 Days)
 
+### DL-#2019 · Vendor RM-5 Change-Fragment Tooling and Test Suite
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #2019
+- **Branch:** feat/2019-vendor-rm-5-change-fragment-tooling
+- **PR:** #377, #378
+- **Paths:** see #377
+- **Started:** 2026-10-05
+- **Last verified:** 2026-10-05 (`52ee5b65`; collated from changes/2019-wire-collate-changes-workflow-and-check.md)
+- **Summary:** vendor RM-5 change-fragment tooling and test suite
+- **Next step:** Shipped in PR #377.
+
 Entries stay here for 90 days after merge, then move to the archive.
 
 ## Archive

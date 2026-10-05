@@ -138,8 +138,10 @@ edited here and `tests/parity/` verifies their hashes against `MANIFEST.json`.
 
 | Date       | PR   | Changes                                                                                                                                                                                                                                                                       |
 | ---------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-05 | #361 | chore(changes): vendor RM-5 change-fragment tooling and test suite (ref Repository_Management#2019)                                                                                                                                                                           |
+| 2026-10-05 | #378 | wire collate-changes workflow and check_spec_freshness into spec-check |
+| 2026-10-05 | #377 | vendor RM-5 change-fragment tooling and test suite |
+| 2026-10-05 | #361 | chore(changes): vendor RM-5 change-fragment tooling and test suite (ref Repository_Management#2019) |
 | 2026-10-05 | #360 | Generated SDF now parses in pydrake (namespaced initial pose, no floating joint type, unique filter-group names, bilateral parent links, poses relative_to parent); new loader applies pose and canonical gravity; real-engine parity conformance against the fleet standard. |
-| 2026-09-14 | #336 | Fix expression collision in local-only-runner-guard workflow (#335).                                                                                                                                                                                                          |
-| 2026-09-14 | #334 | Downgraded non-existent workflow action versions to @v4/@v5 across workflows (#333).                                                                                                                                                                                          |
-| 2026-09-10 | #330 | Adopt maintainable Mermaid C4 architecture-map contract (#1598)                                                                                                                                                                                                               |
+| 2026-09-14 | #336 | Fix expression collision in local-only-runner-guard workflow (#335). |
+| 2026-09-14 | #334 | Downgraded non-existent workflow action versions to @v4/@v5 across workflows (#333). |
+| 2026-09-10 | #330 | Adopt maintainable Mermaid C4 architecture-map contract (#1598) |
