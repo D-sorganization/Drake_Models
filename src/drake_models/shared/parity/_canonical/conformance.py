@@ -120,7 +120,7 @@ def _close(a: float, b: float, abs_tol: float = 0.0, rel_tol: float = 0.0) -> bo
 
 def _check_segments(fp: dict[str, Any], std: dict[str, Any]) -> list[Divergence]:
     tol = std["tolerances"]["mass_rel"]
-    expected = expected_segments(std, fp.get("body_mass_kg"))
+    expected = expected_segments(std)
     measured = fp.get("segments", {})
     out = [
         Divergence(f"segment.{n}.missing", n, None, f"segment {n} not in model")
@@ -193,6 +193,12 @@ def _check_friction(fp: dict[str, Any], std: dict[str, Any]) -> list[Divergence]
 
 def _check_scalars(fp: dict[str, Any], std: dict[str, Any]) -> list[Divergence]:
     out: list[Divergence] = []
+    want_mass = std["anthropometrics"]["body_mass_kg"]
+    body_mass = fp.get("body_mass_kg")
+    if body_mass is not None and not _close(
+        float(body_mass), want_mass, rel_tol=std["tolerances"]["mass_rel"]
+    ):
+        out.append(Divergence("body_mass_kg", want_mass, body_mass, "human body mass"))
     if fp.get("standard_sha256") != standard_sha256_for(std):
         out.append(
             Divergence(
