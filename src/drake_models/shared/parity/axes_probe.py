@@ -14,7 +14,7 @@ from typing import Any
 
 import numpy as np
 
-from drake_models.shared.parity._canonical import kinematics
+from drake_models.shared.parity._canonical import kinematics, topology
 
 Vec3 = tuple[float, float, float]
 
@@ -67,4 +67,43 @@ def measure_coordinate_axes(
         p0, s0 = _rotations(plant, base, ("pelvis", segment))
         p1, s1 = _rotations(plant, probed, ("pelvis", segment))
         out[name] = kinematics.segment_axis(p0, s0, p1, s1)
+    return out
+
+
+def pelvis_rotation(plant: Any) -> list[list[float]]:
+    """World rotation of the pelvis at the all-zero pose (welded bench: not I)."""
+    context = plant.CreateDefaultContext()
+    plant.SetPositions(context, zero_positions(plant))
+    pose = plant.EvalBodyPoseInWorld(context, plant.GetBodyByName("pelvis"))
+    return [[float(v) for v in row] for row in pose.rotation().matrix()]
+
+
+def origins_at_test_poses(
+    plant: Any,
+    std: dict[str, Any],
+    bodies: list[str],
+    joint_names: Mapping[str, str] | None = None,
+) -> dict[str, dict[str, list[float]]]:
+    """``{pose: {body: world origin}}`` at each of the standard's test poses.
+
+    Every coordinate not in the pose is zero (floating bases at identity), as
+    the reference FK in ``topology`` assumes.
+    """
+    out: dict[str, dict[str, list[float]]] = {}
+    for pose, angles in topology.standard_poses(std).items():
+        q = zero_positions(plant)
+        for coord, angle in angles.items():
+            name = (joint_names or {}).get(coord, coord)
+            q[plant.GetJointByName(name).position_start()] = angle
+        context = plant.CreateDefaultContext()
+        plant.SetPositions(context, q)
+        out[pose] = {
+            b: [
+                float(v)
+                for v in plant.EvalBodyPoseInWorld(
+                    context, plant.GetBodyByName(b)
+                ).translation()
+            ]
+            for b in bodies
+        }
     return out

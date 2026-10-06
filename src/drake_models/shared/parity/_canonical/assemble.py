@@ -36,6 +36,7 @@ _CORE_KEYS = frozenset(
         "loaded_in_engine", "load_error", "root_joint", "gravity_canonical",
         "body_mass_kg", "segments", "coordinates", "segment_origins_neutral_m",
         "capabilities", "ground_friction", "phase_count", "coordinate_axes",
+        "segment_origins_test_poses_m",
     }
 )  # fmt: skip
 
@@ -76,6 +77,8 @@ def assemble_fingerprint(
     phase_count: int | None = None,
     extras: Mapping[str, Any] = _NO_EXTRAS,
     coordinate_axes_engine: Mapping[str, Vec3] | None = None,
+    pelvis_rotation_engine: Sequence[Vec3] | None = None,
+    segment_origins_test_poses_engine_m: Mapping[str, Mapping[str, Vec3]] | None = None,
 ) -> dict[str, Any]:
     """Build a ``model-fingerprint/v1`` dict from raw engine measurements.
 
@@ -84,6 +87,10 @@ def assemble_fingerprint(
     dropped; origins are rotated into the canonical Z-up frame and re-based on
     the pelvis. ``coordinate_axes_engine`` (measured with ``kinematics.
     segment_axis``) is aliased, rotated into the canonical frame and normalised.
+    With ``pelvis_rotation_engine`` (the pelvis's world rotation at the neutral
+    pose) origins are expressed in the pelvis frame, so a welded, supine pelvis
+    still reports a standing layout; ``segment_origins_test_poses_engine_m``
+    (origins at ``topology.standard_poses``) is processed the same way.
 
     Postconditions: every reported mass, limit, origin and gravity component is
     finite; ``extras`` never overwrite a core key.
@@ -91,9 +98,14 @@ def assemble_fingerprint(
     human = set(c.expected_segments(std))
     masses = _human_masses(segment_masses_kg, segment_aliases, human)
     limits = _canonicalize(coordinate_limits_rad, coordinate_aliases, "coord")
-    origins = _human_origins(
-        std, engine, segment_origins_engine_m, segment_aliases, human
-    )
+    frame = (std, engine, segment_aliases, human, pelvis_rotation_engine)
+    origins = _human_origins(segment_origins_engine_m, *frame)
+    poses = None
+    if segment_origins_test_poses_engine_m is not None:
+        poses = {
+            pose: dict(sorted(_human_origins(raw, *frame).items()))
+            for pose, raw in sorted(segment_origins_test_poses_engine_m.items())
+        }
     gravity = list(c.to_canonical(std, engine, gravity_engine))
     _check_finite(masses, limits, origins, gravity)
     fp: dict[str, Any] = {
@@ -121,6 +133,7 @@ def assemble_fingerprint(
         "coordinate_axes": _canonical_axes(
             std, engine, coordinate_axes_engine, coordinate_aliases
         ),
+        "segment_origins_test_poses_m": poses,
     }
     fp.update({k: v for k, v in optional.items() if v is not None})
     _merge_extras(fp, extras)
@@ -169,21 +182,29 @@ def _human_masses(
 
 
 def _human_origins(
+    raw: Mapping[str, Vec3],
     std: dict[str, Any],
     engine: str,
-    raw: Mapping[str, Vec3],
     aliases: Mapping[str, str],
     human: set[str],
+    pelvis_rot: Sequence[Vec3] | None,
 ) -> dict[str, list[float]]:
-    """Human segment origins in the canonical frame, re-based on the pelvis."""
+    """Human segment origins, canonical frame, relative to the pelvis.
+
+    Re-based on the pelvis origin; with *pelvis_rot* (engine world rotation of
+    the pelvis) also expressed in the pelvis's own axes.
+    """
     named = _canonicalize(raw, aliases, "segment")
-    canon = {k: c.to_canonical(std, engine, v) for k, v in named.items()}
-    pelvis = canon.get("pelvis", (0.0, 0.0, 0.0))
-    return {
-        k: [a - b for a, b in zip(v, pelvis, strict=True)]
-        for k, v in canon.items()
-        if k in human
-    }
+    base = named.get("pelvis", (0.0, 0.0, 0.0))
+    out: dict[str, list[float]] = {}
+    for name, vec in named.items():
+        if name not in human:
+            continue
+        rel = [float(a) - float(b) for a, b in zip(vec, base, strict=True)]
+        if pelvis_rot is not None:  # pelvisᵀ · rel
+            rel = [sum(pelvis_rot[m][i] * rel[m] for m in range(3)) for i in range(3)]
+        out[name] = list(c.to_canonical(std, engine, rel))
+    return out
 
 
 def _merge_extras(fp: dict[str, Any], extras: Mapping[str, Any]) -> None:

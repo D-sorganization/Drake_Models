@@ -26,6 +26,8 @@ from drake_models.shared.parity._canonical.assemble import (
 )
 from drake_models.shared.parity.axes_probe import (
     measure_coordinate_axes,
+    origins_at_test_poses,
+    pelvis_rotation,
     zero_positions,
 )
 
@@ -154,6 +156,13 @@ def fingerprint(exercise: str) -> dict[str, Any]:
             segment_origins_engine_m=_neutral_origins(loaded),
             coordinate_axes_engine=measure_coordinate_axes(
                 plant, std, _CANONICAL_TO_ENGINE
+            ),
+            pelvis_rotation_engine=pelvis_rotation(plant),
+            segment_origins_test_poses_engine_m=origins_at_test_poses(
+                plant,
+                std,
+                [b.name() for b in _instance_bodies(loaded)],
+                _CANONICAL_TO_ENGINE,
             ),
             capabilities=capabilities_from_manifest(manifest(), std),
             coordinate_aliases=COORDINATE_ALIASES,
