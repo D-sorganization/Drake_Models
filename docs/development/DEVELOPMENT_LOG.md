@@ -18,6 +18,19 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Active
 
+### DL-#373 · Canonical Axes and Sides
+
+- **State:** in_review
+- **Owner:** unassigned
+- **Issue:** #373
+- **Branch:** fix/issue-373-canonical-axes
+- **PR:** #380
+- **Paths:** see #380
+- **Started:** 2026-10-06
+- **Last verified:** 2026-10-06 (`4f019ef4`; collated from changes/373-drake-bodies-now-use-the-canonical-frame.md)
+- **Summary:** Drake bodies now use the canonical frame: left limbs at +Y, per-coordinate axes from the parity standard, barbell left sleeve at +Y, exercise poses re-signed, feet grounded in the initial pose, and the fingerprint reports measured coordinate axes (Repository_Management#2011).
+- **Next step:** Merge the PR.
+
 ### DL-#1598 · Adopt Mermaid C4 Architecture Map Contract
 
 - **State:** in_progress
@@ -66,6 +79,19 @@ reachable from any live state and `abandoned` from `parked`.
   definition.
 
 ## Shipped (Last 90 Days)
+
+### DL-#2011 · Fingerprint Reports Test-Pose Origins in the Pelvis Frame
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #2011
+- **Branch:** feat/issue-2011-test-pose-origins
+- **PR:** #383
+- **Paths:** see #383
+- **Started:** 2026-10-06
+- **Last verified:** 2026-10-06 (`093e36fb`; collated from changes/2011-test-pose-origins.md)
+- **Summary:** Re-vendored parity bundle (standard 1.2.0, topology.py, Repository_Management#2011 slice 2). The Drake fingerprint reports the pelvis rotation and segment origins at the standard's three test poses; conformance checks them against the reference forward kinematics with zero origin and pose divergences for every exercise.
+- **Next step:** Shipped in PR #383.
 
 ### DL-#2019 · Vendor RM-5 Change-Fragment Tooling and Test Suite
 
