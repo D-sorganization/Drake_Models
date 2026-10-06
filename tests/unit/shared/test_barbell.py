@@ -260,7 +260,7 @@ class TestWeldSleeves:
         joints = model.findall("joint[@type='fixed']")  # type: ignore
         assert len(joints) == 2
 
-    def test_left_at_negative_y(self) -> None:
+    def test_left_at_positive_y(self) -> None:
         model = ET.Element("model")
         _weld_sleeves(
             model,
@@ -275,4 +275,4 @@ class TestWeldSleeves:
             if joint.get("name") == "barbell_left_weld":  # type: ignore
                 pose_text = joint.find("pose").text  # type: ignore
                 y_val = float(pose_text.split()[1])
-                assert y_val < 0  # type: ignore
+                assert y_val > 0  # type: ignore  # left is canonical +Y

@@ -1,6 +1,6 @@
 {
   "schema": "biomech-parity-standard/v1",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Canonical cross-engine parameters for the MuJoCo, Drake, Pinocchio and OpenSim exercise model packs. Edit ONLY in Repository_Management/shared_scripts/model_parity/; every model pack vendors a byte-identical copy.",
   "frame": {
     "canonical_up_axis": "+Z",
@@ -52,6 +52,28 @@
     {"name": "ankle_{side}_flex", "limits_deg": [-20, 50]},
     {"name": "ankle_{side}_invert", "limits_deg": [-20, 20]}
   ],
+  "kinematics": {
+    "description": "Positive sense of every coordinate (Repository_Management#2011). axis is the canonical-frame rotation axis (X forward, Y left, Z up) of the coordinate's segment relative to the pelvis at the all-zero pose, given for the RIGHT side (or the midline joint); mirror=true negates it on the left so equal left/right values give a symmetric pose. Bilateral segments sit at +Y on the left and -Y on the right. Adapters report the measured axis as coordinate_axes after rotating the coordinate by probe_angle_deg.",
+    "probe_angle_deg": 10,
+    "axes": [
+      {"name": "lumbar_flex", "segment": "torso", "axis": [0, 1, 0], "mirror": false, "positive": "trunk bends forward"},
+      {"name": "lumbar_lateral", "segment": "torso", "axis": [-1, 0, 0], "mirror": false, "positive": "trunk bends toward the left"},
+      {"name": "lumbar_rotate", "segment": "torso", "axis": [0, 0, 1], "mirror": false, "positive": "chest turns toward the left"},
+      {"name": "neck_flex", "segment": "head", "axis": [0, 1, 0], "mirror": false, "positive": "head bends forward"},
+      {"name": "shoulder_{side}_flex", "segment": "upper_arm_{side}", "axis": [0, -1, 0], "mirror": false, "positive": "arm swings forward"},
+      {"name": "shoulder_{side}_adduct", "segment": "upper_arm_{side}", "axis": [1, 0, 0], "mirror": true, "positive": "arm moves toward the midline"},
+      {"name": "shoulder_{side}_rotate", "segment": "upper_arm_{side}", "axis": [0, 0, 1], "mirror": true, "positive": "internal rotation"},
+      {"name": "elbow_{side}_flex", "segment": "forearm_{side}", "axis": [0, -1, 0], "mirror": false, "positive": "forearm swings forward"},
+      {"name": "wrist_{side}_flex", "segment": "hand_{side}", "axis": [0, -1, 0], "mirror": false, "positive": "hand swings forward"},
+      {"name": "wrist_{side}_deviate", "segment": "hand_{side}", "axis": [1, 0, 0], "mirror": true, "positive": "hand moves toward the midline"},
+      {"name": "hip_{side}_flex", "segment": "thigh_{side}", "axis": [0, -1, 0], "mirror": false, "positive": "thigh swings forward"},
+      {"name": "hip_{side}_adduct", "segment": "thigh_{side}", "axis": [1, 0, 0], "mirror": true, "positive": "thigh moves toward the midline"},
+      {"name": "hip_{side}_rotate", "segment": "thigh_{side}", "axis": [0, 0, 1], "mirror": true, "positive": "internal rotation"},
+      {"name": "knee_{side}_flex", "segment": "shank_{side}", "axis": [0, -1, 0], "mirror": false, "positive": "shank swings forward (flexion is negative)"},
+      {"name": "ankle_{side}_flex", "segment": "foot_{side}", "axis": [0, -1, 0], "mirror": false, "positive": "dorsiflexion (toes up)"},
+      {"name": "ankle_{side}_invert", "segment": "foot_{side}", "axis": [1, 0, 0], "mirror": true, "positive": "sole turns toward the midline"}
+    ]
+  },
   "sides": ["l", "r"],
   "barbell": {
     "mens": {
@@ -86,6 +108,7 @@
     "gravity_abs_mps2": 1e-6,
     "friction_abs": 1e-6,
     "cross_engine_position_abs_m": 0.02,
+    "axis_angle_abs_rad": 0.01,
     "standing_grf_rel": 0.05
   }
 }

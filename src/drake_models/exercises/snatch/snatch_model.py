@@ -37,7 +37,12 @@ logger = logging.getLogger(__name__)
 SNATCH_INITIAL_HIP_ANGLE = math.radians(80)  # 80 degrees hip flexion
 SNATCH_INITIAL_KNEE_ANGLE = math.radians(-60)  # 60 degrees knee flexion
 SNATCH_INITIAL_SHOULDER_ANGLE = math.radians(30)  # 30 degrees shoulder flexion
-SNATCH_INITIAL_SHOULDER_ABD = math.radians(30)  # 30 degrees abduction for wide grip
+# Positive shoulder adduction is toward the midline, so the 30 degrees of
+# abduction for the wide grip is negative.
+SNATCH_INITIAL_SHOULDER_ADDUCT = math.radians(-30)
+# The bar is welded rigidly to the hand: wrist deviation (same mirrored X axis
+# as shoulder adduction) cancels the arm's tilt so the hands and bar stay level.
+SNATCH_INITIAL_WRIST_DEVIATE = -SNATCH_INITIAL_SHOULDER_ADDUCT
 
 # Grip offset from barbell center to each hand (meters).
 # Snatch grip is ~1.5x shoulder width (approx 0.55-0.60 m from center).
@@ -89,8 +94,10 @@ class SnatchModelBuilder(ExerciseModelBuilder):
                 "knee_r": SNATCH_INITIAL_KNEE_ANGLE,
                 "shoulder_l_flex": SNATCH_INITIAL_SHOULDER_ANGLE,
                 "shoulder_r_flex": SNATCH_INITIAL_SHOULDER_ANGLE,
-                "shoulder_l_adduct": SNATCH_INITIAL_SHOULDER_ABD,
-                "shoulder_r_adduct": SNATCH_INITIAL_SHOULDER_ABD,
+                "shoulder_l_adduct": SNATCH_INITIAL_SHOULDER_ADDUCT,
+                "shoulder_r_adduct": SNATCH_INITIAL_SHOULDER_ADDUCT,
+                "wrist_l_deviate": SNATCH_INITIAL_WRIST_DEVIATE,
+                "wrist_r_deviate": SNATCH_INITIAL_WRIST_DEVIATE,
             },
         )
 

@@ -20,6 +20,7 @@ from drake_models.shared.body.body_anthropometrics import (
     BodyModelSpec,
     _seg,
 )
+from drake_models.shared.body.joint_axes import joint_axis
 from drake_models.shared.utils.geometry import (
     cylinder_inertia,
     rectangular_prism_inertia,
@@ -102,15 +103,15 @@ def _create_torso_link(
 def _wire_lumbar_joints(model: ET.Element, pelvis_length: float) -> None:
     """Wire the three revolute joints that form the lumbar 3-DOF chain.
 
-    Chain: pelvis -> lumbar_flex (X) -> v1 -> lumbar_lateral (Z)
-           -> v2 -> lumbar_rotate (Y) -> torso.
+    Chain: pelvis -> lumbar_flex (+Y) -> v1 -> lumbar_lateral (-X)
+           -> v2 -> lumbar_rotate (+Z) -> torso.
     """
     add_revolute_joint(
         model,
         name="lumbar_flex",
         parent="pelvis",
         child="lumbar_virtual_1",
-        axis_xyz=(1, 0, 0),
+        axis_xyz=joint_axis("trunk_flex"),
         pose=(0, 0, pelvis_length / 2.0, 0, 0, 0),
         lower_limit=LUMBAR_FLEX_LOWER,
         upper_limit=LUMBAR_FLEX_UPPER,
@@ -120,7 +121,7 @@ def _wire_lumbar_joints(model: ET.Element, pelvis_length: float) -> None:
         name="lumbar_lateral",
         parent="lumbar_virtual_1",
         child="lumbar_virtual_2",
-        axis_xyz=(0, 0, 1),
+        axis_xyz=joint_axis("lumbar_lateral"),
         pose=(0, 0, 0, 0, 0, 0),
         lower_limit=LUMBAR_LATERAL_LOWER,
         upper_limit=LUMBAR_LATERAL_UPPER,
@@ -130,7 +131,7 @@ def _wire_lumbar_joints(model: ET.Element, pelvis_length: float) -> None:
         name="lumbar_rotate",
         parent="lumbar_virtual_2",
         child="torso",
-        axis_xyz=(0, 1, 0),
+        axis_xyz=joint_axis("lumbar_rotate"),
         pose=(0, 0, 0, 0, 0, 0),
         lower_limit=LUMBAR_ROTATE_LOWER,
         upper_limit=LUMBAR_ROTATE_UPPER,
@@ -144,8 +145,8 @@ def _build_lumbar_joints(
 ) -> dict[str, ET.Element]:
     """Create lumbar 3-DOF compound joints and the torso link.
 
-    Chain: pelvis -> lumbar_flex (X) -> v1 -> lumbar_lateral (Z)
-           -> v2 -> lumbar_rotate (Y) -> torso.
+    Chain: pelvis -> lumbar_flex (+Y) -> v1 -> lumbar_lateral (-X)
+           -> v2 -> lumbar_rotate (+Z) -> torso.
 
     Returns dict containing torso, lumbar_virtual_1, lumbar_virtual_2.
     """
@@ -183,7 +184,7 @@ def _build_head_link(
         name="neck",
         parent="torso",
         child="head",
-        axis_xyz=(1, 0, 0),
+        axis_xyz=joint_axis("trunk_flex"),
         pose=(0, 0, t_len, 0, 0, 0),
         lower_limit=-NECK_RANGE_LIMIT,
         upper_limit=NECK_RANGE_LIMIT,
