@@ -22,7 +22,7 @@ from pydrake.multibody.parsing import Parser  # noqa: E402
 from pydrake.multibody.plant import MultibodyPlant  # noqa: E402
 
 from drake_models.__main__ import EXERCISES  # noqa: E402
-from drake_models.loader import load_sdf  # noqa: E402
+from drake_models.loader import grounded_pelvis_height, load_sdf  # noqa: E402
 from drake_models.model_pack import list_exercises, manifest  # noqa: E402
 from drake_models.shared.body.body_anthropometrics import (
     PELVIS_STANDING_HEIGHT,  # noqa: E402
@@ -132,7 +132,7 @@ def test_neutral_pose_places_segments_apart() -> None:
     """Regression: link poses must be resolved (all-zero origins was the bug)."""
     origins = fingerprint("squat")["segment_origins_neutral_m"]
     assert origins["head"][2] > origins["torso"][2] > 0.0 > origins["foot_l"][2]
-    assert origins["hand_l"][1] < 0.0 < origins["hand_r"][1]
+    assert origins["hand_l"][1] > 0.0 > origins["hand_r"][1]
 
 
 def test_wrist_knee_ankle_have_side_parents() -> None:
@@ -155,7 +155,11 @@ def test_initial_pose_applied_after_parse() -> None:
     assert joint.default_positions()[0] == pytest.approx(math.radians(5), abs=1e-5)
     pelvis = loaded.plant.GetBodyByName("pelvis")
     pose = loaded.plant.GetDefaultFloatingBaseBodyPose(pelvis)
-    assert pose.translation()[2] == pytest.approx(PELVIS_STANDING_HEIGHT)
+    # The pelvis is placed so the feet rest on the ground in the initial pose
+    # (not at the fixed neutral-stance PELVIS_STANDING_HEIGHT).
+    assert pose.translation()[2] == pytest.approx(
+        grounded_pelvis_height(loaded.plant, loaded.scene_graph)
+    )
 
 
 # --- Vendored bundle integrity ---------------------------------------------
@@ -199,3 +203,64 @@ def test_link_poses_compose_rotation_for_supine_bench() -> None:
     origins = fingerprint("bench_press")["segment_origins_neutral_m"]
     assert origins["torso"][0] < -0.05
     assert abs(origins["torso"][2]) < 1e-6
+
+
+def _lowest_sole_z(exercise: str) -> float:
+    loaded = load_sdf(_build_sdf(exercise), exercise)
+    context = loaded.plant.CreateDefaultContext()
+    from drake_models.loader import _sole_corner_heights
+
+    return min(_sole_corner_heights(loaded.plant, loaded.scene_graph, context))
+
+
+@pytest.mark.parametrize(
+    "exercise",
+    ["squat", "deadlift", "snatch", "clean_and_jerk", "gait", "sit_to_stand"],
+)
+def test_feet_rest_on_ground_in_initial_pose(exercise: str) -> None:
+    """Lowest sole point is on the floor: not floating, not penetrating."""
+    assert _lowest_sole_z(exercise) == pytest.approx(0.0, abs=1e-6)
+
+
+def test_welded_pelvis_keeps_bench_height() -> None:
+    """Bench press welds the pelvis; grounding must not move it."""
+    loaded = load_sdf(_build_sdf("bench_press"), "bench_press")
+    pelvis = loaded.plant.GetBodyByName("pelvis")
+    assert not pelvis.is_floating_base_body()
+
+
+@pytest.mark.parametrize("exercise", ["squat", "bench_press", "snatch"])
+def test_barbell_is_level_and_lateral_with_left_sleeve_at_plus_y(
+    exercise: str,
+) -> None:
+    loaded = load_sdf(_build_sdf(exercise), exercise)
+    plant = loaded.plant
+    context = plant.CreateDefaultContext()
+
+    def pose(name: str):  # noqa: ANN202
+        return plant.EvalBodyPoseInWorld(context, plant.GetBodyByName(name))
+
+    bar_y_axis = pose("barbell_shaft").rotation().matrix()[:, 1]
+    assert bar_y_axis == pytest.approx([0.0, 1.0, 0.0], abs=1e-6)
+    left = pose("barbell_left_sleeve").translation()
+    right = pose("barbell_right_sleeve").translation()
+    assert left[1] > right[1]
+    assert left[2] == pytest.approx(right[2], abs=1e-6)
+
+
+def test_bench_press_lifter_is_supine_with_hands_over_shoulders() -> None:
+    loaded = load_sdf(_build_sdf("bench_press"), "bench_press")
+    plant = loaded.plant
+    context = plant.CreateDefaultContext()
+    pelvis = plant.EvalBodyPoseInWorld(context, plant.GetBodyByName("pelvis"))
+    # chest (pelvis +X, anterior) faces world +Z
+    assert pelvis.rotation().matrix()[:, 0] == pytest.approx([0, 0, 1], abs=1e-6)
+    for side in ("l", "r"):
+        shoulder = plant.EvalBodyPoseInWorld(
+            context, plant.GetBodyByName(f"upper_arm_{side}")
+        ).translation()
+        hand = plant.EvalBodyPoseInWorld(
+            context, plant.GetBodyByName(f"hand_{side}")
+        ).translation()
+        assert hand[2] - shoulder[2] > 0.4
+        assert hand[:2] == pytest.approx(shoulder[:2], abs=1e-6)

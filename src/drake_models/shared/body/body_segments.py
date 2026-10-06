@@ -19,6 +19,7 @@ from drake_models.shared.body.body_anthropometrics import (
     _seg,
     is_bilateral,
 )
+from drake_models.shared.body.joint_axes import SIDE_SIGNS, joint_axis
 from drake_models.shared.utils.geometry import (
     cylinder_inertia,
 )
@@ -65,13 +66,13 @@ def _add_flex_joint(
     pose: tuple[float, float, float, float, float, float],
     limits: tuple[float, float],
 ) -> None:
-    """Add a flexion revolute joint (X-axis) at the given pose."""
+    """Add a flexion revolute joint (canonical -Y axis) at the given pose."""
     add_revolute_joint(
         model,
         name=name,
         parent=parent,
         child=child,
-        axis_xyz=(1, 0, 0),
+        axis_xyz=joint_axis("limb_flex"),
         pose=pose,
         lower_limit=limits[0],
         upper_limit=limits[1],
@@ -93,15 +94,15 @@ def _add_bilateral_limb(
     """Add left and right limb segments with revolute joints.
 
     Drake Z-up convention: limbs hang along -Z from their parent.
-    Lateral offset is along Y (left = -Y, right = +Y).
-    Joint axis is along X (sagittal-plane flexion/extension).
+    Lateral offset is along Y (left = +Y, right = -Y).
+    Joint axis is canonical -Y (sagittal-plane flexion/extension).
 
     Returns dict of created link elements keyed by name.
     """
     mass, length, radius = _seg(spec, seg_name)
     created: dict[str, ET.Element] = {}
 
-    for side, sign in [("l", -1.0), ("r", 1.0)]:
+    for side, sign in SIDE_SIGNS:
         link_name = f"{seg_name}_{side}"
         parent_link = (
             f"{parent_name}_{side}" if is_bilateral(parent_name) else parent_name
@@ -114,7 +115,7 @@ def _add_bilateral_limb(
             name=f"{coord_prefix}_{side}",
             parent=parent_link,
             child=link_name,
-            axis_xyz=(1, 0, 0),
+            axis_xyz=joint_axis("limb_flex"),
             pose=(0, sign * parent_lateral_y, parent_offset_z, 0, 0, 0),
             lower_limit=range_min,
             upper_limit=range_max,
@@ -143,15 +144,16 @@ def _add_adduct_joint(
     name: str,
     parent: str,
     child: str,
+    side: str,
     limits: tuple[float, float],
 ) -> None:
-    """Add the Z-axis (adduction/lateral) joint between two virtual links."""
+    """Add the canonical X-axis (adduction) joint between two virtual links."""
     add_revolute_joint(
         model,
         name=name,
         parent=parent,
         child=child,
-        axis_xyz=(0, 0, 1),
+        axis_xyz=joint_axis("adduct", side),
         pose=(0, 0, 0, 0, 0, 0),
         lower_limit=limits[0],
         upper_limit=limits[1],
@@ -164,15 +166,16 @@ def _add_rotate_joint(
     name: str,
     parent: str,
     child: str,
+    side: str,
     limits: tuple[float, float],
 ) -> None:
-    """Add the Y-axis (long-axis rotation) joint to the terminal child link."""
+    """Add the canonical Z-axis (long-axis rotation) joint to the child link."""
     add_revolute_joint(
         model,
         name=name,
         parent=parent,
         child=child,
-        axis_xyz=(0, 1, 0),
+        axis_xyz=joint_axis("rotate", side),
         pose=(0, 0, 0, 0, 0, 0),
         lower_limit=limits[0],
         upper_limit=limits[1],
@@ -198,7 +201,7 @@ def _add_3dof_joint_chain(
     """Wire virtual links and joints for one side of a 3-DOF compound joint.
 
     Creates two virtual links and three revolute joints:
-      parent -> flex (X) -> v1 -> adduct (Z) -> v2 -> rotate (Y) -> child.
+      parent -> flex (-Y) -> v1 -> adduct (X) -> v2 -> rotate (Z) -> child.
 
     Returns ``(v1_name, v2_name)`` of the two newly-created virtual links.
     """
@@ -218,6 +221,7 @@ def _add_3dof_joint_chain(
         name=f"{coord_prefix}_{side}_{adduct_label}",
         parent=v1_name,
         child=v2_name,
+        side=side,
         limits=adduct_limits,
     )
     _add_rotate_joint(
@@ -225,6 +229,7 @@ def _add_3dof_joint_chain(
         name=f"{coord_prefix}_{side}_{rotate_label}",
         parent=v2_name,
         child=link_name,
+        side=side,
         limits=rotate_limits,
     )
     return v1_name, v2_name
@@ -254,7 +259,7 @@ def _add_compound_3dof_bilateral(
     mass, length, radius = _seg(spec, seg_name)
     created: dict[str, ET.Element] = {}
 
-    for side, sign in [("l", -1.0), ("r", 1.0)]:
+    for side, sign in SIDE_SIGNS:
         link_name = f"{seg_name}_{side}"
         parent_link = (
             f"{parent_name}_{side}" if is_bilateral(parent_name) else parent_name
@@ -305,7 +310,7 @@ def _add_2dof_joint_chain(
     """Wire virtual link and joints for one side of a 2-DOF compound joint.
 
     Creates one virtual link and two revolute joints:
-      parent -> flex (X) -> v1 -> {second_label} (Z) -> child.
+      parent -> flex (-Y) -> v1 -> {second_label} (X) -> child.
 
     Returns the name of the created virtual link.
     """
@@ -324,7 +329,7 @@ def _add_2dof_joint_chain(
         name=f"{coord_prefix}_{side}_{second_label}",
         parent=v1_name,
         child=link_name,
-        axis_xyz=(0, 0, 1),
+        axis_xyz=joint_axis("adduct", side),
         pose=(0, 0, 0, 0, 0, 0),
         lower_limit=second_limits[0],
         upper_limit=second_limits[1],
@@ -353,7 +358,7 @@ def _add_compound_2dof_bilateral(
     mass, length, radius = _seg(spec, seg_name)
     created: dict[str, ET.Element] = {}
 
-    for side, sign in [("l", -1.0), ("r", 1.0)]:
+    for side, sign in SIDE_SIGNS:
         link_name = f"{seg_name}_{side}"
         parent_link = (
             f"{parent_name}_{side}" if is_bilateral(parent_name) else parent_name

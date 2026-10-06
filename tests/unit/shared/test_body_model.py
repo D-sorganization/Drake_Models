@@ -187,11 +187,17 @@ class TestCreateFullBody:
         assert neck.find("child").text == "head"
 
     def test_joint_axes_are_valid(self, model: Any) -> None:
-        """Revolute joints use X (flex), Z (adduct/lateral), or Y (rotate) axes."""
+        """Revolute joints use a signed canonical X, Y or Z unit axis."""
         valid_axes = {
-            "1.000000 0.000000 0.000000",
-            "0.000000 0.000000 1.000000",
-            "0.000000 1.000000 0.000000",
+            f"{sx:.6f} {sy:.6f} {sz:.6f}"
+            for sx, sy, sz in (
+                (1, 0, 0),
+                (-1, 0, 0),
+                (0, 1, 0),
+                (0, -1, 0),
+                (0, 0, 1),
+                (0, 0, -1),
+            )
         }
         create_full_body(model)
         for j in model.findall("joint"):

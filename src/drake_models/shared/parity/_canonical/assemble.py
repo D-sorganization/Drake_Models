@@ -35,7 +35,7 @@ _CORE_KEYS = frozenset(
         "schema", "engine", "engine_version", "exercise", "standard_sha256",
         "loaded_in_engine", "load_error", "root_joint", "gravity_canonical",
         "body_mass_kg", "segments", "coordinates", "segment_origins_neutral_m",
-        "capabilities", "ground_friction", "phase_count",
+        "capabilities", "ground_friction", "phase_count", "coordinate_axes",
     }
 )  # fmt: skip
 
@@ -75,13 +75,15 @@ def assemble_fingerprint(
     ground_friction: float | Mapping[str, float] | None = None,
     phase_count: int | None = None,
     extras: Mapping[str, Any] = _NO_EXTRAS,
+    coordinate_axes_engine: Mapping[str, Vec3] | None = None,
 ) -> dict[str, Any]:
     """Build a ``model-fingerprint/v1`` dict from raw engine measurements.
 
     Engine-native names are mapped through the alias tables; bodies that are not
     one of the 15 canonical human segments (barbell, bench, helper links) are
     dropped; origins are rotated into the canonical Z-up frame and re-based on
-    the pelvis.
+    the pelvis. ``coordinate_axes_engine`` (measured with ``kinematics.
+    segment_axis``) is aliased, rotated into the canonical frame and normalised.
 
     Postconditions: every reported mass, limit, origin and gravity component is
     finite; ``extras`` never overwrite a core key.
@@ -113,10 +115,36 @@ def assemble_fingerprint(
         "segment_origins_neutral_m": dict(sorted(origins.items())),
         "capabilities": dict(capabilities),
     }
-    optional = {"ground_friction": ground_friction, "phase_count": phase_count}
+    optional = {
+        "ground_friction": ground_friction,
+        "phase_count": phase_count,
+        "coordinate_axes": _canonical_axes(
+            std, engine, coordinate_axes_engine, coordinate_aliases
+        ),
+    }
     fp.update({k: v for k, v in optional.items() if v is not None})
     _merge_extras(fp, extras)
     return fp
+
+
+def _canonical_axes(
+    std: dict[str, Any],
+    engine: str,
+    raw: Mapping[str, Vec3] | None,
+    aliases: Mapping[str, str],
+) -> dict[str, list[float]] | None:
+    """Measured coordinate axes, canonical names and frame, unit length."""
+    if raw is None:
+        return None
+    out: dict[str, list[float]] = {}
+    for name, vec in sorted(_canonicalize(raw, aliases, "coord").items()):
+        _require_finite(vec, f"{name} axis")
+        x, y, z = c.to_canonical(std, engine, vec)
+        norm = math.hypot(x, y, z)
+        if norm == 0.0:
+            raise ValueError(f"{name} axis must be non-zero")
+        out[name] = [x / norm, y / norm, z / norm]
+    return out
 
 
 def _check_finite(

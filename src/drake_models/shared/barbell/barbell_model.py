@@ -242,20 +242,20 @@ def _weld_sleeves(
     half_shaft: float,
     half_sleeve: float,
 ) -> None:
-    """Weld the left and right sleeves to the shaft at symmetric Y offsets."""
+    """Weld the sleeves to the shaft: left at +Y, right at -Y (canonical frame)."""
     add_fixed_joint(
         model,
         name=f"{prefix}_left_weld",
         parent=shaft_name,
         child=left_name,
-        pose=(0, -half_shaft - half_sleeve, 0, 0, 0, 0),
+        pose=(0, half_shaft + half_sleeve, 0, 0, 0, 0),
     )
     add_fixed_joint(
         model,
         name=f"{prefix}_right_weld",
         parent=shaft_name,
         child=right_name,
-        pose=(0, half_shaft + half_sleeve, 0, 0, 0, 0),
+        pose=(0, -half_shaft - half_sleeve, 0, 0, 0, 0),
     )
 
 
@@ -268,7 +268,8 @@ def create_barbell_links(
     """Add barbell links and fixed joints to an SDF model element.
 
     Returns dict of created link elements keyed by name.  The shaft centre is
-    at the local origin; sleeves extend along ±Y (Drake Z-up convention).
+    at the local origin; the left sleeve extends along +Y and the right along -Y
+    (Drake Z-up, canonical frame: X forward, Y left, Z up).
     """
     logger.info(
         "Building barbell: total_mass=%.1f kg, length=%.2f m",

@@ -12,6 +12,7 @@ package works without Drake installed.
 from __future__ import annotations
 
 import importlib
+import itertools
 import logging
 from dataclasses import dataclass, field
 from typing import Any
@@ -25,6 +26,8 @@ from drake_models.shared.utils.sdf_helpers import BIOMECH_NS, biomech_tag
 logger = logging.getLogger(__name__)
 
 _ROOT_LINK = "pelvis"
+_FOOT_BODIES = ("foot_l", "foot_r")
+_CONTACT_SUFFIX = "_contact"
 
 
 @dataclass(frozen=True)
@@ -68,24 +71,70 @@ def parse_initial_pose(sdf_xml: str) -> InitialPose | None:
     return InitialPose(name=str(pose.get("name")), joint_angles=angles)
 
 
+def _sole_corner_heights(plant: Any, scene_graph: Any, context: Any) -> list[float]:
+    """World heights of every foot sole contact-box corner at *context*."""
+    inspector = scene_graph.model_inspector()
+    heights: list[float] = []
+    for name in _FOOT_BODIES:
+        body = plant.GetBodyByName(name)
+        body_pose = plant.EvalBodyPoseInWorld(context, body)
+        for gid in plant.GetCollisionGeometriesForBody(body):
+            if not inspector.GetName(gid).endswith(_CONTACT_SUFFIX):
+                continue
+            size = inspector.GetShape(gid).size()
+            pose = body_pose.multiply(inspector.GetPoseInFrame(gid))
+            for corner in itertools.product((-0.5, 0.5), repeat=3):
+                point = [c * d for c, d in zip(corner, size, strict=True)]
+                heights.append(float(pose.multiply(point)[2]))
+    return heights
+
+
+def grounded_pelvis_height(plant: Any, scene_graph: Any) -> float | None:
+    """Pelvis height that rests the lowest foot sole point on the ground (z=0).
+
+    Evaluated at the plant's default joint positions (the initial pose) with the
+    pelvis at its current default height; ``None`` when the model has no foot
+    contact geometry.
+    """
+    context = plant.CreateDefaultContext()
+    heights = _sole_corner_heights(plant, scene_graph, context)
+    if not heights:
+        return None
+    pelvis = plant.GetBodyByName(_ROOT_LINK)
+    current = float(plant.EvalBodyPoseInWorld(context, pelvis).translation()[2])
+    return current - min(heights)
+
+
 def apply_initial_pose(
-    plant: Any, initial_pose: InitialPose | None, *, pelvis_height: float | None = None
+    plant: Any,
+    initial_pose: InitialPose | None,
+    *,
+    pelvis_height: float | None = None,
+    scene_graph: Any | None = None,
 ) -> None:
-    """Apply default joint angles and the pelvis standing height to *plant*.
+    """Apply default joint angles and the pelvis height to *plant*.
 
     Must be called on a finalized plant.  The pelvis default pose is only set
-    when the pelvis is a free body (not welded, e.g. bench press).
+    when the pelvis is a free body (not welded, e.g. bench press).  Without an
+    explicit *pelvis_height* and with a *scene_graph*, the pelvis is placed so
+    the feet rest on the ground in the initial pose; otherwise it falls back to
+    ``PELVIS_STANDING_HEIGHT``.
     """
     if initial_pose is not None:
         for name, angle in initial_pose.joint_angles.items():
             plant.GetJointByName(name).set_default_angle(angle)
     pelvis = plant.GetBodyByName(_ROOT_LINK)
-    if pelvis.is_floating_base_body():
-        transforms = importlib.import_module("pydrake.math")
-        height = PELVIS_STANDING_HEIGHT if pelvis_height is None else pelvis_height
-        plant.SetDefaultFloatingBaseBodyPose(
-            pelvis, transforms.RigidTransform([0.0, 0.0, height])
-        )
+    if not pelvis.is_floating_base_body():
+        return
+    transforms = importlib.import_module("pydrake.math")
+    height = pelvis_height
+    if height is None and scene_graph is not None:
+        height = grounded_pelvis_height(plant, scene_graph)
+    if height is None:
+        height = PELVIS_STANDING_HEIGHT
+    plant.SetDefaultFloatingBaseBodyPose(
+        pelvis, transforms.RigidTransform([0.0, 0.0, height])
+    )
 
 
 def load_sdf(
@@ -112,7 +161,7 @@ def load_sdf(
     plant.mutable_gravity_field().set_gravity_vector(list(GRAVITY))
     pose = parse_initial_pose(sdf_xml) if apply_pose else None
     if apply_pose:
-        apply_initial_pose(plant, pose)
+        apply_initial_pose(plant, pose, scene_graph=scene_graph)
     logger.info("Loaded %s in Drake: %d bodies", exercise, plant.num_bodies())
     return LoadedExercise(
         exercise, sdf_xml, plant, scene_graph, builder, instances[0], pose
@@ -124,6 +173,7 @@ __all__ = [
     "InitialPose",
     "LoadedExercise",
     "apply_initial_pose",
+    "grounded_pelvis_height",
     "load_sdf",
     "parse_initial_pose",
 ]

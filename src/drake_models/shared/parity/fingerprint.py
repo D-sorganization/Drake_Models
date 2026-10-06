@@ -14,8 +14,6 @@ import importlib.metadata
 import logging
 from typing import Any
 
-import numpy as np
-
 from drake_models.__main__ import BUILDER_FUNCTIONS, EXERCISES
 from drake_models.loader import LoadedExercise, load_sdf
 from drake_models.model_pack import list_exercises, manifest
@@ -25,6 +23,10 @@ from drake_models.shared.parity._canonical.assemble import (
     capabilities_from_manifest,
     failed_fingerprint,
     run_fingerprint_cli,
+)
+from drake_models.shared.parity.axes_probe import (
+    measure_coordinate_axes,
+    zero_positions,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,6 +40,8 @@ COORDINATE_ALIASES: dict[str, str] = {
     "knee_l": "knee_l_flex",
     "knee_r": "knee_r_flex",
 }
+# Inverse of the alias table: canonical coordinate name -> Drake joint name.
+_CANONICAL_TO_ENGINE: dict[str, str] = {v: k for k, v in COORDINATE_ALIASES.items()}
 # Drake body name -> canonical segment (Drake bodies already use canonical names).
 SEGMENT_ALIASES: dict[str, str] = {}
 _FOOT_CONTACT = "foot_l_contact"
@@ -74,12 +78,8 @@ def _neutral_origins(loaded: LoadedExercise) -> dict[str, list[float]]:
     """Raw world origins of every body at q=0, free bodies at identity."""
     plant = loaded.plant
     bodies = _instance_bodies(loaded)
-    q = np.zeros(plant.num_positions())
-    for body in bodies:
-        if body.is_floating_base_body():
-            q[body.floating_positions_start()] = 1.0  # unit quaternion w
     context = plant.CreateDefaultContext()
-    plant.SetPositions(context, q)
+    plant.SetPositions(context, zero_positions(plant))
     return {
         b.name(): [
             float(v) for v in plant.EvalBodyPoseInWorld(context, b).translation()
@@ -152,6 +152,9 @@ def fingerprint(exercise: str) -> dict[str, Any]:
             },
             coordinate_limits_rad=_coordinate_limits(plant),
             segment_origins_engine_m=_neutral_origins(loaded),
+            coordinate_axes_engine=measure_coordinate_axes(
+                plant, std, _CANONICAL_TO_ENGINE
+            ),
             capabilities=capabilities_from_manifest(manifest(), std),
             coordinate_aliases=COORDINATE_ALIASES,
             segment_aliases=SEGMENT_ALIASES,

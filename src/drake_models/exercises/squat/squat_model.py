@@ -26,7 +26,9 @@ logger = logging.getLogger(__name__)
 # Initial joint angles for the unrack position (radians).
 SQUAT_INITIAL_HIP_ANGLE = math.radians(5)  # 5 degrees flexion
 SQUAT_INITIAL_KNEE_ANGLE = math.radians(-5)  # 5 degrees flexion
-SQUAT_INITIAL_HIP_ROTATION = math.radians(10)  # 10 degrees external rotation
+# Positive hip rotation is INTERNAL (canonical standard), so the 10 degrees of
+# external rotation for natural stance width is negative.
+SQUAT_INITIAL_HIP_ROTATION = math.radians(-10)
 
 # Torso length as a fraction of body height (Winter 2009 segment table).
 # Matches the "torso" length_frac entry in body_model._SEGMENT_TABLE.
@@ -36,10 +38,11 @@ TORSO_LENGTH_FRAC = 0.288
 # Positions the barbell across the upper trapezius, slightly below the neck.
 TRAP_BELOW_TOP = 0.03
 
-# Lateral (Y) offset of the barbell from the torso center (meters).
-# Negative Y places the bar at the rear of the torso (high-bar position
-# on rear deltoids / trapezius).  Follows Drake Y-axis convention.
-BARBELL_LATERAL_OFFSET = -0.02
+# Anterior-posterior (X) offset of the barbell from the torso center (meters).
+# Negative X places the bar at the rear of the torso (high-bar position on
+# rear deltoids / trapezius); canonical frame: X forward, Y left, Z up.  The
+# bar itself lies along Y, centred on the midline.
+BARBELL_POSTERIOR_OFFSET = -0.02
 
 
 class SquatModelBuilder(ExerciseModelBuilder):
@@ -79,7 +82,7 @@ class SquatModelBuilder(ExerciseModelBuilder):
             name="barbell_to_torso",
             parent="torso",
             child="barbell_shaft",
-            pose=(0, BARBELL_LATERAL_OFFSET, trap_height, 0, 0, 0),
+            pose=(BARBELL_POSTERIOR_OFFSET, 0, trap_height, 0, 0, 0),
         )
         logger.debug("Attached barbell to torso at trap height %.3f m", trap_height)
 

@@ -13,7 +13,8 @@ engine and reports what the engine sees (schema ``model-fingerprint/v1``).
 This module compares that fingerprint against the standard and against a
 per-repo divergence ledger that lists every known, issue-tracked deviation.
 Shared fingerprint assembly and the CLI live in ``assemble.py``; the divergence
-ledger lives in ``ledger.py`` and is re-exported here.
+ledger lives in ``ledger.py`` and is re-exported here; axis and lateral-side
+checks live in ``kinematics.py``.
 """
 
 from __future__ import annotations
@@ -25,6 +26,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from . import kinematics as _kinematics
 
 # Re-exported: packs call conformance.load_ledger / reconcile / reconcile_all.
 from .ledger import LEDGER_SCHEMA as LEDGER_SCHEMA
@@ -259,4 +262,9 @@ def check_fingerprint(fp: dict[str, Any], std: dict[str, Any]) -> list[Divergenc
         + _check_segments(fp, std)
         + _check_coordinates(fp, std)
         + _check_friction(fp, std)
+        + [
+            Divergence(*finding)
+            for finding in _kinematics.check_axes(fp, std)
+            + _kinematics.check_sides(fp, std)
+        ]
     )

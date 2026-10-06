@@ -38,7 +38,7 @@ The shared layer is the single source of truth for geometry, inertia, SDF XML as
 - `shared/utils/geometry.py` and `shared/utils/sdf_helpers.py` provide reusable math and XML helpers.
 - `shared/contracts/` provides precondition and postcondition helpers used by the builders.
 
-The body model uses the repo’s Z-up convention, with gravity aligned to `(0, 0, -9.80665)`. The full-body model is assembled from a staged builder that creates pelvis, spine/head, upper-limb, lower-limb, and foot-contact elements in sequence.
+The body model uses the repo’s Z-up convention, with gravity aligned to `(0, 0, -9.80665)`. Drake's world frame is the canonical frame of the fleet parity standard: X forward, Y left, Z up. Left bilateral segments (and the barbell's left sleeve) sit at +Y, right ones at -Y. Joint frames are aligned with their parent body at q=0, so each joint's `<axis><xyz>` is the canonical rotation axis of its segment relative to the pelvis; `shared/body/joint_axes.py` is the single table (limb flexion about -Y, adduction/deviation/inversion about X and long-axis rotation about Z, both mirrored on the left; trunk and neck flexion about +Y, lumbar lateral bend about -X, lumbar rotation about +Z). Positive hip/shoulder/knee/elbow/wrist/ankle flexion swings the distal segment forward (knee flexion is negative), positive adduction is toward the midline and positive rotation is internal. The loader places a free pelvis so the lowest foot sole point rests on the ground in the initial pose. The full-body model is assembled from a staged builder that creates pelvis, spine/head, upper-limb, lower-limb, and foot-contact elements in sequence.
 
 ## Model Generation Contract
 
@@ -131,6 +131,10 @@ edited here and `tests/parity/` verifies their hashes against `MANIFEST.json`.
   installed and fails on any divergence from the standard that is not listed,
   with an issue reference, in `shared/parity/parity_divergences.json`. Ledger
   entries that no longer diverge fail as stale, so the ledger only shrinks.
+- `shared/parity/axes_probe.py` measures every coordinate's rotation axis in the
+  real engine (all joints at zero, one coordinate rotated by the standard's probe
+  angle) so the standard's `kinematics` checks (`axis.*`, `side.*`) run against
+  Drake itself; none is ledgered.
 - `model_pack.yaml` declares honest `capabilities` levels (`none`, `partial`,
   `full`); `full` requires a public API and a real-engine test as evidence.
 
