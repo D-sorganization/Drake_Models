@@ -28,6 +28,7 @@ from drake_models.shared.body.body_anthropometrics import (
     PELVIS_STANDING_HEIGHT,  # noqa: E402
 )
 from drake_models.shared.parity._canonical import conformance  # noqa: E402
+from drake_models.shared.parity.axes_probe import zero_positions  # noqa: E402
 from drake_models.shared.parity.fingerprint import _build_sdf, fingerprint  # noqa: E402
 
 EXERCISE_IDS = list_exercises()
@@ -199,10 +200,26 @@ def test_capabilities_block_matches_standard() -> None:
 
 
 def test_link_poses_compose_rotation_for_supine_bench() -> None:
-    """The supine weld (pitch -pi/2) must lay the torso along -X, not +Z."""
+    """The supine weld (pitch -pi/2) must lay the torso along world -X, not +Z."""
+    loaded = load_sdf(_build_sdf("bench_press"), "bench_press")
+    plant = loaded.plant
+    context = plant.CreateDefaultContext()
+    plant.SetPositions(context, zero_positions(plant))
+
+    def world(name: str) -> list[float]:
+        pose = plant.EvalBodyPoseInWorld(context, plant.GetBodyByName(name))
+        return [float(v) for v in pose.translation()]
+
+    torso, pelvis = world("torso"), world("pelvis")
+    assert torso[0] - pelvis[0] < -0.05
+    assert abs(torso[2] - pelvis[2]) < 1e-6
+
+
+def test_supine_bench_origins_are_reported_in_the_pelvis_frame() -> None:
+    """Fingerprint origins are pelvis-frame (RM#2011): the torso is still above."""
     origins = fingerprint("bench_press")["segment_origins_neutral_m"]
-    assert origins["torso"][0] < -0.05
-    assert abs(origins["torso"][2]) < 1e-6
+    assert origins["torso"][2] > 0.05
+    assert abs(origins["torso"][0]) < 1e-6
 
 
 def _lowest_sole_z(exercise: str) -> float:

@@ -1,6 +1,6 @@
 {
   "schema": "biomech-parity-standard/v1",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Canonical cross-engine parameters for the MuJoCo, Drake, Pinocchio and OpenSim exercise model packs. Edit ONLY in Repository_Management/shared_scripts/model_parity/; every model pack vendors a byte-identical copy.",
   "frame": {
     "canonical_up_axis": "+Z",
@@ -72,7 +72,24 @@
       {"name": "knee_{side}_flex", "segment": "shank_{side}", "axis": [0, -1, 0], "mirror": false, "positive": "shank swings forward (flexion is negative)"},
       {"name": "ankle_{side}_flex", "segment": "foot_{side}", "axis": [0, -1, 0], "mirror": false, "positive": "dorsiflexion (toes up)"},
       {"name": "ankle_{side}_invert", "segment": "foot_{side}", "axis": [1, 0, 0], "mirror": true, "positive": "sole turns toward the midline"}
-    ]
+    ],
+    "joints_description": "Reference topology for the reference forward kinematics (Repository_Management#2011 slice 2). Each segment's origin is its proximal joint centre, offset from the parent segment's origin in the canonical frame at the all-zero pose. Every origin term is factor x a dimension (length or radius, from anthropometrics) of a named segment; y is given for the LEFT side and negated on the right. Parents precede children.",
+    "joints": [
+      {"segment": "torso", "parent": "pelvis", "origin": {"z": [0.5, "pelvis.length"]}},
+      {"segment": "head", "parent": "torso", "origin": {"z": [1.0, "torso.length"]}},
+      {"segment": "upper_arm_{side}", "parent": "torso", "origin": {"y": [1.2, "torso.radius"], "z": [0.95, "torso.length"]}},
+      {"segment": "forearm_{side}", "parent": "upper_arm_{side}", "origin": {"z": [-1.0, "upper_arm.length"]}},
+      {"segment": "hand_{side}", "parent": "forearm_{side}", "origin": {"z": [-1.0, "forearm.length"]}},
+      {"segment": "thigh_{side}", "parent": "pelvis", "origin": {"y": [0.6, "pelvis.radius"], "z": [-0.5, "pelvis.length"]}},
+      {"segment": "shank_{side}", "parent": "thigh_{side}", "origin": {"z": [-1.0, "thigh.length"]}},
+      {"segment": "foot_{side}", "parent": "shank_{side}", "origin": {"z": [-1.0, "shank.length"]}}
+    ],
+    "test_poses_description": "Poses (degrees, all other coordinates 0) at which adapters report segment origins in the pelvis frame as segment_origins_test_poses_m. Each pose moves at most one coordinate per segment, so the result does not depend on a joint's rotation order.",
+    "test_poses": {
+      "flexion": {"hip_l_flex": 60, "knee_l_flex": -90, "hip_r_flex": -20, "ankle_r_flex": 20, "lumbar_flex": 20, "neck_flex": 15, "shoulder_l_flex": 90, "elbow_l_flex": 90, "shoulder_r_flex": -30, "wrist_r_flex": 30},
+      "frontal": {"hip_l_adduct": -20, "hip_r_adduct": 15, "shoulder_l_adduct": 60, "shoulder_r_adduct": -20, "lumbar_lateral": 15},
+      "axial": {"lumbar_rotate": 25, "hip_l_rotate": 30, "knee_l_flex": -90, "shoulder_r_rotate": -40, "elbow_r_flex": 90}
+    }
   },
   "sides": ["l", "r"],
   "barbell": {
