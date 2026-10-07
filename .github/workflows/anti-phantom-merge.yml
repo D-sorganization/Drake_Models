@@ -20,15 +20,26 @@ jobs:
     runs-on: d-sorg-fleet
     timeout-minutes: 10
     if: >-
-      github.event.pull_request.base.ref == 'main' &&
+      (!github.event.pull_request ||
+      github.event.pull_request.head.repo.full_name == github.repository) &&
+      ((github.event.pull_request.base.ref == 'main' &&
       (github.event_name == 'pull_request' ||
-       github.event.label.name == 'phantom-guard-override') || github.event.pull_request.base.ref == 'master'
+       github.event.label.name == 'phantom-guard-override')) || github.event.pull_request.base.ref == 'master')
     steps:
       - name: Checkout PR head with full history
+        if: github.event_name == 'pull_request'
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
+
+      # pull_request_target runs with write tokens: never check out PR code
+      # there (RM#1989); the label check below only needs the API.
+      - name: Checkout base with full history
+        if: github.event_name != 'pull_request'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Anti-phantom guard
         env:
@@ -97,7 +108,7 @@ jobs:
           # Rule 4: bot-only commits
           LAST_COMMITTER=$(git log -1 --pretty=format:%an)
           LAST_MSG=$(git log -1 --pretty=format:%s)
-          if [ "$LAST_COMMITTER" = "github-actions[bot]" ] && echo "$LAST_MSG" | grep -q "^Merge branch 'main'"; then
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ] && [ "$LAST_COMMITTER" = "github-actions[bot]" ] && echo "$LAST_MSG" | grep -q "^Merge branch 'main'"; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
             HUMAN_COMMITS=$(git log --pretty=format:%an "${BASE_SHA}..HEAD" | grep -cv -E '\[bot\]$' || true)
             if [ "${HUMAN_COMMITS:-0}" -eq 0 ]; then

@@ -25,6 +25,9 @@ jobs:
   # Dispatcher: route to self-hosted if available
   pick-runner:
     runs-on: d-sorg-fleet
+    if: >-
+      (!github.event.pull_request ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     timeout-minutes: 2
     outputs:
       runner: ${{ steps.check.outputs.runner }}
@@ -39,6 +42,9 @@ jobs:
   lint:
     needs: pick-runner
     runs-on: ${{ needs.pick-runner.outputs.runner }}
+    if: >-
+      (!github.event.pull_request ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
@@ -130,6 +136,9 @@ jobs:
   tests:
     needs: pick-runner
     runs-on: ${{ needs.pick-runner.outputs.runner }}
+    if: >-
+      (!github.event.pull_request ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     timeout-minutes: 30
     env:
       PYTHONNOUSERSITE: "1"
@@ -188,6 +197,9 @@ jobs:
     timeout-minutes: 30
     name: Reject hosted runner routing
     runs-on: d-sorg-fleet
+    if: >-
+      (!github.event.pull_request ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - uses: actions/checkout@v7
       - name: Run local-only workflow guard
@@ -202,7 +214,10 @@ jobs:
   # job, and GitHub treats a skipped required check as passing.
   quality-gate:
     needs: [pick-runner, lint, tests]
-    if: always()
+    if: >-
+      always() &&
+      (!github.event.pull_request ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ needs.pick-runner.outputs.runner }}
     timeout-minutes: 5
     steps:
