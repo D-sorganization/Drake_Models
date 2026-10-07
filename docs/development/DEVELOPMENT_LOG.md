@@ -18,6 +18,19 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Active
 
+### DL-#384 · SECURITY: Guard Fork PRs Off the Self-Hosted Fleet (RM#1989); Vendor Fork_Pr_Runner_Guard and Wire It Into CI
+
+- **State:** in_review
+- **Owner:** unassigned
+- **Issue:** #384
+- **Branch:** fix/fork-pr-runner-guard
+- **PR:** #385
+- **Paths:** see #385
+- **Started:** 2026-10-07
+- **Last verified:** 2026-10-07 (`d57f0159`; collated from changes/384-security-guard-fork-prs-off-the-self-hos.md)
+- **Summary:** SECURITY: guard fork PRs off the self-hosted fleet (RM#1989); vendor fork_pr_runner_guard and wire it into CI
+- **Next step:** Merge the PR.
+
 ### DL-#373 · Canonical Axes and Sides
 
 - **State:** in_review
