@@ -142,6 +142,7 @@ edited here and `tests/parity/` verifies their hashes against `MANIFEST.json`.
 
 | Date       | PR   | Changes                                                                                                                                                                                                                                                                       |
 | ---------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-07 | #385 | SECURITY: guard fork PRs off the self-hosted fleet (RM#1989); vendor fork_pr_runner_guard and wire it into CI |
 | 2026-10-06 | #380 | Drake bodies now use the canonical frame: left limbs at +Y, per-coordinate axes from the parity standard, barbell left sleeve at +Y, exercise poses re-signed, feet grounded in the initial pose, and the fingerprint reports measured coordinate axes (Repository_Management#2011). |
 | 2026-10-06 | #383 | Re-vendored parity bundle (standard 1.2.0, topology.py, Repository_Management#2011 slice 2). The Drake fingerprint reports the pelvis rotation and segment origins at the standard's three test poses; conformance checks them against the reference forward kinematics with zero origin and pose divergences for every exercise. |
 | 2026-10-05 | #378 | wire collate-changes workflow and check_spec_freshness into spec-check |
