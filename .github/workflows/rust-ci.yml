@@ -43,11 +43,24 @@ jobs:
       (!github.event.pull_request ||
       github.event.pull_request.head.repo.full_name == github.repository)
     timeout-minutes: 15
+    # Per-workspace toolchain homes: persistent self-hosted runners share
+    # ~/.rustup and ~/.cargo, and a concurrent job's install deletes binaries
+    # from under this one (RM#2021).
+    env:
+      RUSTUP_HOME: ${{ github.workspace }}/.rustup-home
+      CARGO_HOME: ${{ github.workspace }}/.cargo-home
     defaults:
       run:
         working-directory: rust_core
     steps:
       - uses: actions/checkout@v7
+      - name: Bootstrap rustup into the workspace homes
+        run: |
+          if [ ! -x "$CARGO_HOME/bin/rustup" ]; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --no-modify-path --profile minimal --default-toolchain none
+          fi
+          echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -55,8 +68,8 @@ jobs:
         uses: actions/cache@v6
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
+            .cargo-home/registry
+            .cargo-home/git
             rust_core/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('rust_core/Cargo.lock') }}
       - name: Check Formatting
