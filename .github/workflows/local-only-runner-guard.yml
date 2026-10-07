@@ -10,10 +10,12 @@ on:
   pull_request:
     paths:
       - ".github/workflows/**"
+      - "scripts/fork_pr_*.py"
   push:
     branches: [main]
     paths:
       - ".github/workflows/**"
+      - "scripts/fork_pr_*.py"
   # Merge queue (Repository_Management#1890): required checks must report on the queue's merge commit.
   merge_group:
   workflow_dispatch:
@@ -147,3 +149,8 @@ jobs:
               sys.exit(1)
 
           print("All workflows route to d-sorg-fleet.")
+
+      # RM#1989: fork PR code must never reach the self-hosted fleet. Runs on
+      # ubuntu-latest so fork PRs also get this verdict.
+      - name: Verify no job runs fork PR code on the self-hosted fleet
+        run: python scripts/fork_pr_runner_guard.py --workflows-dir .github/workflows
