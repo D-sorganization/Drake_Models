@@ -93,6 +93,19 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Shipped (Last 90 Days)
 
+### DL-#387 · CI: Isolate RUSTUP_HOME/CARGO_HOME per Workspace in Rust-Ci (RM#2021)
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #387
+- **Branch:** merged via #388
+- **PR:** #388
+- **Paths:** see #388
+- **Started:** 2026-10-07
+- **Last verified:** 2026-10-07 (`d2c6ed40`; collated from changes/387-ci-isolate-rustup-home-cargo-home-per-wo.md)
+- **Summary:** CI: isolate RUSTUP_HOME/CARGO_HOME per workspace in rust-ci (RM#2021)
+- **Next step:** Shipped in PR #388.
+
 ### DL-#2011 · Fingerprint Reports Test-Pose Origins in the Pelvis Frame
 
 - **State:** shipped
