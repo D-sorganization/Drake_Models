@@ -27,3 +27,7 @@ drake_issues.json
 issues.txt
 mypy*.txt
 fix_mypy*.py
+
+# Per-workspace Rust toolchain homes (CI, RM#2021)
+.rustup-home/
+.cargo-home/
