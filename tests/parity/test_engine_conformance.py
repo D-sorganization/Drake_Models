@@ -22,7 +22,11 @@ from pydrake.multibody.parsing import Parser  # noqa: E402
 from pydrake.multibody.plant import MultibodyPlant  # noqa: E402
 
 from drake_models.__main__ import EXERCISES  # noqa: E402
-from drake_models.loader import grounded_pelvis_height, load_sdf  # noqa: E402
+from drake_models.loader import (  # noqa: E402
+    grounded_pelvis_height,
+    load_sdf,
+    weld_residuals,
+)
 from drake_models.model_pack import list_exercises, manifest  # noqa: E402
 from drake_models.shared.body.body_anthropometrics import (
     PELVIS_STANDING_HEIGHT,  # noqa: E402
@@ -281,3 +285,52 @@ def test_bench_press_lifter_is_supine_with_hands_over_shoulders() -> None:
         ).translation()
         assert hand[2] - shoulder[2] > 0.4
         assert hand[:2] == pytest.approx(shoulder[:2], abs=1e-6)
+
+
+GRIP_EXERCISES = ("bench_press", "deadlift", "snatch", "clean_and_jerk")
+NO_GRIP_EXERCISES = tuple(e for e in EXERCISE_IDS if e not in GRIP_EXERCISES)
+
+
+@pytest.mark.parametrize("exercise", GRIP_EXERCISES)
+def test_both_hands_are_welded_to_the_bar(exercise: str) -> None:
+    """Left hand is a fixed joint; right hand is a Drake weld constraint (#365)."""
+    loaded = load_sdf(_build_sdf(exercise), exercise, time_step=1e-3)
+    plant = loaded.plant
+    left = plant.GetJointByName("barbell_to_left_hand")
+    assert left.parent_body().name() == "hand_l"
+    assert left.child_body().name() == "barbell_shaft"
+    assert [(w.parent, w.child) for w in loaded.weld_specs] == [
+        ("hand_r", "barbell_shaft")
+    ]
+    assert plant.num_constraints() == 1
+    # The closure starts at rest: no over-constraint from the initial pose.
+    assert weld_residuals(loaded)["barbell_to_right_hand"] < 0.005
+
+
+@pytest.mark.parametrize("exercise", GRIP_EXERCISES)
+def test_right_hand_weld_holds_under_simulation(exercise: str) -> None:
+    """Stepping the discrete plant keeps hand_r on the bar (bar not gripped by one hand)."""
+    from pydrake.systems.analysis import Simulator
+
+    loaded = load_sdf(_build_sdf(exercise), exercise, time_step=1e-3)
+    diagram = loaded.builder.Build()
+    simulator = Simulator(diagram)
+    simulator.AdvanceTo(0.02)
+    plant_context = loaded.plant.GetMyContextFromRoot(simulator.get_context())
+    hand = loaded.plant.EvalBodyPoseInWorld(
+        plant_context, loaded.plant.GetBodyByName("hand_r")
+    )
+    bar = loaded.plant.EvalBodyPoseInWorld(
+        plant_context, loaded.plant.GetBodyByName("barbell_shaft")
+    )
+    expected = hand.multiply(loaded.weld_poses["barbell_to_right_hand"])
+    assert (expected.translation() - bar.translation()) == pytest.approx(
+        [0.0, 0.0, 0.0], abs=0.01
+    )
+
+
+@pytest.mark.parametrize("exercise", NO_GRIP_EXERCISES)
+def test_non_gripping_exercises_have_no_weld(exercise: str) -> None:
+    loaded = load_sdf(_build_sdf(exercise), exercise, time_step=1e-3)
+    assert loaded.weld_specs == ()
+    assert loaded.plant.num_constraints() == 0

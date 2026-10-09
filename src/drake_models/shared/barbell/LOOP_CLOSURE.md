@@ -17,83 +17,54 @@ hand_r  --[fixed]--> barbell_shaft   (grip right)
 This violates the tree invariant because `barbell_shaft` would be the child
 of two joints.
 
-## Solution: Single-Parent Attachment
+## Solution: Left Fixed Joint + Right-Hand Weld Constraint
 
-The SDF generator attaches the barbell via **one hand only**:
+The SDF generator attaches the barbell to the left hand with a fixed joint:
 
 ```
 hand_l  --[fixed]--> barbell_shaft   (valid: single parent)
 ```
 
-For a fully rigid barbell, attaching via one hand is **kinematically
-equivalent** to attaching via both hands.  The barbell's three links
-(left_sleeve, shaft, right_sleeve) are already connected by fixed joints
-(welds), so the entire barbell assembly moves as a rigid body.
+and declares the right hand as a namespaced `biomech:weld` element, which the
+SDF parser ignores:
 
-The right hand's grip is **not expressed in the SDF** because adding a
-second fixed joint from `hand_r` to `barbell_shaft` would create a
-kinematic loop.
-
-## When Loop Closure Matters
-
-If you need **compliant grip** (e.g., the bar can rotate slightly in the
-hands, or the hands can slide along the bar), you must use Drake's
-runtime constraint mechanisms rather than SDF joints:
-
-1. **`MultibodyPlant.AddDistanceConstraint()`** -- constrains the distance
-   between two frames to a fixed value.  Suitable for keeping `hand_r`
-   at a fixed offset from `barbell_shaft` while allowing the tree topology
-   to remain valid.
-
-2. **`MultibodyPlant.AddBallConstraint()`** -- constrains two frames to
-   share the same position (3-DOF point constraint).  Useful for a ball-
-   and-socket grip model.
-
-3. **`MultibodyPlant.AddWeldConstraint()`** -- a runtime weld that does
-   not participate in the SDF tree.  This is the most direct analogue of
-   "weld hand_r to barbell_shaft" without violating tree topology.
-
-These constraints are applied **after** loading the SDF into a
-`MultibodyPlant`, not within the SDF file itself.
-
-### Example: Adding a Runtime Weld for the Right Hand
-
-```python
-from pydrake.all import Parser, AddMultibodyPlantSceneGraph, DiagramBuilder
-
-builder = DiagramBuilder()
-plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=1e-3)
-parser = Parser(plant)
-parser.AddModelsFromString(sdf_string, "sdf")
-
-# Add loop-closure weld for right hand grip
-hand_r_frame = plant.GetFrameByName("hand_r")
-shaft_frame = plant.GetFrameByName("barbell_shaft")
-
-# RigidTransform specifying grip offset along Y axis
-from pydrake.math import RigidTransform
-
-grip_offset = RigidTransform([0, grip_width, 0])
-
-plant.AddWeldConstraint(
-    frame_on_parent_F=hand_r_frame,
-    X_PF=RigidTransform(),
-    frame_on_child_M=shaft_frame,
-    X_CM=grip_offset,
-)
-
-plant.Finalize()
+```xml
+<biomech:weld name="barbell_to_right_hand" parent="hand_r" child="barbell_shaft"/>
 ```
+
+`drake_models.loader.load_sdf` reads it (`parse_weld_constraints`) and, on a
+discrete plant (`time_step > 0`; Drake supports weld constraints only there),
+calls `MultibodyPlant.AddWeldConstraint()` before `Finalize()`.  The weld frame
+is the bar's pose in the `hand_r` frame measured at the initial pose, so the
+closure starts with zero residual (`weld_residuals`) and cannot over-constrain
+the neutral pose.  Continuous plants (`time_step = 0`) record the specs but add
+no constraint.
+
+Note: the nominal `GRIP_OFFSET` only places the bar on the left hand.  The
+right hand is welded where the initial pose puts it, so the bar is not
+necessarily centred between the hands.
+
+## Other Runtime Constraints
+
+For a compliant grip (bar rotating or sliding in the hands) use other Drake
+constraints instead of a rigid weld:
+
+1. `MultibodyPlant.AddDistanceConstraint()` -- fixed distance between two points.
+2. `MultibodyPlant.AddBallConstraint()` -- coincident points (3-DOF), a
+   ball-and-socket grip.
+
+Note that `AddWeldConstraint(body_A, X_AP, body_B, X_BQ)` takes bodies and
+poses on them, not frames.
 
 ## Per-Exercise Attachment Strategy
 
 | Exercise       | Attachment Point     | Grip Type      | Notes                              |
 |----------------|---------------------|----------------|------------------------------------|
 | Back Squat     | Torso (trap height) | Torso weld     | Bar rests on upper trapezius       |
-| Deadlift       | hand_l              | Bilateral grip | Floor to lockout                   |
-| Bench Press    | hand_l              | Bilateral grip | Supine; pelvis welded to bench     |
-| Snatch         | hand_l              | Wide grip      | Grip offset ~0.58 m from center    |
-| Clean & Jerk   | hand_l              | Clean grip     | Grip offset ~0.25 m from center    |
+| Deadlift       | hand_l + hand_r weld | Bilateral grip | Floor to lockout                   |
+| Bench Press    | hand_l + hand_r weld | Bilateral grip | Supine; pelvis welded to bench     |
+| Snatch         | hand_l + hand_r weld | Wide grip      | Grip offset ~0.58 m from center    |
+| Clean & Jerk   | hand_l + hand_r weld | Clean grip     | Grip offset ~0.25 m from center    |
 | Gait           | None                | N/A            | No barbell                         |
 | Sit-to-Stand   | None                | N/A            | No barbell; chair body added       |
 
