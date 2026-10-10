@@ -93,6 +93,32 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Shipped (Last 90 Days)
 
+### DL-#370 · Add Standalone CalcInverseDynamics API and Clean up Solver Comments
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #370
+- **Branch:** merged via #392
+- **PR:** #392
+- **Paths:** see #392
+- **Started:** 2026-10-10
+- **Last verified:** 2026-10-10 (`d60b79a8`; collated from changes/370-add-standalone-calcinversedynamics-api-a.md)
+- **Summary:** Add standalone CalcInverseDynamics API and clean up solver comments
+- **Next step:** Shipped in PR #392.
+
+### DL-#362 · Silence Pydrake Warning on Biomech:Initial_Pose by Stripping It Before Parsing
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #362
+- **Branch:** merged via #397
+- **PR:** #397
+- **Paths:** see #397
+- **Started:** 2026-10-10
+- **Last verified:** 2026-10-10 (`d88dde37`; collated from changes/362-silence-pydrake-warning-on-biomech-initi.md)
+- **Summary:** Silence pydrake warning on biomech:initial_pose by stripping it before parsing
+- **Next step:** Shipped in PR #397.
+
 ### DL-#365 · Weld the Right Hand to the Barbell via a Drake Weld Constraint, Verified on Real Pydrake
 
 - **State:** shipped
