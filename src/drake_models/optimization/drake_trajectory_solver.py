@@ -127,17 +127,10 @@ def _add_dynamics_constraints(
         vdot = (vkp1 - vk) * dt_inv
         tau_id = plant.CalcInverseDynamics(context, vdot, forces)
 
-        # Note: CalcInverseDynamics computes tau_id = M * vdot + C(q,v)*v - tau_g.
-        # The previous explicit residual was `M @ vdot + Cv - tau_g`.
-        # However, `plant.CalcBiasTerm` in Drake computes `Cv - tau_g`.
-        # Wait, no. `plant.CalcBiasTerm` computes `Cv` (Coriolis and gyroscopic only).
-        # So `M @ vdot + Cv - tau_g` (the old formula) is what we need.
-        # `CalcInverseDynamics` natively computes `M @ vdot + Cv - tau_g`.
-        # But wait, `CalcInverseDynamics` actually computes `M * vdot + Cv - tau_g`
-        # and subtracts `tau_ext`.
-        # Let's subtract `gravity` from `tau_id` to EXACTLY match the output of
-        # `mass @ vdot + bias - gravity` because `CalcInverseDynamics` output
-        # differs by exactly `gravity` from the explicit form!
+        # With the zero MultibodyForces above, CalcInverseDynamics returns
+        # M * vdot + C(q, v) * v, which contains no gravity term. The dynamics
+        # residual is M * vdot + C * v - tau_g - B * u, so subtract the
+        # generalized gravity forces and the actuation here.
         gravity = plant.CalcGravityGeneralizedForces(context)
         return tau_id - gravity - actuation @ uk
 

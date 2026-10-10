@@ -13,6 +13,7 @@ from drake_models.optimization.exercise_objectives import (
     ExercisePhase,
     get_objective,
 )
+from drake_models.optimization.inverse_dynamics import inverse_dynamics
 from drake_models.optimization.inverse_kinematics import solve_ik_keyframes
 from drake_models.optimization.trajectory_optimizer import (
     TrajectoryConfig,
@@ -43,5 +44,6 @@ __all__ = [
     "create_trajectory_optimization",
     "get_objective",
     "interpolate_trajectory",
+    "inverse_dynamics",
     "solve_ik_keyframes",
 ]
