@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
 from importlib import resources
 from pathlib import Path
@@ -165,6 +166,37 @@ def test_initial_pose_applied_after_parse() -> None:
     assert pose.translation()[2] == pytest.approx(
         grounded_pelvis_height(loaded.plant, loaded.scene_graph)
     )
+
+
+def _drake_warnings(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [
+        r.getMessage()
+        for r in caplog.records
+        if r.name == "drake" and r.levelno >= logging.WARNING
+    ]
+
+
+@pytest.mark.parametrize("exercise", EXERCISE_IDS)
+def test_load_sdf_emits_no_initial_pose_warning(
+    exercise: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """load_sdf consumes biomech:initial_pose itself, so pydrake must not warn (#362)."""
+    with caplog.at_level(logging.WARNING, logger="drake"):
+        load_sdf(_build_sdf(exercise), exercise)
+    assert not [m for m in _drake_warnings(caplog) if "initial_pose" in m]
+
+
+def test_unrelated_unsupported_element_still_warns(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Only initial_pose is silenced; other unsupported elements still warn (#362)."""
+    sdf = _build_sdf("squat").replace(
+        "</model>", "<biomech:unrelated_probe/></model>", 1
+    )
+    assert "<biomech:unrelated_probe/>" in sdf
+    with caplog.at_level(logging.WARNING, logger="drake"):
+        load_sdf(sdf, "squat")
+    assert any("unrelated_probe" in m for m in _drake_warnings(caplog))
 
 
 # --- Vendored bundle integrity ---------------------------------------------
