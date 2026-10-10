@@ -16,6 +16,7 @@ from __future__ import annotations
 import importlib
 import itertools
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -84,6 +85,22 @@ def parse_initial_pose(sdf_xml: str) -> InitialPose | None:
             raise ValueError(f"non-finite initial angle for {joint.get('name')}")
         angles[str(joint.get("name"))] = value
     return InitialPose(name=str(pose.get("name")), joint_angles=angles)
+
+
+_INITIAL_POSE_PATTERN = re.compile(
+    r"[ \t]*<(?:\w+:)?initial_pose\b[^>]*?(?:/>|>.*?</(?:\w+:)?initial_pose\s*>)[ \t]*\r?\n?",
+    re.DOTALL,
+)
+
+
+def strip_initial_pose(sdf_xml: str) -> str:
+    """Return *sdf_xml* with any ``<initial_pose>`` custom element removed.
+
+    SDFormat does not support ``<biomech:initial_pose>``, causing pydrake's
+    parser to log a warning on every load. Stripping it before parsing silences
+    this expected warning while keeping unrelated SDFormat warnings visible (#362).
+    """
+    return _INITIAL_POSE_PATTERN.sub("", sdf_xml)
 
 
 def parse_weld_constraints(sdf_xml: str) -> tuple[WeldConstraintSpec, ...]:
@@ -235,7 +252,16 @@ def load_sdf(
     plant, scene_graph = plant_mod.AddMultibodyPlantSceneGraph(
         builder, time_step=time_step
     )
-    instances = parsing.Parser(plant).AddModelsFromString(sdf_xml, "sdf")
+    # SDFormat does not support custom elements like <biomech:initial_pose>.
+    # pydrake's parser logs an "Ignoring unsupported SDFormat element" warning
+    # on every load. We strip biomech:initial_pose before handing the XML to
+    # Parser (rather than configuring DiagnosticPolicy, which is an internal
+    # C++ API not exposed in pydrake). parse_initial_pose reads it first from
+    # the raw XML, and unrelated unsupported elements are kept so real parser
+    # warnings remain visible (#362).
+    pose = parse_initial_pose(sdf_xml) if apply_pose else None
+    parser_sdf = strip_initial_pose(sdf_xml)
+    instances = parsing.Parser(plant).AddModelsFromString(parser_sdf, "sdf")
     weld_specs = parse_weld_constraints(sdf_xml)
     weld_poses = (
         _weld_poses_at_initial_pose(sdf_xml, weld_specs)
@@ -255,7 +281,6 @@ def load_sdf(
     # The SDF carries no gravity (model-level <gravity> is not allowed), so
     # apply the repo's canonical vector instead of Drake's 9.81 default.
     plant.mutable_gravity_field().set_gravity_vector(list(GRAVITY))
-    pose = parse_initial_pose(sdf_xml) if apply_pose else None
     if apply_pose:
         apply_initial_pose(plant, pose, scene_graph=scene_graph)
     logger.info("Loaded %s in Drake: %d bodies", exercise, plant.num_bodies())
@@ -282,5 +307,6 @@ __all__ = [
     "load_sdf",
     "parse_initial_pose",
     "parse_weld_constraints",
+    "strip_initial_pose",
     "weld_residuals",
 ]
