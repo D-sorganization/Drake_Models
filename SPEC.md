@@ -142,6 +142,8 @@ edited here and `tests/parity/` verifies their hashes against `MANIFEST.json`.
 
 | Date       | PR   | Changes                                                                                                                                                                                                                                                                       |
 | ---------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-10 | #392 | Add standalone CalcInverseDynamics API and clean up solver comments |
+| 2026-10-10 | #397 | Silence pydrake warning on biomech:initial_pose by stripping it before parsing |
 | 2026-10-10 | #393 | Weld the right hand to the barbell via a Drake weld constraint, verified on real pydrake |
 | 2026-10-07 | #388 | CI: isolate RUSTUP_HOME/CARGO_HOME per workspace in rust-ci (RM#2021) |
 | 2026-10-07 | #385 | SECURITY: guard fork PRs off the self-hosted fleet (RM#1989); vendor fork_pr_runner_guard and wire it into CI |
