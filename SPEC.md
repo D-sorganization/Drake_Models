@@ -142,6 +142,7 @@ edited here and `tests/parity/` verifies their hashes against `MANIFEST.json`.
 
 | Date       | PR   | Changes                                                                                                                                                                                                                                                                       |
 | ---------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-10 | #393 | Weld the right hand to the barbell via a Drake weld constraint, verified on real pydrake |
 | 2026-10-07 | #388 | CI: isolate RUSTUP_HOME/CARGO_HOME per workspace in rust-ci (RM#2021) |
 | 2026-10-07 | #385 | SECURITY: guard fork PRs off the self-hosted fleet (RM#1989); vendor fork_pr_runner_guard and wire it into CI |
 | 2026-10-06 | #380 | Drake bodies now use the canonical frame: left limbs at +Y, per-coordinate axes from the parity standard, barbell left sleeve at +Y, exercise poses re-signed, feet grounded in the initial pose, and the fingerprint reports measured coordinate axes (Repository_Management#2011). |
