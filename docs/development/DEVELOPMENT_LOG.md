@@ -93,6 +93,32 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Shipped (Last 90 Days)
 
+### DL-#376 · Remove Stray Root Test Scripts and JSON Files
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #376
+- **Branch:** merged via #396
+- **PR:** #396
+- **Paths:** see #396
+- **Started:** 2026-10-10
+- **Last verified:** 2026-10-10 (`e82e8b40`; collated from changes/376-remove-stray-root-test-scripts-and-json.md)
+- **Summary:** Remove stray root test scripts and JSON files
+- **Next step:** Shipped in PR #396.
+
+### DL-#368 · Add Public Forward_Kinematics API With a Real-Pydrake Test
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #368
+- **Branch:** merged via #394
+- **PR:** #394
+- **Paths:** see #394
+- **Started:** 2026-10-10
+- **Last verified:** 2026-10-10 (`866e606c`; collated from changes/368-add-public-forward-kinematics-api-with-r.md)
+- **Summary:** Add public forward_kinematics API with a real-pydrake test
+- **Next step:** Shipped in PR #394.
+
 ### DL-#370 · Add Standalone CalcInverseDynamics API and Clean up Solver Comments
 
 - **State:** shipped
