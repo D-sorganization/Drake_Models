@@ -156,31 +156,42 @@ class ExerciseModelBuilder(ABC):
         )
 
     @staticmethod
+    def _weld_barbell_to_right_hand(model: ET.Element) -> None:
+        """Declare the right-hand grip as a ``biomech:weld`` loop-closure.
+
+        SDF 1.8 allows one parent joint per link, so the right hand cannot be a
+        second fixed joint on ``barbell_shaft``.  The weld is emitted as custom
+        metadata that :mod:`drake_models.loader` turns into a Drake weld
+        constraint (see ``shared/barbell/LOOP_CLOSURE.md``).
+        """
+        weld = ET.SubElement(model, biomech_tag("weld"))
+        weld.set("name", "barbell_to_right_hand")
+        weld.set("parent", "hand_r")
+        weld.set("child", "barbell_shaft")
+
+    @staticmethod
     def _attach_bilateral_grip(
         model: ET.Element,
         body_links: dict[str, ET.Element],
         barbell_links: dict[str, ET.Element],
         grip_offset: float,
     ) -> None:
-        """Weld barbell_shaft to hand_l only — SDF 1.8 kinematic-tree-safe.
+        """Grip the barbell with both hands.
 
         SDF 1.8 requires a strict kinematic tree: each link may be the
-        ``<child>`` of exactly one joint.  Both ``hand_l`` and ``hand_r``
-        already have a parent joint in the body model (``wrist_l`` /
-        ``wrist_r``).  ``barbell_shaft`` has no body-model parent, so it is
-        correctly attached as a child of ``hand_l``.
-
-        The right hand contacts the barbell in reality, but this cannot be
-        expressed as a second fixed joint in SDF without violating the tree
-        invariant.  Proper loop-closure requires a Drake-specific constraint
-        mechanism outside the scope of the SDF generator.  For a fully rigid
-        barbell, attaching via one hand is kinematically equivalent.
+        ``<child>`` of exactly one joint, and ``hand_l`` / ``hand_r`` already
+        have a parent joint (``wrist_l`` / ``wrist_r``).  ``barbell_shaft`` is
+        therefore a fixed-joint child of ``hand_l``, and the right hand is
+        emitted as a ``biomech:weld`` loop-closure that the loader applies as a
+        Drake weld constraint (``hand_r`` stays where it is in the initial
+        pose, so the closure starts with zero residual).
 
         Preconditions: 'hand_l', 'hand_r' in body_links;
                        'barbell_shaft' in barbell_links.
         """
         ExerciseModelBuilder._validate_grip_preconditions(body_links, barbell_links)
         ExerciseModelBuilder._weld_barbell_to_left_hand(model, grip_offset)
+        ExerciseModelBuilder._weld_barbell_to_right_hand(model)
 
     @staticmethod
     def _lower_body_collision_pairs(side: str) -> list[tuple[str, list[str]]]:
