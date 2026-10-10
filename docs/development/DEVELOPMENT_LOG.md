@@ -93,6 +93,19 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Shipped (Last 90 Days)
 
+### DL-#365 · Weld the Right Hand to the Barbell via a Drake Weld Constraint, Verified on Real Pydrake
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #365
+- **Branch:** merged via #393
+- **PR:** #393
+- **Paths:** see #393
+- **Started:** 2026-10-10
+- **Last verified:** 2026-10-10 (`b54adb79`; collated from changes/365-weld-the-right-hand-to-the-barbell-via-a.md)
+- **Summary:** Weld the right hand to the barbell via a Drake weld constraint, verified on real pydrake
+- **Next step:** Shipped in PR #393.
+
 ### DL-#387 · CI: Isolate RUSTUP_HOME/CARGO_HOME per Workspace in Rust-Ci (RM#2021)
 
 - **State:** shipped
