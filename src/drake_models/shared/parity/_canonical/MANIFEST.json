@@ -1,11 +1,13 @@
 {
   "files": {
     "assemble.py": "caa49fb6daab9fe8745b9aecd599f9b73a18fa0e254b627c038e93410acdffb9",
-    "biomech_parity_standard.json": "e027cbc750d5c3f583d84a42a03fc899987b6a5c03e03e91a3a2b22d2311e5f9",
-    "conformance.py": "977f0fcb539e9b2693ffd2c07925643614301901315a18db128d79ea48c2bb05",
+    "biomech_parity_standard.json": "351b74be85f64d70020e3e2db8d42f6a512eb876752b9bc7d11ac2253e2f784d",
+    "conformance.py": "967d48c60b6cd7261fd68df0b22aa8a0ace2f8d304d69c694b65170b6300c336",
     "kinematics.py": "37aa9c2b7a3b3a3a4ec2b579024436d1929c7606d283743caee469547c88a294",
     "ledger.py": "b8f8e1b6cdff6e6a4ff233ca6f33b305f47764c86c6334cc40ee49e666854e45",
-    "topology.py": "54cc604919aa70e4202e6c15455690ba23e4d2a338f03f4f01da9d5dbeb59c49"
+    "spec.py": "f8cc9a2a4301b23ab910ad6023fb39335544a7e30001fb7cade75f5273f3a457",
+    "spec_validate.py": "9f6763ee761eeccc82b9f65428d195ee55d460a292282f6bc1e583859f575332",
+    "topology.py": "9f7f8d3237490b55d34166becda377af79f23b7aca886bc1526daf40a38011c0"
   },
   "source": "Repository_Management/shared_scripts/model_parity"
 }

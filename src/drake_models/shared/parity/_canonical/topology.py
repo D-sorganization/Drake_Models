@@ -50,7 +50,7 @@ def _apply(rot: Mat3, vec: Sequence[float]) -> Vec3:
     return (x, y, z)
 
 
-def _dimension(std: dict[str, Any], term: str) -> float:
+def dimension(std: dict[str, Any], term: str) -> float:
     """``"pelvis.length"`` -> metres, from the standard's anthropometrics."""
     segment, dim = term.split(".")
     anthro = std["anthropometrics"]
@@ -62,7 +62,7 @@ def _offset(std: dict[str, Any], origin: Mapping[str, Any], lateral: float) -> V
         if axis not in origin:
             return 0.0
         factor, dim = origin[axis]
-        return float(factor) * _dimension(std, dim)
+        return float(factor) * dimension(std, dim)
 
     return (term("x"), lateral * term("y") + 0.0, term("z"))
 
@@ -115,8 +115,28 @@ def _joint_rotation(std: dict[str, Any], segment: str, q: Mapping[str, float]) -
     return rot
 
 
-def reference_origins(std: dict[str, Any], q: Mapping[str, float]) -> dict[str, Vec3]:
-    """Canonical origin of every human segment, pelvis frame, at pose *q* (rad).
+def rpy_matrix(rpy: Sequence[float]) -> Mat3:
+    """Rotation ``Rz(yaw) Ry(pitch) Rx(roll)`` for ``rpy = (roll, pitch, yaw)`` rad.
+
+    Positive pitch is a rotation about +Y (canonical left): +Z leans toward +X.
+    """
+    roll, pitch, yaw = rpy
+    rx, ry, rz = (
+        _axis_angle(axis, angle)
+        for axis, angle in (((1, 0, 0), roll), ((0, 1, 0), pitch), ((0, 0, 1), yaw))
+    )
+    return _matmul(rz, _matmul(ry, rx))
+
+
+def rotate(rot: Mat3, vec: Sequence[float]) -> Vec3:
+    """Apply a 3x3 rotation to a vector (public wrapper for the pose checks)."""
+    return _apply(rot, vec)
+
+
+def reference_frames(
+    std: dict[str, Any], q: Mapping[str, float]
+) -> dict[str, tuple[Vec3, Mat3]]:
+    """Canonical ``(origin, rotation)`` of every human segment, pelvis frame.
 
     Coordinates absent from *q* are 0. Raises ValueError on an unknown name.
     """
@@ -131,7 +151,35 @@ def reference_origins(std: dict[str, Any], q: Mapping[str, float]) -> dict[str, 
             pos[parent][2] + step[2],
         )
         rot[seg] = _matmul(rot[parent], _joint_rotation(std, seg, q))
-    return pos
+    return {seg: (pos[seg], rot[seg]) for seg in pos}
+
+
+def world_frames(
+    std: dict[str, Any],
+    q: Mapping[str, float],
+    root_position: Sequence[float],
+    root_rpy: Sequence[float],
+) -> dict[str, tuple[Vec3, Mat3]]:
+    """Canonical ``(origin, rotation)`` of every segment with the pelvis placed.
+
+    The pelvis sits at *root_position* with orientation *root_rpy* (see
+    ``rpy_matrix``); *q* is as for ``reference_frames``.
+    """
+    root = rpy_matrix(root_rpy)
+    out: dict[str, tuple[Vec3, Mat3]] = {}
+    for seg, (pos, rot) in reference_frames(std, q).items():
+        turned = _apply(root, pos)
+        origin = tuple(a + float(b) for a, b in zip(turned, root_position, strict=True))
+        out[seg] = ((origin[0], origin[1], origin[2]), _matmul(root, rot))
+    return out
+
+
+def reference_origins(std: dict[str, Any], q: Mapping[str, float]) -> dict[str, Vec3]:
+    """Canonical origin of every human segment, pelvis frame, at pose *q* (rad).
+
+    Coordinates absent from *q* are 0. Raises ValueError on an unknown name.
+    """
+    return {seg: pos for seg, (pos, _) in reference_frames(std, q).items()}
 
 
 def _compare(

@@ -1,6 +1,6 @@
 {
-  "schema": "biomech-parity-standard/v1",
-  "version": "1.2.0",
+  "schema": "biomech-parity-standard/v2",
+  "version": "2.0.0",
   "description": "Canonical cross-engine parameters for the MuJoCo, Drake, Pinocchio and OpenSim exercise model packs. Edit ONLY in Repository_Management/shared_scripts/model_parity/; every model pack vendors a byte-identical copy.",
   "frame": {
     "canonical_up_axis": "+Z",
@@ -91,6 +91,23 @@
       "axial": {"lumbar_rotate": 25, "hip_l_rotate": 30, "knee_l_flex": -90, "shoulder_r_rotate": -40, "elbow_r_flex": 90}
     }
   },
+  "grip_point": {
+    "name": "palm_centre",
+    "description": "Where a hand meets the bar (Repository_Management#2060, condition 1): the centre of the palm on the bar shaft, never the wrist or the hand-body origin. Welding at the wrist costs about one palm length of reach (Drake_Models#381). origin is in the hand segment frame, as factor x dimension terms like kinematics.joints; the bar axis is canonical +Y, so a palm centre sits at y = +/- grip width / 2.",
+    "segment": "hand_{side}",
+    "origin": {"z": [-0.5, "hand.length"]},
+    "bar_axis": [0, 1, 0]
+  },
+  "pose_frame": {
+    "description": "World frame for via_poses: canonical axes (X forward, Y left, Z up). The origin is the floor point at mid-foot midway between the feet, so both ankle origins sit at x = ankle_x_m and z = foot.length (the sole is foot.length below the ankle origin and the feet stand flat, yawed by +/- toe_out_deg). Positions are metres for the standard height_m and scale linearly with height; joint angles are radians and do not scale. root.orientation_rpy_rad is (roll, pitch, yaw) composed as Rz(yaw) Ry(pitch) Rx(roll); positive pitch leans the trunk forward (+Z toward +X) and a supine lifter has pitch -pi/2. bar_position_m is the bar centre. Coordinates not listed in a pose are 0, and {side} names set both sides equal (poses are symmetric).",
+    "ankle_x_m": -0.05,
+    "ankle_height_term": "foot.length"
+  },
+  "known_limitations": [
+    {"id": "lumbar_reach", "text": "With a palm grip, free pelvis pitch, flat feet, the bar over mid-foot and straight arms, a floor start needs a large lumbar flexion (about 34 degrees at the standard 1.75 m and about 40 degrees at 1.78 m, against a 45 degree limit). No limit is raised; the margin is a property of the v1 segment geometry.", "deferred_to": "kinematic-geometry v2.x"},
+    {"id": "squat_shoulder_reach", "text": "Reaching the bar on the back needs a shoulder configuration near the limits of the shoulder coordinates (large adduction with internal rotation). The squat pose is reachable within every range but is a poor model of the real shoulder.", "deferred_to": "kinematic-geometry v2.x"},
+    {"id": "snatch_grip_width", "text": "A fixed 30 degree shoulder abduction at the wide snatch grip needs about 128 degrees of hip flexion for the floor start (Drake_Models#407), beyond the 120 degree range. Grip width is therefore a parameter: abduction is derived from it, and the snatch default (0.90 m) derives 26.8 degrees and reaches the floor start within every range.", "deferred_to": "none (resolved by the grip.width_m parameter)"}
+  ],
   "sides": ["l", "r"],
   "barbell": {
     "mens": {
@@ -107,13 +124,145 @@
     "single_coefficient_engines_use": "static"
   },
   "exercises": {
-    "squat": {"phase_count": 5, "legacy_key": "back_squat"},
-    "deadlift": {"phase_count": 5},
-    "bench_press": {"phase_count": 5},
-    "snatch": {"phase_count": 6},
-    "clean_and_jerk": {"phase_count": 8},
-    "gait": {"phase_count": 8},
-    "sit_to_stand": {"phase_count": 6}
+    "squat": {
+      "phase_count": 5,
+      "root_joint": "free",
+      "phases": [
+        {"name": "standing", "definition": "Unracked and upright with the bar on the back, knees and hips extended.", "t_frac": 0.0},
+        {"name": "descent", "definition": "Hips and knees flex under control until the thigh reaches parallel.", "t_frac": 0.15},
+        {"name": "bottom", "definition": "Lowest point: hip crease at or below the knee, velocity reverses.", "t_frac": 0.45},
+        {"name": "ascent", "definition": "Hips and knees extend against the load until the knees lock.", "t_frac": 0.5},
+        {"name": "lockout", "definition": "Upright and still with hips and knees extended.", "t_frac": 0.9}
+      ],
+      "legacy_key": "back_squat",
+      "grip": {"attach": "palm_centre", "type": "pronated", "width_m": 0.6, "width_range_m": [0.45, 0.9]},
+      "stance": {"foot_width_m": 0.4, "toe_out_deg": 30},
+      "load": {"plate_diameter_m": 0.45, "plates_per_side_kg": 50.0},
+      "via_poses": {
+        "start": {"root": {"position_m": [0.0311, 0.0, 1.0058], "orientation_rpy_rad": [0.0, 0.1169, 0.0]}, "bar_position_m": [-0.0263, 0.0, 1.591],
+          "coordinates": {"lumbar_flex": 0.0511, "neck_flex": 0.0055, "shoulder_{side}_flex": 1.5982, "shoulder_{side}_adduct": 2.7434, "shoulder_{side}_rotate": 1.5193, "elbow_{side}_flex": 2.4753, "wrist_{side}_flex": 0.1391, "wrist_{side}_deviate": 0.0904, "hip_{side}_flex": 0.0554, "hip_{side}_adduct": -0.1419, "hip_{side}_rotate": -0.5266, "knee_{side}_flex": -0.05, "ankle_{side}_flex": 0.032, "ankle_{side}_invert": 0.1535}},
+        "catch": {"root": {"position_m": [-0.2606, 0.0, 0.5818], "orientation_rpy_rad": [0.0, 0.5682, 0.0]}, "bar_position_m": [0.031, 0.0, 1.095],
+          "coordinates": {"lumbar_flex": 0.2424, "neck_flex": 0.0037, "shoulder_{side}_flex": 1.5954, "shoulder_{side}_adduct": 2.7434, "shoulder_{side}_rotate": 1.5208, "elbow_{side}_flex": 2.4753, "wrist_{side}_flex": 0.1394, "wrist_{side}_deviate": 0.0938, "hip_{side}_flex": 2.0444, "hip_{side}_adduct": -0.5155, "hip_{side}_rotate": -0.122, "knee_{side}_flex": -1.8411, "ankle_{side}_flex": 0.3529, "ankle_{side}_invert": -0.075}},
+        "lockout": {"root": {"position_m": [0.0311, 0.0, 1.0058], "orientation_rpy_rad": [0.0, 0.1169, 0.0]}, "bar_position_m": [-0.0263, 0.0, 1.591],
+          "coordinates": {"lumbar_flex": 0.0511, "neck_flex": 0.0055, "shoulder_{side}_flex": 1.5982, "shoulder_{side}_adduct": 2.7434, "shoulder_{side}_rotate": 1.5193, "elbow_{side}_flex": 2.4753, "wrist_{side}_flex": 0.1391, "wrist_{side}_deviate": 0.0904, "hip_{side}_flex": 0.0554, "hip_{side}_adduct": -0.1419, "hip_{side}_rotate": -0.5266, "knee_{side}_flex": -0.05, "ankle_{side}_flex": 0.032, "ankle_{side}_invert": 0.1535}}
+      }
+    },
+    "deadlift": {
+      "phase_count": 5,
+      "root_joint": "free",
+      "phases": [
+        {"name": "setup", "definition": "Bar on the floor over mid-foot, arms straight, hips and trunk set.", "t_frac": 0.0},
+        {"name": "first_pull", "definition": "Bar leaves the floor; knees extend while the trunk angle holds.", "t_frac": 0.1},
+        {"name": "knee_pass", "definition": "Bar passes the knees; hips begin to drive forward.", "t_frac": 0.4},
+        {"name": "lockout", "definition": "Hips and knees fully extended with the bar at mid-thigh.", "t_frac": 0.65},
+        {"name": "descent", "definition": "Bar is lowered along the thighs back to the floor.", "t_frac": 0.8}
+      ],
+      "grip": {"attach": "palm_centre", "type": "hook", "width_m": 0.45, "width_range_m": [0.35, 0.6]},
+      "stance": {"foot_width_m": 0.3, "toe_out_deg": 10},
+      "load": {"plate_diameter_m": 0.45, "plates_per_side_kg": 50.0},
+      "via_poses": {
+        "start": {"root": {"position_m": [-0.276, 0.0, 0.7747], "orientation_rpy_rad": [0.0, 1.0598, 0.0]}, "bar_position_m": [0.0, 0.0, 0.225],
+          "coordinates": {"lumbar_flex": 0.5857, "neck_flex": -0.0086, "shoulder_{side}_flex": 1.1824, "shoulder_{side}_adduct": -0.0913, "wrist_{side}_flex": 0.0048, "wrist_{side}_deviate": -0.0004, "hip_{side}_flex": 2.0444, "hip_{side}_adduct": -0.1519, "hip_{side}_rotate": -0.087, "knee_{side}_flex": -1.1101, "ankle_{side}_flex": 0.118, "ankle_{side}_invert": 0.0111}},
+        "lockout": {"root": {"position_m": [-0.0333, 0.0, 1.0141], "orientation_rpy_rad": [0.0, 0.0473, 0.0]}, "bar_position_m": [0.0148, 0.0, 0.958],
+          "coordinates": {"lumbar_flex": -0.0004, "neck_flex": 0.0008, "shoulder_{side}_flex": 0.0814, "shoulder_{side}_adduct": -0.0913, "wrist_{side}_flex": 0.0014, "wrist_{side}_deviate": -0.0006, "hip_{side}_flex": 0.0573, "hip_{side}_adduct": -0.0751, "hip_{side}_rotate": -0.1733, "knee_{side}_flex": -0.05, "ankle_{side}_flex": 0.0271, "ankle_{side}_invert": 0.0722}}
+      }
+    },
+    "bench_press": {
+      "phase_count": 5,
+      "root_joint": "weld",
+      "phases": [
+        {"name": "unrack", "definition": "Bar lifted from the rack to arms-extended over the shoulders.", "t_frac": 0.0},
+        {"name": "descent", "definition": "Bar lowers to the chest with elbows flexing.", "t_frac": 0.15},
+        {"name": "chest_touch", "definition": "Bar touches the chest at the nipple line; velocity reverses.", "t_frac": 0.45},
+        {"name": "press", "definition": "Elbows extend and the bar travels back over the shoulders.", "t_frac": 0.5},
+        {"name": "lockout", "definition": "Arms fully extended with the bar over the shoulders.", "t_frac": 0.85}
+      ],
+      "grip": {"attach": "palm_centre", "type": "pronated", "width_m": 0.75, "width_range_m": [0.6, 0.9]},
+      "stance": {"foot_width_m": 0.4, "toe_out_deg": 0},
+      "load": {"plate_diameter_m": 0.45, "plates_per_side_kg": 50.0},
+      "via_poses": {
+        "start": {"root": {"position_m": [-0.4, 0.0, 0.5787], "orientation_rpy_rad": [0.0, -1.5708, 0.0]}, "bar_position_m": [-0.9246, 0.0, 1.1667],
+          "coordinates": {"shoulder_{side}_flex": 1.5, "shoulder_{side}_adduct": -0.3376, "wrist_{side}_deviate": -0.0021, "hip_{side}_flex": -0.2706, "hip_{side}_adduct": -0.0585, "hip_{side}_rotate": 0.2053, "knee_{side}_flex": -1.6498, "ankle_{side}_flex": 0.3558, "ankle_{side}_invert": 0.2128}},
+        "catch": {"root": {"position_m": [-0.4, 0.0, 0.5787], "orientation_rpy_rad": [0.0, -1.5708, 0.0]}, "bar_position_m": [-0.8075, 0.0, 0.7328],
+          "coordinates": {"shoulder_{side}_flex": -0.322, "shoulder_{side}_adduct": -0.3471, "shoulder_{side}_rotate": -0.6762, "elbow_{side}_flex": 2.1302, "wrist_{side}_flex": 0.0128, "wrist_{side}_deviate": -0.0429, "hip_{side}_flex": -0.2706, "hip_{side}_adduct": -0.0585, "hip_{side}_rotate": 0.2053, "knee_{side}_flex": -1.6498, "ankle_{side}_flex": 0.3558, "ankle_{side}_invert": 0.2128}},
+        "lockout": {"root": {"position_m": [-0.4, 0.0, 0.5787], "orientation_rpy_rad": [0.0, -1.5708, 0.0]}, "bar_position_m": [-0.9246, 0.0, 1.1667],
+          "coordinates": {"shoulder_{side}_flex": 1.5, "shoulder_{side}_adduct": -0.3376, "wrist_{side}_deviate": -0.0021, "hip_{side}_flex": -0.2706, "hip_{side}_adduct": -0.0585, "hip_{side}_rotate": 0.2053, "knee_{side}_flex": -1.6498, "ankle_{side}_flex": 0.3558, "ankle_{side}_invert": 0.2128}}
+      }
+    },
+    "snatch": {
+      "phase_count": 6,
+      "root_joint": "free",
+      "phases": [
+        {"name": "setup", "definition": "Bar on the floor over mid-foot in the wide snatch grip.", "t_frac": 0.0},
+        {"name": "first_pull", "definition": "Bar leaves the floor until it passes the knees.", "t_frac": 0.1},
+        {"name": "second_pull", "definition": "Hips and knees extend explosively with the bar close to the body.", "t_frac": 0.3},
+        {"name": "turnover", "definition": "Lifter pulls under the bar and rotates the arms to overhead.", "t_frac": 0.45},
+        {"name": "catch", "definition": "Bar received overhead in a full squat with arms locked.", "t_frac": 0.55},
+        {"name": "recovery", "definition": "Lifter stands with the bar locked overhead.", "t_frac": 0.7}
+      ],
+      "grip": {"attach": "palm_centre", "type": "hook", "width_m": 0.9, "width_range_m": [0.6, 0.95]},
+      "stance": {"foot_width_m": 0.35, "toe_out_deg": 20},
+      "load": {"plate_diameter_m": 0.45, "plates_per_side_kg": 50.0},
+      "via_poses": {
+        "start": {"root": {"position_m": [-0.2587, 0.0, 0.8367], "orientation_rpy_rad": [0.0, 1.3262, 0.0]}, "bar_position_m": [0.0, 0.0, 0.225],
+          "coordinates": {"lumbar_flex": 0.5654, "neck_flex": -0.055, "shoulder_{side}_flex": 1.3639, "shoulder_{side}_adduct": -0.4681, "wrist_{side}_flex": 0.0072, "wrist_{side}_deviate": -0.0018, "hip_{side}_flex": 2.0444, "hip_{side}_adduct": -0.2148, "hip_{side}_rotate": -0.2786, "knee_{side}_flex": -0.7088, "ankle_{side}_flex": -0.0348, "ankle_{side}_invert": -0.0266}},
+        "catch": {"root": {"position_m": [-0.2772, 0.0, 0.7101], "orientation_rpy_rad": [0.0, 0.3264, 0.0]}, "bar_position_m": [0.0892, 0.0, 1.7699],
+          "coordinates": {"lumbar_flex": -0.0675, "neck_flex": -0.0004, "shoulder_{side}_flex": 3.0029, "shoulder_{side}_adduct": -0.4681, "wrist_{side}_flex": 0.0006, "wrist_{side}_deviate": -0.0029, "hip_{side}_flex": 1.5249, "hip_{side}_adduct": -0.3227, "hip_{side}_rotate": -0.1361, "knee_{side}_flex": -1.5332, "ankle_{side}_flex": 0.3146, "ankle_{side}_invert": -0.0121}},
+        "lockout": {"root": {"position_m": [-0.1291, 0.0, 1.0085], "orientation_rpy_rad": [0.0, 0.0009, 0.0]}, "bar_position_m": [0.0596, 0.0, 2.1122],
+          "coordinates": {"lumbar_flex": 0.1041, "neck_flex": 0.0005, "shoulder_{side}_flex": 2.9955, "shoulder_{side}_adduct": -0.4681, "wrist_{side}_flex": -0.001, "wrist_{side}_deviate": -0.0029, "hip_{side}_flex": 0.1174, "hip_{side}_adduct": -0.1083, "hip_{side}_rotate": -0.3381, "knee_{side}_flex": -0.05, "ankle_{side}_flex": -0.0962, "ankle_{side}_invert": 0.0628}}
+      }
+    },
+    "clean_and_jerk": {
+      "phase_count": 8,
+      "root_joint": "free",
+      "phases": [
+        {"name": "setup", "definition": "Bar on the floor over mid-foot in the clean grip.", "t_frac": 0.0},
+        {"name": "first_pull", "definition": "Bar leaves the floor until it passes the knees.", "t_frac": 0.08},
+        {"name": "second_pull", "definition": "Hips and knees extend explosively with the bar close to the body.", "t_frac": 0.2},
+        {"name": "rack_catch", "definition": "Bar received on the shoulders in a front squat.", "t_frac": 0.3},
+        {"name": "rack_recovery", "definition": "Lifter stands with the bar in the front rack.", "t_frac": 0.4},
+        {"name": "jerk_dip_drive", "definition": "Short dip and drive of the legs that launches the bar overhead.", "t_frac": 0.55},
+        {"name": "overhead_catch", "definition": "Bar received overhead with arms locked and knees bent.", "t_frac": 0.7},
+        {"name": "overhead_recovery", "definition": "Lifter stands with the bar locked overhead.", "t_frac": 0.85}
+      ],
+      "grip": {"attach": "palm_centre", "type": "hook", "width_m": 0.6, "width_range_m": [0.45, 0.8]},
+      "stance": {"foot_width_m": 0.3, "toe_out_deg": 15},
+      "load": {"plate_diameter_m": 0.45, "plates_per_side_kg": 50.0},
+      "via_poses": {
+        "start": {"root": {"position_m": [-0.2694, 0.0, 0.8169], "orientation_rpy_rad": [0.0, 1.2204, 0.0]}, "bar_position_m": [0.0, 0.0, 0.225],
+          "coordinates": {"lumbar_flex": 0.5218, "neck_flex": -0.0227, "shoulder_{side}_flex": 1.2569, "shoulder_{side}_adduct": -0.2128, "wrist_{side}_flex": 0.0066, "wrist_{side}_deviate": -0.001, "hip_{side}_flex": 2.0444, "hip_{side}_adduct": -0.1758, "hip_{side}_rotate": -0.1968, "knee_{side}_flex": -0.8649, "ankle_{side}_flex": 0.0271, "ankle_{side}_invert": -0.027}},
+        "catch": {"root": {"position_m": [-0.2521, 0.0, 0.6693], "orientation_rpy_rad": [0.0, 0.3195, 0.0]}, "bar_position_m": [0.073, 0.0, 1.1887],
+          "coordinates": {"lumbar_flex": -0.0486, "neck_flex": -0.0005, "shoulder_{side}_flex": 0.4619, "shoulder_{side}_adduct": -0.3357, "shoulder_{side}_rotate": -0.5693, "elbow_{side}_flex": 2.4386, "wrist_{side}_flex": 0.0053, "wrist_{side}_deviate": -0.0472, "hip_{side}_flex": 1.5915, "hip_{side}_adduct": -0.2503, "hip_{side}_rotate": -0.0776, "knee_{side}_flex": -1.6964, "ankle_{side}_flex": 0.4148, "ankle_{side}_invert": -0.0014}},
+        "lockout": {"root": {"position_m": [-0.1042, 0.0, 1.0126], "orientation_rpy_rad": [0.0, -0.0009, 0.0]}, "bar_position_m": [0.0512, 0.0, 2.1756],
+          "coordinates": {"lumbar_flex": 0.0635, "neck_flex": 0.0003, "shoulder_{side}_flex": 2.9971, "shoulder_{side}_adduct": -0.2128, "wrist_{side}_flex": -0.0006, "wrist_{side}_deviate": -0.0013, "hip_{side}_flex": 0.0867, "hip_{side}_adduct": -0.0771, "hip_{side}_rotate": -0.2557, "knee_{side}_flex": -0.05, "ankle_{side}_flex": -0.0543, "ankle_{side}_invert": 0.0522}}
+      }
+    },
+    "gait": {
+      "phase_count": 8,
+      "root_joint": "free",
+      "phases": [
+        {"name": "initial_contact", "definition": "Lead heel meets the ground.", "t_frac": 0.0},
+        {"name": "loading_response", "definition": "Weight accepted onto the lead limb.", "t_frac": 0.1},
+        {"name": "mid_stance", "definition": "Body passes over the stance foot.", "t_frac": 0.2},
+        {"name": "terminal_stance", "definition": "Heel rises as the body moves ahead of the stance foot.", "t_frac": 0.3},
+        {"name": "pre_swing", "definition": "Toe-off preparation with the opposite foot on the ground.", "t_frac": 0.4},
+        {"name": "initial_swing", "definition": "Foot leaves the ground and the limb accelerates forward.", "t_frac": 0.5},
+        {"name": "mid_swing", "definition": "Swing foot passes the stance limb.", "t_frac": 0.65},
+        {"name": "terminal_swing", "definition": "Knee extends to prepare for the next heel strike.", "t_frac": 0.8}
+      ]
+    },
+    "sit_to_stand": {
+      "phase_count": 6,
+      "root_joint": "free",
+      "phases": [
+        {"name": "seated", "definition": "Seated and still with feet flat.", "t_frac": 0.0},
+        {"name": "trunk_flexion", "definition": "Trunk leans forward and the centre of mass moves over the feet.", "t_frac": 0.1},
+        {"name": "seat_off", "definition": "Buttocks leave the seat.", "t_frac": 0.3},
+        {"name": "rising", "definition": "Hips and knees extend against gravity.", "t_frac": 0.4},
+        {"name": "extension_end", "definition": "Hips and knees reach near extension.", "t_frac": 0.7},
+        {"name": "stabilisation", "definition": "Standing and still.", "t_frac": 0.85}
+      ]
+    }
   },
   "capabilities": {
     "keys": ["load_in_engine", "forward_kinematics", "inverse_kinematics", "forward_dynamics", "inverse_dynamics", "contact_grf", "urdf_import", "urdf_export", "video_export"],
