@@ -18,6 +18,19 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Active
 
+### DL-#402 · Centre the Barbell on the Hand Midline at the Initial Pose (Static Hold Splits 0.5/0.5)
+
+- **State:** in_review
+- **Owner:** unassigned
+- **Issue:** #402
+- **Branch:** fix/402-bar-centred-grip
+- **PR:** #403
+- **Paths:** see #403
+- **Started:** 2026-10-11
+- **Last verified:** 2026-10-11 (`39ff1d01`; collated from changes/402-centre-the-barbell-on-the-hand-midline-a.md)
+- **Summary:** Centre the barbell on the hand midline at the initial pose (static hold splits 0.5/0.5)
+- **Next step:** Merge the PR.
+
 ### DL-#384 · SECURITY: Guard Fork PRs Off the Self-Hosted Fleet (RM#1989); Vendor Fork_Pr_Runner_Guard and Wire It Into CI
 
 - **State:** in_review
@@ -92,6 +105,19 @@ reachable from any live state and `abandoned` from `parked`.
   definition.
 
 ## Shipped (Last 90 Days)
+
+### DL-#400 · CI: Drop 640 MB Pip Cache Restore and Keep a Per-Runner Stable Python Tool Cache in Ci-Standard
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #400
+- **Branch:** merged via #401
+- **PR:** #401
+- **Paths:** see #401
+- **Started:** 2026-10-11
+- **Last verified:** 2026-10-11 (`48cc2c6f`; collated from changes/400-ci-drop-640-mb-pip-cache-restore-and-kee.md)
+- **Summary:** CI: drop 640 MB pip cache restore and keep a per-runner stable Python tool cache in ci-standard
+- **Next step:** Shipped in PR #401.
 
 ### DL-#376 · Remove Stray Root Test Scripts and JSON Files
 
