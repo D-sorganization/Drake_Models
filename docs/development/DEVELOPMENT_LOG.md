@@ -18,6 +18,19 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Active
 
+### DL-#381 · Floor-Pull Start Poses: Palm-Centre Grip, Solved Pelvis Pitch in the Start Pose; Snatch Wide-Grip Floor Start Still Unreachable Within Hip Range
+
+- **State:** in_review
+- **Owner:** unassigned
+- **Issue:** #381
+- **Branch:** fix/381-floor-start-grip
+- **PR:** #407
+- **Paths:** see #407
+- **Started:** 2026-10-11
+- **Last verified:** 2026-10-11 (`c076fb92`; collated from changes/381-floor-pull-start-poses-palm-centre-grip.md)
+- **Summary:** Floor-pull start poses: palm-centre grip, solved pelvis pitch in the start pose; snatch wide-grip floor start still unreachable within hip range
+- **Next step:** Decide snatch grip width or torso geometry (kinematic geometry v2.x) so the snatch floor start is reachable.
+
 ### DL-#402 · Centre the Barbell on the Hand Midline at the Initial Pose (Static Hold Splits 0.5/0.5)
 
 - **State:** in_review
@@ -105,6 +118,19 @@ reachable from any live state and `abandoned` from `parked`.
   definition.
 
 ## Shipped (Last 90 Days)
+
+### DL-#1917 · Sync the Agent-Identity Managed Block: The Owner's Personal Token Is an Approved Agent Identity
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #1917
+- **Branch:** merged via #405
+- **PR:** #405
+- **Paths:** see #405
+- **Started:** 2026-10-11
+- **Last verified:** 2026-10-11 (`357b4c85`; collated from changes/1917-sync-the-agent-identity-managed-block-th.md)
+- **Summary:** Sync the agent-identity managed block: the owner's personal token is an approved agent identity
+- **Next step:** Shipped in PR #405.
 
 ### DL-#400 · CI: Drop 640 MB Pip Cache Restore and Keep a Per-Runner Stable Python Tool Cache in Ci-Standard
 
