@@ -33,10 +33,8 @@ from drake_models.exercises.factory import build_exercise_model
 
 logger = logging.getLogger(__name__)
 
-# Initial joint angles for the first-pull setup position (radians).
-SNATCH_INITIAL_HIP_ANGLE = math.radians(80)  # 80 degrees hip flexion
-SNATCH_INITIAL_KNEE_ANGLE = math.radians(-60)  # 60 degrees knee flexion
-SNATCH_INITIAL_SHOULDER_ANGLE = math.radians(30)  # 30 degrees shoulder flexion
+# Initial wide-grip joint angles (radians); flexion, ankle and pelvis pitch are
+# solved so the bar is as low as the joint ranges allow (see ExerciseModelBuilder).
 # Positive shoulder adduction is toward the midline, so the 30 degrees of
 # abduction for the wide grip is negative.
 SNATCH_INITIAL_SHOULDER_ADDUCT = math.radians(-30)
@@ -78,22 +76,19 @@ class SnatchModelBuilder(ExerciseModelBuilder):
         self._attach_bilateral_grip(model, body_links, barbell_links, GRIP_OFFSET)
 
     def set_initial_pose(self, model: ET.Element) -> None:
-        """Set starting position: bar on floor, wide grip, deep hip hinge.
+        """Set starting position: bar on floor, wide grip, palm-centre grip.
 
-        The lifter is in the first-pull position with significant hip and
-        knee flexion and arms reaching down to the wide-grip bar.
-        Shoulder abduction for the overhead catch position.
+        Shoulder abduction and the matching wrist deviation keep the hands and
+        bar level for the wide grip; hip, ankle and shoulder flexion and the
+        pelvis pitch are solved (#381).  The 30 degree wide-grip abduction puts
+        the bar floor position past the 120 degree hip range, so the lowest
+        in-range pose is used and the bar floats above the floor (unresolved;
+        ranges are not widened).
         """
-        self._write_initial_pose(
+        self._write_floor_pull_pose(
             model,
             "first_pull",
             {
-                "hip_l_flex": SNATCH_INITIAL_HIP_ANGLE,
-                "hip_r_flex": SNATCH_INITIAL_HIP_ANGLE,
-                "knee_l": SNATCH_INITIAL_KNEE_ANGLE,
-                "knee_r": SNATCH_INITIAL_KNEE_ANGLE,
-                "shoulder_l_flex": SNATCH_INITIAL_SHOULDER_ANGLE,
-                "shoulder_r_flex": SNATCH_INITIAL_SHOULDER_ANGLE,
                 "shoulder_l_adduct": SNATCH_INITIAL_SHOULDER_ADDUCT,
                 "shoulder_r_adduct": SNATCH_INITIAL_SHOULDER_ADDUCT,
                 "wrist_l_deviate": SNATCH_INITIAL_WRIST_DEVIATE,

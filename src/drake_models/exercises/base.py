@@ -12,6 +12,7 @@ through their public APIs, never reaching into internal segment tables.
 from __future__ import annotations
 
 import logging
+import math
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -19,6 +20,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from drake_models.shared.barbell import BarbellSpec, create_barbell_links
+from drake_models.shared.barbell.barbell_model import BARBELL_PLATE_RADIUS
 from drake_models.shared.body import BodyModelSpec, create_full_body
 from drake_models.shared.body.body_anthropometrics import PELVIS_STANDING_HEIGHT
 from drake_models.shared.contracts.postconditions import ensure_valid_xml
@@ -33,11 +35,29 @@ from drake_models.shared.utils.sdf_poses import (
     posed_link_transforms,
     resolve_link_poses,
 )
+from drake_models.shared.utils.start_pose import (
+    lowest_reachable_floor_start,
+    palm_depth,
+    solve_floor_start,
+)
 
 logger = logging.getLogger(__name__)
 
 _ROOT_POSES = {"pelvis": (0.0, 0.0, PELVIS_STANDING_HEIGHT, 0.0, 0.0, 0.0)}
 _LEFT_GRIP_JOINT = "barbell_to_left_hand"
+
+# Floor-pull set-up shared by deadlift, snatch and clean and jerk (#381).  With
+# straight arms, a palm-centre grip, the bar over the mid-foot and flat feet,
+# the hip stays inside its 120 degree range only with the spine flexed to about
+# 40 degrees (limit 45) for the default lifter.  Each rung is a (knee, lumbar)
+# pair; the first rung leaves 3 degrees of lumbar margin and later rungs are
+# tried only for lifters whose proportions need more flexion.  Joint ranges are
+# never widened: when no rung reaches the floor the pose falls back to the
+# lowest in-range bar position and says so.
+FLOOR_START_LADDER = tuple(
+    (math.radians(knee), math.radians(lumbar))
+    for knee, lumbar in ((-100.0, 42.0), (-125.0, 45.0), (-145.0, 45.0))
+)
 
 
 @dataclass(frozen=True)
@@ -107,8 +127,13 @@ class ExerciseModelBuilder(ABC):
         model: ET.Element,
         pose_name: str,
         joint_angles: dict[str, float],
+        pelvis_pitch: float = 0.0,
     ) -> ET.Element:
         """Append a ``<biomech:initial_pose name='...'>`` block to *model*.
+
+        A non-zero *pelvis_pitch* (rad, forward lean about +Y) is written as the
+        ``pelvis_pitch`` attribute: the root orientation is part of the start
+        pose and the loader applies it to the free pelvis.
 
         Plain ``<initial_pose>`` is not valid SDF (Drake rejects it); a
         namespaced custom element is ignored by the parser and applied by
@@ -121,11 +146,68 @@ class ExerciseModelBuilder(ABC):
         """
         initial_pose = ET.SubElement(model, biomech_tag("initial_pose"))
         initial_pose.set("name", pose_name)
+        if pelvis_pitch:
+            initial_pose.set("pelvis_pitch", f"{pelvis_pitch:.6f}")
         for joint_name, angle in joint_angles.items():
             joint_el = ET.SubElement(initial_pose, biomech_tag("joint"))
             joint_el.set("name", joint_name)
             joint_el.text = f"{angle:.6f}"
         return initial_pose
+
+    def _write_floor_pull_pose(
+        self,
+        model: ET.Element,
+        pose_name: str,
+        extra_angles: dict[str, float] | None = None,
+    ) -> ET.Element:
+        """Write a floor-pull start pose solved from the model's kinematics.
+
+        The bar centre is one plate radius above the floor, over the mid-foot,
+        gripped at the palm centre with the feet flat and the arms hanging
+        straight; the pelvis pitch is solved with the joint angles (#381).  If
+        no knee/lumbar rung of :data:`FLOOR_START_LADDER` reaches the floor
+        inside the joint ranges, the lowest in-range pose is written and a
+        warning logged; ranges are never widened.
+        """
+        depth = palm_depth(model)
+        for knee, lumbar in FLOOR_START_LADDER:
+            fixed = self._floor_start_fixed(knee, lumbar, extra_angles)
+            try:
+                solved = solve_floor_start(
+                    model, fixed, palm_depth=depth, bar_height=BARBELL_PLATE_RADIUS
+                )
+            except ValueError as exc:
+                logger.debug("floor start rung knee=%.2f rejected: %s", knee, exc)
+                continue
+            break
+        else:
+            solved, shortfall = lowest_reachable_floor_start(
+                model, fixed, palm_depth=depth
+            )
+            logger.warning(
+                "%s: floor start unreachable within joint ranges; bar centre "
+                "left %.3f m above the plate-radius floor position",
+                self.exercise_name,
+                shortfall,
+            )
+        return self._write_initial_pose(
+            model,
+            pose_name,
+            {**fixed, **solved.joint_angles},
+            pelvis_pitch=solved.pelvis_pitch,
+        )
+
+    @staticmethod
+    def _floor_start_fixed(
+        knee: float, lumbar: float, extra_angles: dict[str, float] | None
+    ) -> dict[str, float]:
+        """Return the joint angles held fixed while a floor start is solved."""
+        return {
+            "knee_l": knee,
+            "knee_r": knee,
+            "lumbar_flex": lumbar,
+            **(extra_angles or {}),
+        }
 
     @staticmethod
     def _validate_grip_preconditions(
@@ -177,7 +259,7 @@ class ExerciseModelBuilder(ABC):
 
     @staticmethod
     def _centre_bar_between_hands(model: ET.Element) -> None:
-        """Move the shaft grip so the bar centre lies on the hand midline.
+        """Grip the bar at the palm centre, centred on the hand midline.
 
         The initial pose is left/right symmetric, so ``hand_r`` mirrors
         ``hand_l`` about the sagittal plane (world ``y = 0``) and the bar
@@ -185,6 +267,9 @@ class ExerciseModelBuilder(ABC):
         shaft offset in the ``hand_l`` frame is therefore the world vector from
         ``hand_l`` to the midline, rotated into that frame (#402).  Models
         without a left-hand grip joint are left unchanged.
+
+        The grip point is the palm centre, half a hand segment below the wrist
+        along the hand's -Z axis (Repository_Management#2060), not the wrist.
 
         Postcondition: at the initial pose the shaft origin is at world y = 0,
         so a static hold splits the bar weight 0.5 / 0.5 between the hands.
@@ -200,7 +285,7 @@ class ExerciseModelBuilder(ABC):
         )
         hand = posed["hand_l"]
         to_midline = np.array([0.0, -hand[1, 3], 0.0])
-        offset = hand[:3, :3].T @ to_midline
+        offset = hand[:3, :3].T @ to_midline + np.array([0.0, 0.0, -palm_depth(model)])
         pose = grip.find("pose")
         if pose is None:
             raise ValueError(f"joint {_LEFT_GRIP_JOINT!r} has no <pose>")

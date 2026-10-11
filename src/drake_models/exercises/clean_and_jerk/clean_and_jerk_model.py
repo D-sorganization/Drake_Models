@@ -29,18 +29,12 @@ preserving a valid SDF kinematic tree at clean grip width.
 from __future__ import annotations
 
 import logging
-import math
 import xml.etree.ElementTree as ET
 
 from drake_models.exercises.base import ExerciseModelBuilder
 from drake_models.exercises.factory import build_exercise_model
 
 logger = logging.getLogger(__name__)
-
-# Initial joint angles for the clean setup position (radians).
-CLEAN_INITIAL_HIP_ANGLE = math.radians(70)  # 70 degrees hip flexion
-CLEAN_INITIAL_KNEE_ANGLE = math.radians(-60)  # 60 degrees knee flexion
-CLEAN_INITIAL_LUMBAR_ANGLE = math.radians(10)  # 10 degrees lumbar flexion
 
 # Grip offset from barbell center to each hand (meters).
 # Clean grip is approximately shoulder width (~0.25 m from center).
@@ -78,22 +72,12 @@ class CleanAndJerkModelBuilder(ExerciseModelBuilder):
         self._attach_bilateral_grip(model, body_links, barbell_links, GRIP_OFFSET)
 
     def set_initial_pose(self, model: ET.Element) -> None:
-        """Set starting position: bar on floor, clean grip, hip hinge.
+        """Set starting position: bar on the floor, clean grip, palm-centre grip.
 
-        The lifter is in the first-pull setup with the bar on the floor,
-        similar to a deadlift but with a more upright torso.
+        Solved like the deadlift set-up (floor start, bar over the mid-foot,
+        feet flat, pelvis pitch in the pose) because both pull from the floor.
         """
-        self._write_initial_pose(
-            model,
-            "clean_setup",
-            {
-                "hip_l_flex": CLEAN_INITIAL_HIP_ANGLE,
-                "hip_r_flex": CLEAN_INITIAL_HIP_ANGLE,
-                "knee_l": CLEAN_INITIAL_KNEE_ANGLE,
-                "knee_r": CLEAN_INITIAL_KNEE_ANGLE,
-                "lumbar_flex": CLEAN_INITIAL_LUMBAR_ANGLE,
-            },
-        )
+        self._write_floor_pull_pose(model, "clean_setup")
 
 
 def build_clean_and_jerk_model(

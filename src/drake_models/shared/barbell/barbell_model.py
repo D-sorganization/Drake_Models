@@ -49,6 +49,10 @@ from drake_models.shared.utils.sdf_helpers import (
 
 logger = logging.getLogger(__name__)
 
+# Outer radius of a standard 450 mm competition plate (m): a bar resting on the
+# floor has its centre one plate radius above it.
+BARBELL_PLATE_RADIUS: float = 0.225
+
 
 @dataclass(frozen=True)
 class BarbellSpec:
@@ -176,7 +180,7 @@ def _compute_sleeve_inertia(
         plate_inertia = _hollow_cylinder_inertia_y_axis(
             spec.plate_mass_per_side,
             inner_radius=spec.sleeve_radius,
-            outer_radius=0.225,
+            outer_radius=BARBELL_PLATE_RADIUS,
             length=plate_thickness,
         )
         sleeve_inertia = (
