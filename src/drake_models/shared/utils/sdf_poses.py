@@ -91,8 +91,14 @@ def _compose_world_transforms(
     edges: list[_JointEdge],
     links: dict[str | None, ET.Element],
     root_poses: Mapping[str, Sequence[float]],
+    joint_rotations: Mapping[str, NDArray[np.float64]] | None = None,
 ) -> dict[str, NDArray[np.float64]]:
-    """Walk the joint tree and return each reachable link's model-frame pose."""
+    """Walk the joint tree and return each reachable link's model-frame pose.
+
+    *joint_rotations* maps a child link name to the 4x4 joint motion applied
+    after its joint pose (default: none, i.e. the neutral configuration).
+    """
+    motion = joint_rotations or {}
     world: dict[str, NDArray[np.float64]] = {_WORLD: np.eye(4)}
     pending = edges
     while pending:
@@ -102,6 +108,8 @@ def _compose_world_transforms(
             continue
         for parent, child, pose in ready:
             world[child] = world[parent] @ _transform(_floats(pose.text))
+            if child in motion:
+                world[child] = world[child] @ motion[child]
         pending = waiting
     return world
 
@@ -146,3 +154,52 @@ def resolve_link_poses(
             resolved[name] = _pose_values(transform)
             _write_link_pose(links[name], resolved[name])
     return resolved
+
+
+def _axis_rotation(axis: Sequence[float], angle: float) -> NDArray[np.float64]:
+    """Return the 4x4 rotation by *angle* about the (normalised) *axis*."""
+    unit = np.asarray(axis, dtype=float)
+    norm = float(np.linalg.norm(unit))
+    if norm == 0.0:
+        raise ValueError("joint axis must be non-zero")
+    x, y, z = unit / norm
+    c, s = math.cos(angle), math.sin(angle)
+    k = np.array([[0.0, -z, y], [z, 0.0, -x], [-y, x, 0.0]])
+    out = np.eye(4)
+    out[:3, :3] = np.eye(3) + s * k + (1.0 - c) * (k @ k)
+    return out
+
+
+def posed_link_transforms(
+    model: ET.Element,
+    joint_angles: Mapping[str, float],
+    root_poses: Mapping[str, Sequence[float]] | None = None,
+) -> dict[str, NDArray[np.float64]]:
+    """Return each link's 4x4 model-frame pose with revolute joints at angles.
+
+    Pure-Python forward kinematics over the SDF joint tree: each revolute
+    joint named in *joint_angles* rotates its child about the joint ``<axis>``
+    (expressed in the joint frame, which coincides with the child link
+    origin).  Joints absent from *joint_angles* stay at zero.
+
+    Raises:
+        ValueError: If a named joint is not a revolute joint of *model*.
+    """
+    revolute = {
+        j.get("name"): j for j in model.findall("joint") if j.get("type") == "revolute"
+    }
+    unknown = sorted(set(joint_angles) - set(revolute))
+    if unknown:
+        raise ValueError(f"unknown revolute joints in joint_angles: {unknown}")
+    motion: dict[str, NDArray[np.float64]] = {}
+    for name, angle in joint_angles.items():
+        joint = revolute[name]
+        child = joint.findtext("child")
+        axis = _floats(joint.findtext("axis/xyz"))
+        if child is None or len(axis) != 3:
+            raise ValueError(f"joint {name!r} lacks a child link or 3-vector axis")
+        motion[child] = _axis_rotation(axis, float(angle))
+    links = {el.get("name"): el for el in model.findall("link")}
+    return _compose_world_transforms(
+        _joint_edges(model), links, root_poses or {}, motion
+    )
