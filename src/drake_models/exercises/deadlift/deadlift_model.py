@@ -12,14 +12,14 @@ Biomechanical notes:
 - Hip hinge dominant pattern with simultaneous knee extension
 
 The barbell is welded to hand_l and hand_r is welded to barbell_shaft,
-preserving a valid SDF kinematic tree. Initial pose has significant hip
-and knee flexion to reach the bar on the ground.
+preserving a valid SDF kinematic tree. The initial pose is solved
+so the bar, gripped at the palm centre, rests on the ground (pelvis pitch
+included).
 """
 
 from __future__ import annotations
 
 import logging
-import math
 import xml.etree.ElementTree as ET
 
 from drake_models.exercises.base import ExerciseModelBuilder
@@ -30,11 +30,6 @@ logger = logging.getLogger(__name__)
 # Grip offset from barbell center to each hand (meters).
 # Slightly outside the knees for conventional deadlift (~shoulder width).
 GRIP_OFFSET = 0.22
-
-# Initial joint angles for the setup position (radians).
-DEADLIFT_INITIAL_HIP_ANGLE = math.radians(80)  # 80 degrees hip flexion
-DEADLIFT_INITIAL_KNEE_ANGLE = math.radians(-70)  # 70 degrees knee flexion
-DEADLIFT_INITIAL_LUMBAR_ANGLE = math.radians(15)  # 15 degrees lumbar flexion
 
 
 class DeadliftModelBuilder(ExerciseModelBuilder):
@@ -65,22 +60,13 @@ class DeadliftModelBuilder(ExerciseModelBuilder):
         self._attach_bilateral_grip(model, body_links, barbell_links, GRIP_OFFSET)
 
     def set_initial_pose(self, model: ET.Element) -> None:
-        """Set the starting position: deep hip hinge, knees flexed.
+        """Set the starting position: bar on the floor, palm-centre grip.
 
-        The lifter is bent over with the bar on the floor, hips hinged
-        approximately 60 degrees and knees flexed approximately 70 degrees.
+        Hip, ankle and shoulder flexion and the pelvis pitch are solved from
+        the model's kinematics so the bar centre sits one plate radius above
+        the floor over the mid-foot with the feet flat (#381).
         """
-        self._write_initial_pose(
-            model,
-            "setup",
-            {
-                "hip_l_flex": DEADLIFT_INITIAL_HIP_ANGLE,
-                "hip_r_flex": DEADLIFT_INITIAL_HIP_ANGLE,
-                "knee_l": DEADLIFT_INITIAL_KNEE_ANGLE,
-                "knee_r": DEADLIFT_INITIAL_KNEE_ANGLE,
-                "lumbar_flex": DEADLIFT_INITIAL_LUMBAR_ANGLE,
-            },
-        )
+        self._write_floor_pull_pose(model, "setup")
 
 
 def build_deadlift_model(

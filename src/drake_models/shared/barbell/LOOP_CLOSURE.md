@@ -44,7 +44,10 @@ Note: `ExerciseModelBuilder._centre_bar_between_hands` rewrites the
 `barbell_to_left_hand` offset so the shaft centre lies on the hand midline
 (world y = 0) at the initial pose (#402); the lift's `GRIP_OFFSET` is only
 the nominal grip half-width.  The hand spacing itself is set by the initial
-pose, not by `GRIP_OFFSET`.
+pose, not by `GRIP_OFFSET`.  The grip point is the palm centre (half a hand
+segment below the wrist, along the hand's -Z), not the wrist (#381,
+Repository_Management#2060).  Floor pulls also carry a solved pelvis pitch in
+`biomech:initial_pose` (`pelvis_pitch` attribute, applied by the loader).
 
 ## Other Runtime Constraints
 

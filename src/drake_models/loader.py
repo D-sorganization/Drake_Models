@@ -39,6 +39,8 @@ class InitialPose:
 
     name: str
     joint_angles: dict[str, float] = field(default_factory=dict)
+    # Forward pelvis lean about +Y (rad): the root orientation of the start pose.
+    pelvis_pitch: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -84,7 +86,12 @@ def parse_initial_pose(sdf_xml: str) -> InitialPose | None:
         if value != value or value in (float("inf"), float("-inf")):
             raise ValueError(f"non-finite initial angle for {joint.get('name')}")
         angles[str(joint.get("name"))] = value
-    return InitialPose(name=str(pose.get("name")), joint_angles=angles)
+    pitch = float(pose.get("pelvis_pitch", "0"))
+    if pitch != pitch or pitch in (float("inf"), float("-inf")):
+        raise ValueError("non-finite initial pelvis_pitch")
+    return InitialPose(
+        name=str(pose.get("name")), joint_angles=angles, pelvis_pitch=pitch
+    )
 
 
 _INITIAL_POSE_PATTERN = re.compile(
@@ -159,7 +166,7 @@ def apply_initial_pose(
     pelvis_height: float | None = None,
     scene_graph: Any | None = None,
 ) -> None:
-    """Apply default joint angles and the pelvis height to *plant*.
+    """Apply default joint angles, pelvis pitch and pelvis height to *plant*.
 
     Must be called on a finalized plant.  The pelvis default pose is only set
     when the pelvis is a free body (not welded, e.g. bench press).  Without an
@@ -174,13 +181,19 @@ def apply_initial_pose(
     if not pelvis.is_floating_base_body():
         return
     transforms = importlib.import_module("pydrake.math")
+    pitch = 0.0 if initial_pose is None else initial_pose.pelvis_pitch
+    rotation = transforms.RotationMatrix.MakeYRotation(pitch)
+    plant.SetDefaultFloatingBaseBodyPose(
+        pelvis,
+        transforms.RigidTransform(rotation, [0.0, 0.0, PELVIS_STANDING_HEIGHT]),
+    )
     height = pelvis_height
     if height is None and scene_graph is not None:
         height = grounded_pelvis_height(plant, scene_graph)
     if height is None:
         height = PELVIS_STANDING_HEIGHT
     plant.SetDefaultFloatingBaseBodyPose(
-        pelvis, transforms.RigidTransform([0.0, 0.0, height])
+        pelvis, transforms.RigidTransform(rotation, [0.0, 0.0, height])
     )
 
 
