@@ -142,6 +142,8 @@ edited here and `tests/parity/` verifies their hashes against `MANIFEST.json`.
 
 | Date       | PR   | Changes                                                                                                                                                                                                                                                                       |
 | ---------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-11 | #403 | Centre the barbell on the hand midline at the initial pose (static hold splits 0.5/0.5) |
+| 2026-10-11 | #401 | CI: drop 640 MB pip cache restore and keep a per-runner stable Python tool cache in ci-standard |
 | 2026-10-10 | #396 | Remove stray root test scripts and JSON files |
 | 2026-10-10 | #394 | Add public forward_kinematics API with a real-pydrake test |
 | 2026-10-10 | #392 | Add standalone CalcInverseDynamics API and clean up solver comments |
