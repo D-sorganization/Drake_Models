@@ -1,23 +1,10 @@
 {
   "schema": "parity-divergences/v1",
   "divergences": {
-    "phase_count": {
-      "issue": "#359",
-      "reason": "The repo's optimization objectives define squat/deadlift/bench_press=3, snatch=5, clean_and_jerk=5 phases; the bundle expects 5/5/5/6/8. Objectives are intentionally not rewritten here.",
-      "exercises": [
-        "squat",
-        "deadlift",
-        "bench_press",
-        "snatch",
-        "clean_and_jerk"
-      ]
-    },
-    "root_joint": {
-      "issue": "#359",
-      "reason": "bench_press welds the pelvis to the bench pad (pelvis_to_bench), so Drake reports a fixed root instead of a 6-DOF free root.",
-      "exercises": [
-        "bench_press"
-      ]
+    "phase_names": {
+      "issue": "#409",
+      "reason": "Standard v2.0 names the gait and sit-to-stand phases; these functional movements still use pack-local names. The five lifts consume the spec (LIFT-2, UpstreamDrift#11742).",
+      "exercises": ["gait", "sit_to_stand"]
     }
   }
 }

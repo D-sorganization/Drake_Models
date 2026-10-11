@@ -24,6 +24,10 @@ from drake_models.shared.parity._canonical.assemble import (
     failed_fingerprint,
     run_fingerprint_cli,
 )
+from drake_models.shared.parity.aliases import (
+    CANONICAL_TO_ENGINE as _CANONICAL_TO_ENGINE,
+)
+from drake_models.shared.parity.aliases import COORDINATE_ALIASES
 from drake_models.shared.parity.axes_probe import (
     measure_coordinate_axes,
     origins_at_test_poses,
@@ -34,16 +38,6 @@ from drake_models.shared.parity.axes_probe import (
 logger = logging.getLogger(__name__)
 
 ENGINE = "drake"
-# Drake joint name -> canonical coordinate name (only names that differ).
-COORDINATE_ALIASES: dict[str, str] = {
-    "neck": "neck_flex",
-    "elbow_l": "elbow_l_flex",
-    "elbow_r": "elbow_r_flex",
-    "knee_l": "knee_l_flex",
-    "knee_r": "knee_r_flex",
-}
-# Inverse of the alias table: canonical coordinate name -> Drake joint name.
-_CANONICAL_TO_ENGINE: dict[str, str] = {v: k for k, v in COORDINATE_ALIASES.items()}
 # Drake body name -> canonical segment (Drake bodies already use canonical names).
 SEGMENT_ALIASES: dict[str, str] = {}
 _FOOT_CONTACT = "foot_l_contact"
@@ -113,13 +107,13 @@ def _ground_friction(loaded: LoadedExercise) -> dict[str, float] | None:
     return None
 
 
-def _phase_count(exercise: str, std: dict[str, Any]) -> int | None:
-    """Return the number of phases the repo's optimization objective defines."""
+def _phase_names(exercise: str, std: dict[str, Any]) -> list[str] | None:
+    """Ordered phase names of the repo's optimization objective (None if absent)."""
     from drake_models.optimization.exercise_objectives import get_objective
 
     key = std["exercises"].get(exercise, {}).get("legacy_key", exercise)
     try:
-        return len(get_objective(key).phases)
+        return [p.name for p in get_objective(key).phases]
     except KeyError:
         return None
 
@@ -138,6 +132,9 @@ def fingerprint(exercise: str) -> dict[str, Any]:
     std = conformance.load_standard()
     version = _engine_version()
     sdf = _build_sdf(exercise)
+    names = _phase_names(exercise, std)
+    # Standard v2.0 conformance criterion 3: the ordered phase names.
+    extras = {} if names is None else {"phase_names": names}
     try:
         loaded = load_sdf(sdf, exercise)
         plant = loaded.plant
@@ -147,7 +144,7 @@ def fingerprint(exercise: str) -> dict[str, Any]:
             engine_version=version,
             exercise=exercise,
             std=std,
-            root_joint="free" if pelvis.is_floating_base_body() else "fixed",
+            root_joint="free" if pelvis.is_floating_base_body() else "weld",
             gravity_engine=[float(v) for v in plant.gravity_field().gravity_vector()],
             segment_masses_kg={
                 b.name(): float(b.default_mass()) for b in _instance_bodies(loaded)
@@ -168,7 +165,8 @@ def fingerprint(exercise: str) -> dict[str, Any]:
             coordinate_aliases=COORDINATE_ALIASES,
             segment_aliases=SEGMENT_ALIASES,
             ground_friction=_ground_friction(loaded),
-            phase_count=_phase_count(exercise, std),
+            phase_count=None if names is None else len(names),
+            extras=extras,
         )
     except Exception as exc:  # noqa: BLE001 - any engine failure is reported
         logger.warning("Drake load failed for %s: %s", exercise, exc)
