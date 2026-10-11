@@ -16,6 +16,8 @@ import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
+import numpy as np
+
 from drake_models.shared.barbell import BarbellSpec, create_barbell_links
 from drake_models.shared.body import BodyModelSpec, create_full_body
 from drake_models.shared.body.body_anthropometrics import PELVIS_STANDING_HEIGHT
@@ -24,11 +26,18 @@ from drake_models.shared.utils.sdf_helpers import (
     add_collision_filter_group,
     add_ground_plane_contact,
     biomech_tag,
+    pose_str,
     serialize_model,
 )
-from drake_models.shared.utils.sdf_poses import resolve_link_poses
+from drake_models.shared.utils.sdf_poses import (
+    posed_link_transforms,
+    resolve_link_poses,
+)
 
 logger = logging.getLogger(__name__)
+
+_ROOT_POSES = {"pelvis": (0.0, 0.0, PELVIS_STANDING_HEIGHT, 0.0, 0.0, 0.0)}
+_LEFT_GRIP_JOINT = "barbell_to_left_hand"
 
 
 @dataclass(frozen=True)
@@ -154,6 +163,50 @@ class ExerciseModelBuilder(ABC):
             "Attached barbell to left hand at grip offset %.3f m (SDF tree-safe)",
             grip_offset,
         )
+
+    @staticmethod
+    def _initial_joint_angles(model: ET.Element) -> dict[str, float]:
+        """Return the ``biomech:initial_pose`` joint angles written on *model*."""
+        pose = model.find(biomech_tag("initial_pose"))
+        if pose is None:
+            return {}
+        return {
+            str(j.get("name")): float(j.text or 0.0)
+            for j in pose.findall(biomech_tag("joint"))
+        }
+
+    @staticmethod
+    def _centre_bar_between_hands(model: ET.Element) -> None:
+        """Move the shaft grip so the bar centre lies on the hand midline.
+
+        The initial pose is left/right symmetric, so ``hand_r`` mirrors
+        ``hand_l`` about the sagittal plane (world ``y = 0``) and the bar
+        centre is on the midline exactly when the shaft sits at ``y = 0``.  The
+        shaft offset in the ``hand_l`` frame is therefore the world vector from
+        ``hand_l`` to the midline, rotated into that frame (#402).  Models
+        without a left-hand grip joint are left unchanged.
+
+        Postcondition: at the initial pose the shaft origin is at world y = 0,
+        so a static hold splits the bar weight 0.5 / 0.5 between the hands.
+        """
+        grip = next(
+            (j for j in model.findall("joint") if j.get("name") == _LEFT_GRIP_JOINT),
+            None,
+        )
+        if grip is None:
+            return
+        posed = posed_link_transforms(
+            model, ExerciseModelBuilder._initial_joint_angles(model), _ROOT_POSES
+        )
+        hand = posed["hand_l"]
+        to_midline = np.array([0.0, -hand[1, 3], 0.0])
+        offset = hand[:3, :3].T @ to_midline
+        pose = grip.find("pose")
+        if pose is None:
+            raise ValueError(f"joint {_LEFT_GRIP_JOINT!r} has no <pose>")
+        ox, oy, oz = (float(v) for v in offset)
+        pose.text = pose_str(ox, oy, oz, 0.0, 0.0, 0.0)
+        logger.debug("Centred bar on hands: shaft offset %s in hand_l frame", offset)
 
     @staticmethod
     def _weld_barbell_to_right_hand(model: ET.Element) -> None:
@@ -303,10 +356,9 @@ class ExerciseModelBuilder(ABC):
         body_links, barbell_links = self._build_body_and_barbell(model)
         self.attach_barbell(model, body_links, barbell_links)
         self.set_initial_pose(model)
+        self._centre_bar_between_hands(model)
         self._add_collision_filters(model)
-        resolve_link_poses(
-            model, {"pelvis": (0.0, 0.0, PELVIS_STANDING_HEIGHT, 0.0, 0.0, 0.0)}
-        )
+        resolve_link_poses(model, _ROOT_POSES)
         xml_str = serialize_model(root)
         ensure_valid_xml(xml_str)  # postcondition: well-formed XML
         return xml_str

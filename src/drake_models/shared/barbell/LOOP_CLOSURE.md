@@ -40,9 +40,11 @@ closure starts with zero residual (`weld_residuals`) and cannot over-constrain
 the neutral pose.  Continuous plants (`time_step = 0`) record the specs but add
 no constraint.
 
-Note: the nominal `GRIP_OFFSET` only places the bar on the left hand.  The
-right hand is welded where the initial pose puts it, so the bar is not
-necessarily centred between the hands.
+Note: `ExerciseModelBuilder._centre_bar_between_hands` rewrites the
+`barbell_to_left_hand` offset so the shaft centre lies on the hand midline
+(world y = 0) at the initial pose (#402); the lift's `GRIP_OFFSET` is only
+the nominal grip half-width.  The hand spacing itself is set by the initial
+pose, not by `GRIP_OFFSET`.
 
 ## Other Runtime Constraints
 
