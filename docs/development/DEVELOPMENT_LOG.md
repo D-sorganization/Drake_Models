@@ -119,6 +119,19 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Shipped (Last 90 Days)
 
+### DL-#372 · Lift Objectives Consume the Standard V2.0 Exercise Spec (Phase Names, Timing, Start/Catch/Lockout Via-Poses); Phase Counts Now 5/5/5/6/8 and Bench_Press Weld Root Conforms (LIFT-2, UpstreamDrift#11742)
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #372
+- **Branch:** claude/lift-2-standard-v2
+- **PR:** #410
+- **Paths:** see #410
+- **Started:** 2026-10-12
+- **Last verified:** 2026-10-12 (`1cc286fc`; collated from changes/372-lift-objectives-consume-the-standard-v2.md)
+- **Summary:** Lift objectives consume the standard v2.0 exercise spec (phase names, timing, start/catch/lockout via-poses); phase counts now 5/5/5/6/8 and bench_press weld root conforms (LIFT-2, UpstreamDrift#11742)
+- **Next step:** Shipped in PR #410.
+
 ### DL-#1917 · Sync the Agent-Identity Managed Block: The Owner's Personal Token Is an Approved Agent Identity
 
 - **State:** shipped
