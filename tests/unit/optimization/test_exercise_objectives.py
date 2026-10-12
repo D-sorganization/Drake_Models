@@ -154,12 +154,10 @@ class TestSquatObjective:
     def test_bar_path(self) -> None:
         assert SQUAT.bar_path == "vertical"
 
-    def test_has_three_phases(self) -> None:
-        assert len(SQUAT.phases) == 3
-
-    def test_phase_names(self) -> None:
+    def test_has_five_spec_phases(self) -> None:
+        # Phase names come from standard v2.0 (tests/parity/test_exercise_spec.py).
         names = [p.name for p in SQUAT.phases]
-        assert names == ["unrack", "bottom", "lockout"]
+        assert names == ["standing", "descent", "bottom", "ascent", "lockout"]
 
     def test_bottom_has_deep_hip_flexion(self) -> None:
         bottom = SQUAT.get_phase("bottom")
@@ -177,16 +175,16 @@ class TestDeadliftObjective:
     def test_balance_mode(self) -> None:
         assert DEADLIFT.balance_mode == BalanceMode.STANDING
 
-    def test_has_three_phases(self) -> None:
-        assert len(DEADLIFT.phases) == 3
+    def test_has_five_spec_phases(self) -> None:
+        assert len(DEADLIFT.phases) == 5
 
-    def test_setup_bar_on_ground(self) -> None:
+    def test_setup_hips_flexed_over_the_bar(self) -> None:
         setup = DEADLIFT.get_phase("setup")
-        assert setup.bar_height_fraction == 0.0
+        assert setup.joint_angles["hip_l_flex"] > math.radians(90)
 
-    def test_lockout_hips_extended(self) -> None:
+    def test_lockout_hips_nearly_extended(self) -> None:
         lockout = DEADLIFT.get_phase("lockout")
-        assert lockout.joint_angles["hip_l_flex"] == 0.0
+        assert abs(lockout.joint_angles["hip_l_flex"]) < math.radians(10)
 
 
 class TestBenchPressObjective:
@@ -199,23 +197,24 @@ class TestBenchPressObjective:
     def test_bar_path_j_curve(self) -> None:
         assert BENCH_PRESS.bar_path == "j-curve"
 
-    def test_has_three_phases(self) -> None:
-        assert len(BENCH_PRESS.phases) == 3
+    def test_has_five_spec_phases(self) -> None:
+        assert len(BENCH_PRESS.phases) == 5
 
-    def test_chest_touch_elbows_bent(self) -> None:
+    def test_chest_touch_elbows_flexed(self) -> None:
+        # Canonical sign: elbow flexion is positive ([0, 150] deg).
         touch = BENCH_PRESS.get_phase("chest_touch")
-        assert touch.joint_angles["elbow_l"] < 0
+        assert touch.joint_angles["elbow_l"] > math.radians(90)
 
 
 class TestSnatchObjective:
     def test_exercise_name(self) -> None:
         assert SNATCH.exercise_name == "snatch"
 
-    def test_has_five_phases(self) -> None:
-        assert len(SNATCH.phases) == 5
+    def test_has_six_spec_phases(self) -> None:
+        assert len(SNATCH.phases) == 6
 
-    def test_overhead_catch_shoulders_high(self) -> None:
-        catch = SNATCH.get_phase("overhead_catch")
+    def test_catch_shoulders_high(self) -> None:
+        catch = SNATCH.get_phase("catch")
         assert catch.joint_angles["shoulder_l_flex"] > math.radians(150)
 
     def test_bar_path_s_curve(self) -> None:
@@ -226,15 +225,15 @@ class TestCleanAndJerkObjective:
     def test_exercise_name(self) -> None:
         assert CLEAN_AND_JERK.exercise_name == "clean_and_jerk"
 
-    def test_has_five_phases(self) -> None:
-        assert len(CLEAN_AND_JERK.phases) == 5
+    def test_has_eight_spec_phases(self) -> None:
+        assert len(CLEAN_AND_JERK.phases) == 8
 
-    def test_rack_position_elbows_flexed(self) -> None:
-        rack = CLEAN_AND_JERK.get_phase("rack_position")
+    def test_rack_catch_elbows_flexed(self) -> None:
+        rack = CLEAN_AND_JERK.get_phase("rack_catch")
         assert rack.joint_angles["elbow_l"] > math.radians(90)
 
-    def test_overhead_lockout_elbows_extended(self) -> None:
-        lockout = CLEAN_AND_JERK.get_phase("overhead_lockout")
+    def test_overhead_recovery_elbows_extended(self) -> None:
+        lockout = CLEAN_AND_JERK.get_phase("overhead_recovery")
         assert lockout.joint_angles["elbow_l"] == 0.0
 
 

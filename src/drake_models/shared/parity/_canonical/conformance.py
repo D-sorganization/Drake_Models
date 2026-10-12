@@ -29,6 +29,8 @@ from pathlib import Path
 from typing import Any
 
 from . import kinematics as _kinematics
+from . import spec as _spec
+from . import spec_validate as _spec_validate
 from . import topology as _topology
 
 # Re-exported: packs call conformance.load_ledger / reconcile / reconcile_all.
@@ -38,7 +40,8 @@ from .ledger import reconcile as reconcile
 from .ledger import reconcile_all as reconcile_all
 
 STANDARD_FILENAME = "biomech_parity_standard.json"
-STANDARD_SCHEMA = "biomech-parity-standard/v1"
+STANDARD_SCHEMA = "biomech-parity-standard/v2"
+LEGACY_SCHEMAS = ("biomech-parity-standard/v1",)
 FINGERPRINT_SCHEMA = "model-fingerprint/v1"
 
 _DEFAULT_STANDARD = Path(__file__).with_name(STANDARD_FILENAME)
@@ -59,8 +62,13 @@ def load_standard(path: Path | str | None = None) -> dict[str, Any]:
     std_path = Path(path) if path is not None else _DEFAULT_STANDARD
     raw = std_path.read_bytes()
     data: dict[str, Any] = json.loads(raw.decode("utf-8"))
-    if data.get("schema") != STANDARD_SCHEMA:
+    schema = data.get("schema")
+    if schema not in (STANDARD_SCHEMA, *LEGACY_SCHEMAS):
         raise ValueError(f"{std_path}: schema must be {STANDARD_SCHEMA!r}")
+    if schema == STANDARD_SCHEMA:
+        found = _spec_validate.problems(data)
+        if found:
+            raise ValueError(f"{std_path}: inconsistent spec: {'; '.join(found)}")
     data["_sha256"] = hashlib.sha256(raw).hexdigest()
     return data
 
@@ -215,7 +223,7 @@ def _check_identity(fp: dict[str, Any], std: dict[str, Any]) -> list[Divergence]
                 "vendored standard differs from canonical bytes",
             )
         )
-    root = std["root"]["joint"]
+    root = _spec.root_joint(std, fp.get("exercise"))
     if fp.get("root_joint") != root:
         out.append(Divergence("root_joint", root, fp.get("root_joint"), "root"))
     g = fp.get("gravity_canonical")
@@ -269,5 +277,6 @@ def check_fingerprint(fp: dict[str, Any], std: dict[str, Any]) -> list[Divergenc
             for finding in _kinematics.check_axes(fp, std)
             + _kinematics.check_sides(fp, std)
             + _topology.check_origins(fp, std)
+            + _spec.check_fingerprint(fp, std)
         ]
     )
