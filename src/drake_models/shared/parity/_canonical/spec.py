@@ -64,6 +64,23 @@ def pose_coordinates(std: dict[str, Any], exercise: str, pose: str) -> dict[str,
     return out
 
 
+def via_pose_phase(std: dict[str, Any], exercise: str, pose: str) -> str:
+    """Name of the phase whose start (``t_frac``) the via-pose *pose* holds.
+
+    Standard v2.1 (Repository_Management#2077) binds every via-pose to a phase
+    because the binding is not derivable from the names (the clean-and-jerk
+    ``catch`` is the front-rack catch, the snatch ``lockout`` is ``recovery``).
+    Raises ValueError for an unknown pose or a v2.0 pose without ``phase``.
+    """
+    poses = exercise_spec(std, exercise).get("via_poses", {})
+    if pose not in poses:
+        raise ValueError(f"{exercise!r} has no via-pose {pose!r}; has {sorted(poses)}")
+    phase = poses[pose].get("phase")
+    if not phase:
+        raise ValueError(f"{exercise}/{pose} names no phase (standard before v2.1)")
+    return str(phase)
+
+
 def arm_reach_m(std: dict[str, Any]) -> float:
     """Shoulder-joint to palm-centre distance with the arm straight, metres."""
     segs = std["anthropometrics"]["segments"]

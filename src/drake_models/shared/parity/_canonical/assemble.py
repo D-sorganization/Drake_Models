@@ -36,7 +36,7 @@ _CORE_KEYS = frozenset(
         "loaded_in_engine", "load_error", "root_joint", "gravity_canonical",
         "body_mass_kg", "segments", "coordinates", "segment_origins_neutral_m",
         "capabilities", "ground_friction", "phase_count", "coordinate_axes",
-        "segment_origins_test_poses_m",
+        "segment_origins_test_poses_m", "phase_names",
     }
 )  # fmt: skip
 
@@ -75,6 +75,7 @@ def assemble_fingerprint(
     segment_aliases: Mapping[str, str] = _NO_ALIASES,
     ground_friction: float | Mapping[str, float] | None = None,
     phase_count: int | None = None,
+    phase_names: Sequence[str] | None = None,
     extras: Mapping[str, Any] = _NO_EXTRAS,
     coordinate_axes_engine: Mapping[str, Vec3] | None = None,
     pelvis_rotation_engine: Sequence[Vec3] | None = None,
@@ -91,6 +92,8 @@ def assemble_fingerprint(
     pose) origins are expressed in the pelvis frame, so a welded, supine pelvis
     still reports a standing layout; ``segment_origins_test_poses_engine_m``
     (origins at ``topology.standard_poses``) is processed the same way.
+
+    ``phase_names``: ordered, unique, non-empty objective phase names (#2025).
 
     Postconditions: every reported mass, limit, origin and gravity component is
     finite; ``extras`` never overwrite a core key.
@@ -130,6 +133,7 @@ def assemble_fingerprint(
     optional = {
         "ground_friction": ground_friction,
         "phase_count": phase_count,
+        "phase_names": _checked_phase_names(phase_names),
         "coordinate_axes": _canonical_axes(
             std, engine, coordinate_axes_engine, coordinate_aliases
         ),
@@ -138,6 +142,18 @@ def assemble_fingerprint(
     fp.update({k: v for k, v in optional.items() if v is not None})
     _merge_extras(fp, extras)
     return fp
+
+
+def _checked_phase_names(names: Sequence[str] | None) -> list[str] | None:
+    """Return ``names`` as a list, rejecting a malformed phase-name sequence."""
+    if names is None:
+        return None
+    listed = [] if isinstance(names, str) else list(names)
+    if not listed or not all(isinstance(n, str) and n for n in listed):
+        raise ValueError(f"phase_names must be non-empty names, got {names!r}")
+    if len(set(listed)) != len(listed):
+        raise ValueError(f"phase_names must be unique, got {names!r}")
+    return listed
 
 
 def _canonical_axes(
