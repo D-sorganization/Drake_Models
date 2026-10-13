@@ -1,10 +1,4 @@
 {
   "schema": "parity-divergences/v1",
-  "divergences": {
-    "phase_names": {
-      "issue": "#409",
-      "reason": "Standard v2.0 names the gait and sit-to-stand phases; these functional movements still use pack-local names. The five lifts consume the spec (LIFT-2, UpstreamDrift#11742).",
-      "exercises": ["gait", "sit_to_stand"]
-    }
-  }
+  "divergences": {}
 }
