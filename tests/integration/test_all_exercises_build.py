@@ -23,15 +23,18 @@ from drake_models.exercises.sit_to_stand.sit_to_stand_model import (
 from drake_models.exercises.snatch.snatch_model import build_snatch_model
 from drake_models.exercises.squat.squat_model import build_squat_model
 
-ALL_BUILDERS = [
+BARBELL_BUILDERS = [
     ("back_squat", build_squat_model),
     ("bench_press", build_bench_press_model),
     ("deadlift", build_deadlift_model),
     ("snatch", build_snatch_model),
     ("clean_and_jerk", build_clean_and_jerk_model),
+]
+BODYWEIGHT_BUILDERS = [
     ("gait", build_gait_model),
     ("sit_to_stand", build_sit_to_stand_model),
 ]
+ALL_BUILDERS = [*BARBELL_BUILDERS, *BODYWEIGHT_BUILDERS]
 
 
 class TestAllExercisesBuild:
@@ -95,11 +98,12 @@ class TestAllExercisesBuild:
         ids=[n for n, _ in ALL_BUILDERS],  # type: ignore
     )
     def test_minimum_link_count(self, name: Any, builder: Any) -> None:
-        """Every exercise should have at least 32 links (15 body + 14 virtual + 3 barbell)."""
+        """Every exercise should have at least 29 links (15 body + 14 virtual)."""
         xml_str = builder()
         root = ET.fromstring(xml_str)
         links = root.findall(".//link")  # type: ignore
-        assert len(links) >= 32
+        min_links = 32 if any(name == b[0] for b in BARBELL_BUILDERS) else 29
+        assert len(links) >= min_links
 
     @pytest.mark.parametrize(
         "name,builder",
@@ -116,8 +120,8 @@ class TestAllExercisesBuild:
 
     @pytest.mark.parametrize(
         "name,builder",
-        ALL_BUILDERS,
-        ids=[n for n, _ in ALL_BUILDERS],  # type: ignore
+        BARBELL_BUILDERS,
+        ids=[n for n, _ in BARBELL_BUILDERS],  # type: ignore
     )
     def test_barbell_present(self, name: Any, builder: Any) -> None:
         xml_str = builder()
@@ -126,6 +130,17 @@ class TestAllExercisesBuild:
         assert "barbell_shaft" in link_names  # type: ignore
         assert "barbell_left_sleeve" in link_names  # type: ignore
         assert "barbell_right_sleeve" in link_names  # type: ignore
+
+    @pytest.mark.parametrize(
+        "name,builder",
+        BODYWEIGHT_BUILDERS,
+        ids=[n for n, _ in BODYWEIGHT_BUILDERS],  # type: ignore
+    )
+    def test_barbell_absent_in_bodyweight(self, name: Any, builder: Any) -> None:
+        xml_str = builder()
+        root = ET.fromstring(xml_str)
+        link_names = {el.get("name") for el in root.findall(".//link")}  # type: ignore
+        assert not any("barbell" in (n or "") for n in link_names)  # type: ignore
 
     @pytest.mark.parametrize(
         "name,builder",

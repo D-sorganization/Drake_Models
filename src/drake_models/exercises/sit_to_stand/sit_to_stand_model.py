@@ -63,6 +63,11 @@ class SitToStandModelBuilder(ExerciseModelBuilder):
         """Return the canonical exercise name for the sit-to-stand model."""
         return "sit_to_stand"
 
+    @property
+    def uses_barbell(self) -> bool:
+        """Return False: sit-to-stand is an unloaded bodyweight exercise."""
+        return False
+
     @staticmethod
     def _make_chair_seat_link(model: ET.Element) -> ET.Element:
         """Create the chair seat link and return it (no joints added).
