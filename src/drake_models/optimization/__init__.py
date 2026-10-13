@@ -14,7 +14,12 @@ from drake_models.optimization.exercise_objectives import (
     get_objective,
 )
 from drake_models.optimization.inverse_dynamics import inverse_dynamics
-from drake_models.optimization.inverse_kinematics import solve_ik_keyframes
+from drake_models.optimization.inverse_kinematics import (
+    IkSolution,
+    PositionTarget,
+    solve_ik_keyframes,
+    solve_ik_pose,
+)
 from drake_models.optimization.trajectory_optimizer import (
     TrajectoryConfig,
     TrajectoryResult,
@@ -33,6 +38,8 @@ __all__ = [
     "ExerciseObjective",
     "ExercisePhase",
     "GAIT",
+    "IkSolution",
+    "PositionTarget",
     "SIT_TO_STAND",
     "SNATCH",
     "SQUAT",
@@ -46,4 +53,5 @@ __all__ = [
     "interpolate_trajectory",
     "inverse_dynamics",
     "solve_ik_keyframes",
+    "solve_ik_pose",
 ]
