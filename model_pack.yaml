@@ -22,14 +22,24 @@ exercises:
     path: src/drake_models/exercises/gait
   - id: sit_to_stand
     path: src/drake_models/exercises/sit_to_stand
-# prettier-ignore
 capabilities:
-  load_in_engine: {level: full, evidence: tests/parity/test_engine_conformance.py}
-  forward_kinematics: {level: none, evidence: null}  # no public FK API
-  inverse_kinematics: {level: full, evidence: tests/parity/test_inverse_kinematics.py}  # solve_ik_pose: world position targets, joint limits, regularising cost
-  forward_dynamics: {level: partial, evidence: src/drake_models/optimization/drake_trajectory_solver.py}  # only inside the trajectory solver
-  inverse_dynamics: {level: full, evidence: tests/parity/test_inverse_dynamics.py}
-  contact_grf: {level: partial, evidence: src/drake_models/shared/utils/sdf_helpers.py}  # hydroelastic contact defined in SDF, GRF not exposed
-  urdf_import: {level: none, evidence: null}
-  urdf_export: {level: none, evidence: null}
-  video_export: {level: none, evidence: null}
+  load_in_engine:
+    { level: full, evidence: tests/parity/test_engine_conformance.py }
+  forward_kinematics: { level: none, evidence: null } # no public FK API
+  inverse_kinematics: {
+      level: partial,
+      evidence: tests/parity/test_inverse_kinematics.py,
+    } # solve_ik_pose: world position targets only (no orientation/marker/per-frame targets)
+  forward_dynamics: {
+      level: partial,
+      evidence: src/drake_models/optimization/drake_trajectory_solver.py,
+    } # only inside the trajectory solver
+  inverse_dynamics:
+    { level: full, evidence: tests/parity/test_inverse_dynamics.py }
+  contact_grf: {
+      level: partial,
+      evidence: src/drake_models/shared/utils/sdf_helpers.py,
+    } # hydroelastic contact defined in SDF, GRF not exposed
+  urdf_import: { level: none, evidence: null }
+  urdf_export: { level: none, evidence: null }
+  video_export: { level: none, evidence: null }
