@@ -14,6 +14,7 @@ import logging
 import math
 from importlib import resources
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -394,3 +395,79 @@ def test_non_gripping_exercises_have_no_weld(exercise: str) -> None:
     loaded = load_sdf(_build_sdf(exercise), exercise, time_step=1e-3)
     assert loaded.weld_specs == ()
     assert loaded.plant.num_constraints() == 0
+
+
+def _collect_human_geometries(
+    loaded: Any, human_links: set[str]
+) -> tuple[dict[Any, str], list[Any]]:
+    geom_to_body: dict[Any, str] = {}
+    human_geoms: list[Any] = []
+    for body_index in loaded.plant.GetBodyIndices(loaded.model_instance):
+        body = loaded.plant.get_body(body_index)
+        for gid in loaded.plant.GetCollisionGeometriesForBody(body):
+            geom_to_body[gid] = body.name()
+            if body.name() in human_links:
+                human_geoms.append(gid)
+    return geom_to_body, human_geoms
+
+
+@pytest.mark.parametrize("exercise", EXERCISE_IDS)
+def test_human_body_collision_pairs_are_filtered(exercise: str) -> None:
+    """All human body collision pairs are excluded while foot-ground remains active (#363)."""
+    from drake_models.exercises.base import ExerciseModelBuilder
+
+    loaded = load_sdf(_build_sdf(exercise), exercise, time_step=1e-3)
+    inspector = loaded.scene_graph.model_inspector()
+    human_links = set(ExerciseModelBuilder._human_body_link_names())
+    geom_to_body, human_geoms = _collect_human_geometries(loaded, human_links)
+
+    for i, g1 in enumerate(human_geoms):
+        for g2 in human_geoms[i + 1 :]:
+            assert inspector.CollisionFiltered(
+                g1, g2
+            ), f"Collision between {geom_to_body[g1]} and {geom_to_body[g2]} is not filtered in {exercise}"
+
+    ground_body = loaded.plant.GetBodyByName("ground_plane")
+    ground_geoms = loaded.plant.GetCollisionGeometriesForBody(ground_body)
+    foot_l = loaded.plant.GetBodyByName("foot_l")
+    foot_geoms = loaded.plant.GetCollisionGeometriesForBody(foot_l)
+    for fg in foot_geoms:
+        for gg in ground_geoms:
+            assert not inspector.CollisionFiltered(
+                fg, gg
+            ), f"Foot-ground contact is filtered in {exercise}"
+
+
+@pytest.mark.parametrize("exercise", EXERCISE_IDS)
+def test_no_body_body_self_contacts_at_initial_pose(exercise: str) -> None:
+    """Evaluate contact results at initial pose: zero unintended self-contacts (#363)."""
+    from drake_models.exercises.base import ExerciseModelBuilder
+
+    loaded = load_sdf(_build_sdf(exercise), exercise, time_step=1e-3)
+    diagram = loaded.builder.Build()
+    context = diagram.CreateDefaultContext()
+    plant_context = loaded.plant.GetMyContextFromRoot(context)
+
+    human_links = set(ExerciseModelBuilder._human_body_link_names())
+    geom_to_body, _ = _collect_human_geometries(loaded, human_links)
+
+    contact_results = loaded.plant.get_contact_results_output_port().Eval(plant_context)
+    body_contacts: list[tuple[str, str]] = []
+
+    for i in range(contact_results.num_point_pair_contacts()):
+        info = contact_results.point_pair_contact_info(i)
+        bodyA = loaded.plant.get_body(info.bodyA_index()).name()
+        bodyB = loaded.plant.get_body(info.bodyB_index()).name()
+        if bodyA in human_links and bodyB in human_links:
+            body_contacts.append((bodyA, bodyB))
+
+    for i in range(contact_results.num_hydroelastic_contacts()):
+        surface = contact_results.hydroelastic_contact_surface(i)
+        bodyA = geom_to_body.get(surface.id_M(), "unknown")
+        bodyB = geom_to_body.get(surface.id_N(), "unknown")
+        if bodyA in human_links and bodyB in human_links:
+            body_contacts.append((bodyA, bodyB))
+
+    assert (
+        body_contacts == []
+    ), f"Unintended self-contacts detected in {exercise}: {body_contacts}"
