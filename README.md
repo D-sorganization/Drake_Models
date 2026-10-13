@@ -67,6 +67,26 @@ parser.AddModelsFromString(sdf_xml, "sdf")
 plant.Finalize()
 ```
 
+Record a short rollout as a Meshcat animation (headless; Meshcat binds to
+localhost and no browser is opened). The output is a self-contained HTML page
+that plays the animation offline in any browser; it is not a video file:
+
+```python
+from pathlib import Path
+
+from drake_models.loader import load_sdf
+from drake_models.recording import record_rollout
+
+loaded = load_sdf(sdf_xml, "back_squat", time_step=1e-3)
+recording = record_rollout(
+    loaded.builder, loaded.scene_graph, Path("squat.html"), duration=0.5
+)
+print(recording.frame_count)  # floor(0.5 * 32) + 1 = 17 frames at 32 fps
+```
+
+`record_rollout` consumes the builder, so wire any controller into it first;
+pass `initialize=` to set the initial state before the rollout starts.
+
 ## Design Principles
 
 - **TDD** -- Tests written first, 100% coverage
@@ -111,12 +131,14 @@ pytest tests/test_squat_model.py -v
 ## CI/CD
 
 This repository uses GitHub Actions with a self-hosted runner (`d-sorg-fleet`):
+
 - **Quality gate**: ruff linting, formatting, mypy type checking, bandit security scan
 - **Tests**: Python 3.10–3.12 matrix with pytest
 
 ## Contributing
 
 Contributions are welcome. Please:
+
 1. Open an issue to discuss your proposed change.
 2. Create a feature branch from `main`.
 3. Follow TDD and Design-by-Contract principles.
@@ -125,11 +147,11 @@ Contributions are welcome. Please:
 
 ## Troubleshooting
 
-| Issue | Solution |
-|---|---|
+| Issue                                    | Solution                                                                                                                |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `ImportError: No module named 'pydrake'` | Install Drake following the [official instructions](https://drake.mit.edu/installation.html) or use `pip install drake` |
-| `pytest` not found | Install dev dependencies: `pip install -e ".[dev]"` |
-| SDF load errors | Verify Drake is on PATH and `DRAKE_RESOURCE_ROOT` is set |
+| `pytest` not found                       | Install dev dependencies: `pip install -e ".[dev]"`                                                                     |
+| SDF load errors                          | Verify Drake is on PATH and `DRAKE_RESOURCE_ROOT` is set                                                                |
 
 ## License
 
