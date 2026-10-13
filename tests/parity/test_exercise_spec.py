@@ -16,6 +16,15 @@ from drake_models.shared.parity.aliases import engine_name
 
 STD = conformance.load_standard()
 LIFTS = ("squat", "deadlift", "bench_press", "snatch", "clean_and_jerk")
+ALL_EXERCISES = (
+    "squat",
+    "deadlift",
+    "bench_press",
+    "snatch",
+    "clean_and_jerk",
+    "gait",
+    "sit_to_stand",
+)
 
 # sha256 of Repository_Management/shared_scripts/model_parity/
 # biomech_parity_standard.json at v2.0.0 (Repository_Management#2069, d625a18).
@@ -41,7 +50,7 @@ def test_vendored_standard_is_repository_management_v2() -> None:
     assert STD["version"] == "2.0.0"
 
 
-@pytest.mark.parametrize("exercise", LIFTS)
+@pytest.mark.parametrize("exercise", ALL_EXERCISES)
 def test_phase_names_and_timing_come_from_spec(exercise: str) -> None:
     objective = _objective(exercise)
     want = spec.exercise_spec(STD, exercise)["phases"]
@@ -91,8 +100,9 @@ def test_unknown_exercise_is_rejected() -> None:
         )
 
 
-@pytest.mark.parametrize("exercise", LIFTS)
+@pytest.mark.parametrize("exercise", ALL_EXERCISES)
 def test_fingerprint_reports_spec_phase_names(exercise: str) -> None:
+    pytest.importorskip("pydrake")
     from drake_models.shared.parity.fingerprint import fingerprint
 
     fp = fingerprint(exercise)
@@ -101,6 +111,7 @@ def test_fingerprint_reports_spec_phase_names(exercise: str) -> None:
 
 
 def test_welded_bench_root_reports_the_v2_weld_policy() -> None:
+    pytest.importorskip("pydrake")
     from drake_models.shared.parity.fingerprint import fingerprint
 
     assert fingerprint("bench_press")["root_joint"] == spec.root_joint(

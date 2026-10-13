@@ -1,7 +1,7 @@
 """Base exercise model builder for Drake SDF.
 
 DRY: All five exercises share the same skeleton for creating an SDF
-model XML — differing only in barbell attachment strategy, initial pose,
+model XML â€” differing only in barbell attachment strategy, initial pose,
 and joint coordinate defaults. This base class encapsulates the shared
 workflow; subclasses override hooks to customize.
 
@@ -124,6 +124,15 @@ class ExerciseModelBuilder(ABC):
         6-DOF free body for the unjointed pelvis.
         """
         return "floating"
+
+    @property
+    def uses_barbell(self) -> bool:
+        """Whether this exercise uses a barbell.
+
+        Subclasses for bodyweight or fixture-based exercises (e.g. gait, sit-to-stand)
+        override this to return False so that barbell links are not created.
+        """
+        return True
 
     @staticmethod
     def _write_initial_pose(
@@ -410,12 +419,12 @@ class ExerciseModelBuilder(ABC):
     def _init_sdf_root(self) -> tuple[ET.Element, ET.Element]:
         """Create the SDF root, model element, and static flag.
 
-        Returns ``(root, model)`` — the SDF root element and its model child.
+        Returns ``(root, model)`` â€” the SDF root element and its model child.
         """
         root = ET.Element("sdf", version="1.8")
         model = ET.SubElement(root, "model", name=self.exercise_name)
 
-        # Static flag (false — this is a dynamic model)
+        # Static flag (false â€” this is a dynamic model)
         ET.SubElement(model, "static").text = "false"
         return root, model
 
@@ -431,7 +440,11 @@ class ExerciseModelBuilder(ABC):
         body_links = create_full_body(
             model, self.config.body_spec, pelvis_joint_type=self.pelvis_joint_type
         )
-        barbell_links = create_barbell_links(model, self.config.barbell_spec)
+        barbell_links = (
+            create_barbell_links(model, self.config.barbell_spec)
+            if self.uses_barbell
+            else {}
+        )
         return body_links, barbell_links
 
     def build(self) -> str:
@@ -444,7 +457,8 @@ class ExerciseModelBuilder(ABC):
         body_links, barbell_links = self._build_body_and_barbell(model)
         self.attach_barbell(model, body_links, barbell_links)
         self.set_initial_pose(model)
-        self._centre_bar_between_hands(model)
+        if self.uses_barbell:
+            self._centre_bar_between_hands(model)
         self._add_collision_filters(model)
         pelvis_height = standing_pelvis_height(self.config.body_spec)
         root_poses = {"pelvis": (0.0, 0.0, pelvis_height, 0.0, 0.0, 0.0)}

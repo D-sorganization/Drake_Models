@@ -39,8 +39,7 @@ from drake_models.shared.parity.fingerprint import _build_sdf, fingerprint  # no
 
 EXERCISE_IDS = list_exercises()
 # 28 human coordinates + 7 positions (quaternion + translation) per free body.
-# The pelvis is a free root except in bench_press (welded to the bench); gait
-# and sit_to_stand also carry an unattached barbell, itself a free body.
+# The pelvis is a free root except in bench_press (welded to the bench).
 HUMAN_COORDINATES = 28
 FREE_BODY_POSITIONS = 7
 FREE_BODIES = {
@@ -49,8 +48,8 @@ FREE_BODIES = {
     "bench_press": 0,
     "snatch": 1,
     "clean_and_jerk": 1,
-    "gait": 2,
-    "sit_to_stand": 2,
+    "gait": 1,
+    "sit_to_stand": 1,
 }
 
 

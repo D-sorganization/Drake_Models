@@ -34,13 +34,19 @@ class TestGaitModelBuilder:
         assert model is not None
         assert model.get("name") == "gait"
 
+    def test_no_barbell_links(self) -> None:
+        """Gait model must not contain barbell links (#366)."""
+        xml_str = build_gait_model()
+        root = ET.fromstring(xml_str)
+        links = {lnk.get("name") for lnk in root.findall(".//link")}
+        assert not any("barbell" in (n or "") for n in links)
+
     def test_no_barbell_attachment_joint(self) -> None:
         """Gait model should not have a barbell-to-body joint."""
         xml_str = build_gait_model()
         root = ET.fromstring(xml_str)
         joints = {j.get("name") for j in root.findall(".//joint")}
         barbell_joints = [n for n in joints if n and "barbell" in n.lower()]
-        # Barbell links exist but no joint connecting barbell to body
         assert not any("barbell_to" in (n or "") for n in joints), (
             f"Unexpected barbell attachment joints: {barbell_joints}"
         )

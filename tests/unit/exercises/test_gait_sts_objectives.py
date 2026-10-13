@@ -26,7 +26,7 @@ class TestGaitObjective:
     def test_phase_names(self) -> None:
         names = [p.name for p in GAIT.phases]
         assert names == [
-            "heel_strike",
+            "initial_contact",
             "loading_response",
             "mid_stance",
             "terminal_stance",
@@ -40,16 +40,18 @@ class TestGaitObjective:
         fracs = [p.time_fraction for p in GAIT.phases]
         assert fracs == sorted(fracs)
 
-    def test_heel_strike_hip_flexed(self) -> None:
-        heel = GAIT.get_phase("heel_strike")
-        assert heel.joint_angles["hip_l_flex"] > 0
+    def test_initial_contact_hip_flexed(self) -> None:
+        contact = GAIT.get_phase("initial_contact")
+        assert contact.joint_angles["hip_l_flex"] > 0
 
     def test_terminal_swing_returns_to_start(self) -> None:
-        """Gait cycle: terminal swing should approximately match heel strike."""
-        heel = GAIT.get_phase("heel_strike")
+        """Gait cycle: terminal swing should approximately match initial contact."""
+        contact = GAIT.get_phase("initial_contact")
         terminal = GAIT.get_phase("terminal_swing")
         assert (
-            abs(heel.joint_angles["hip_l_flex"] - terminal.joint_angles["hip_l_flex"])
+            abs(
+                contact.joint_angles["hip_l_flex"] - terminal.joint_angles["hip_l_flex"]
+            )
             < 0.01
         )
 
@@ -75,11 +77,11 @@ class TestSitToStandObjective:
         names = [p.name for p in SIT_TO_STAND.phases]
         assert names == [
             "seated",
-            "forward_lean",
-            "momentum",
+            "trunk_flexion",
             "seat_off",
             "rising",
-            "standing",
+            "extension_end",
+            "stabilisation",
         ]
 
     def test_phases_ordered_by_time(self) -> None:
@@ -91,7 +93,7 @@ class TestSitToStandObjective:
         assert abs(seated.joint_angles["hip_l_flex"] - math.radians(90)) < 0.01
 
     def test_standing_nearly_erect(self) -> None:
-        standing = SIT_TO_STAND.get_phase("standing")
+        standing = SIT_TO_STAND.get_phase("stabilisation")
         assert standing.joint_angles["hip_l_flex"] < math.radians(10)
 
     def test_lookup_by_name(self) -> None:
