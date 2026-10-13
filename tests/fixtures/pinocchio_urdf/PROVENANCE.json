@@ -1,0 +1,16 @@
+{
+  "schema": "pinocchio-urdf-fixtures/v1",
+  "source_repo": "D-sorganization/Pinocchio_Models",
+  "source_sha": "9a6268dc35c24cba6db90a196d1e8c005a0ee8d5",
+  "generator": "pinocchio_models.shared.parity.fingerprint.build_urdf",
+  "regenerate": "python3 scripts/regenerate_pinocchio_urdf_fixtures.py --pinocchio-repo <clean Pinocchio_Models checkout>",
+  "files": {
+    "bench_press.urdf": "6f1f3aeb03222d55d127d89be3a883fcec6dc5442fd721f8ea373aa774de8d99",
+    "clean_and_jerk.urdf": "aff48d433cb31ba19d89884ef11a1397932379cf5152613e5a58596b47e3c6d1",
+    "deadlift.urdf": "80dece119803ebcb9470a66270ebc20cb7324e61da0010a552eecc01a84b3b11",
+    "gait.urdf": "9d8819d81e5b9d719f36315d02bf84b4f26e884f8504028472675af8ef783e9b",
+    "sit_to_stand.urdf": "4e10056a1d95e8524e9cf540b3de5db5d7d5af4fc22e385f671b0cfdc432b732",
+    "snatch.urdf": "1e7d6f5615ce904423e2f2285b0d949ff9a1c277fa73a3dc35e28d81d407d79f",
+    "squat.urdf": "a6dd1f3063fc78f00a51260c659fc40838c9e420773e08cf722d6a9e24c7dba0"
+  }
+}
