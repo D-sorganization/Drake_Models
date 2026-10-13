@@ -142,6 +142,8 @@ edited here and `tests/parity/` verifies their hashes against `MANIFEST.json`.
 
 | Date       | PR   | Changes                                                                                                                                                                                                                                                                       |
 | ---------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-13 | #413 | Name gait and sit-to-stand phases per standard v2.0 |
+| 2026-10-13 | #415 | Drop unattached free barbell in gait and sit-to-stand models |
 | 2026-10-13 | #414 | Verify all objective phase keys resolve to model coordinates |
 | 2026-10-12 | #410 | Lift objectives consume the standard v2.0 exercise spec (phase names, timing, start/catch/lockout via-poses); phase counts now 5/5/5/6/8 and bench_press weld root conforms (LIFT-2, UpstreamDrift#11742) |
 | 2026-10-11 | #407 | Floor-pull start poses: palm-centre grip, solved pelvis pitch in the start pose; snatch wide-grip floor start still unreachable within hip range |

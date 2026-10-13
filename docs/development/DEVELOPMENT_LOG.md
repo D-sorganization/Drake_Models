@@ -119,6 +119,32 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Shipped (Last 90 Days)
 
+### DL-#409 · Name Gait and Sit-to-Stand Phases per Standard V2.0
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #409
+- **Branch:** merged via #413
+- **PR:** #413
+- **Paths:** see #413
+- **Started:** 2026-10-13
+- **Last verified:** 2026-10-13 (`7efb1060`; collated from changes/409-name-gait-and-sit-to-stand-phases-per-st.md)
+- **Summary:** Name gait and sit-to-stand phases per standard v2.0
+- **Next step:** Shipped in PR #413.
+
+### DL-#366 · Drop Unattached Free Barbell in Gait and Sit-to-Stand Models
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #366
+- **Branch:** merged via #415
+- **PR:** #415
+- **Paths:** see #415
+- **Started:** 2026-10-13
+- **Last verified:** 2026-10-13 (`5725315a`; collated from changes/366-drop-unattached-free-barbell-in-gait-and.md)
+- **Summary:** Drop unattached free barbell in gait and sit-to-stand models
+- **Next step:** Shipped in PR #415.
+
 ### DL-#390 · Verify All Objective Phase Keys Resolve to Model Coordinates
 
 - **State:** shipped
