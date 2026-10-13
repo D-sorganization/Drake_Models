@@ -310,6 +310,9 @@ def load_sdf(
     )
 
 
+sole_corner_heights = _sole_corner_heights
+
+
 __all__ = [
     "BIOMECH_NS",
     "InitialPose",
@@ -320,6 +323,7 @@ __all__ = [
     "load_sdf",
     "parse_initial_pose",
     "parse_weld_constraints",
+    "sole_corner_heights",
     "strip_initial_pose",
     "weld_residuals",
 ]
