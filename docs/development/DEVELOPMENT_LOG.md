@@ -119,6 +119,19 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Shipped (Last 90 Days)
 
+### DL-#390 · Verify All Objective Phase Keys Resolve to Model Coordinates
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #390
+- **Branch:** merged via #414
+- **PR:** #414
+- **Paths:** see #414
+- **Started:** 2026-10-13
+- **Last verified:** 2026-10-13 (`9fb7be17`; collated from changes/390-verify-all-objective-phase-keys-resolve.md)
+- **Summary:** Verify all objective phase keys resolve to model coordinates
+- **Next step:** Shipped in PR #414.
+
 ### DL-#372 · Lift Objectives Consume the Standard V2.0 Exercise Spec (Phase Names, Timing, Start/Catch/Lockout Via-Poses); Phase Counts Now 5/5/5/6/8 and Bench_Press Weld Root Conforms (LIFT-2, UpstreamDrift#11742)
 
 - **State:** shipped
