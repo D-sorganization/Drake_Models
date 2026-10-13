@@ -57,6 +57,13 @@ class TestSitToStandModelBuilder:
         else:
             raise AssertionError("chair_to_world joint not found")
 
+    def test_no_barbell_links(self) -> None:
+        """Sit-to-stand model must not contain barbell links (#366)."""
+        xml_str = build_sit_to_stand_model()
+        root = ET.fromstring(xml_str)
+        links = {lnk.get("name") for lnk in root.findall(".//link")}
+        assert not any("barbell" in (n or "") for n in links)
+
     def test_no_barbell_attachment_joint(self) -> None:
         """STS model should not have a barbell-to-body joint."""
         xml_str = build_sit_to_stand_model()

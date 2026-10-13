@@ -122,6 +122,15 @@ class ExerciseModelBuilder(ABC):
         """
         return "floating"
 
+    @property
+    def uses_barbell(self) -> bool:
+        """Whether this exercise uses a barbell.
+
+        Subclasses for bodyweight or fixture-based exercises (e.g. gait, sit-to-stand)
+        override this to return False so that barbell links are not created.
+        """
+        return True
+
     @staticmethod
     def _write_initial_pose(
         model: ET.Element,
@@ -428,7 +437,11 @@ class ExerciseModelBuilder(ABC):
         body_links = create_full_body(
             model, self.config.body_spec, pelvis_joint_type=self.pelvis_joint_type
         )
-        barbell_links = create_barbell_links(model, self.config.barbell_spec)
+        barbell_links = (
+            create_barbell_links(model, self.config.barbell_spec)
+            if self.uses_barbell
+            else {}
+        )
         return body_links, barbell_links
 
     def build(self) -> str:
@@ -441,7 +454,8 @@ class ExerciseModelBuilder(ABC):
         body_links, barbell_links = self._build_body_and_barbell(model)
         self.attach_barbell(model, body_links, barbell_links)
         self.set_initial_pose(model)
-        self._centre_bar_between_hands(model)
+        if self.uses_barbell:
+            self._centre_bar_between_hands(model)
         self._add_collision_filters(model)
         resolve_link_poses(model, _ROOT_POSES)
         xml_str = serialize_model(root)

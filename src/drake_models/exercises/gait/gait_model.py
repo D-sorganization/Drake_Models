@@ -50,6 +50,11 @@ class GaitModelBuilder(ExerciseModelBuilder):
         """Return the canonical exercise name for the gait model."""
         return "gait"
 
+    @property
+    def uses_barbell(self) -> bool:
+        """Return False: gait is an unloaded bodyweight exercise."""
+        return False
+
     def attach_barbell(
         self,
         model: ET.Element,
@@ -90,7 +95,7 @@ def build_gait_model(
 
     Default: 80 kg person, 1.75 m tall, no external load.
     The ``plate_mass_per_side`` parameter is accepted for CLI compatibility
-    but ignored (barbell is present in SDF but unattached to the body).
+    but ignored (gait has no barbell).
     """
     del plate_mass_per_side  # accepted for CLI compatibility, unused
     return build_exercise_model(
