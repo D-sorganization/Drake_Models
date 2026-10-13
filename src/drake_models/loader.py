@@ -17,12 +17,14 @@ import importlib
 import itertools
 import logging
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
 import defusedxml.ElementTree as DefusedET
 
 from drake_models.shared.body.body_anthropometrics import PELVIS_STANDING_HEIGHT
+from drake_models.shared.contracts.preconditions import require_non_negative
 from drake_models.shared.parity.standard import GRAVITY
 from drake_models.shared.utils.sdf_helpers import BIOMECH_NS, biomech_tag
 
@@ -246,6 +248,7 @@ def load_sdf(
     *,
     time_step: float = 0.0,
     apply_pose: bool = True,
+    actuator_gains: Mapping[str, tuple[float, float]] | None = None,
     _is_probe: bool = False,
 ) -> LoadedExercise:
     """Parse *sdf_xml* in Drake and return the finalized plant.
@@ -253,11 +256,21 @@ def load_sdf(
     ``biomech:weld`` loop-closures are added as Drake weld constraints only when
     ``time_step > 0``: Drake supports them only on discrete plants.
 
+    *actuator_gains* maps joint-actuator names to ``(Kp, Kd)``; those actuators
+    become PD controlled (Drake needs the gains before ``Finalize`` and a
+    discrete plant), driven through ``get_desired_state_input_port``.
+
     Raises:
-        ValueError: If *sdf_xml* is empty.
+        ValueError: If *sdf_xml* is empty, or *actuator_gains* is given for a
+            continuous plant or holds a negative or non-finite gain.
     """
     if not sdf_xml.strip():
         raise ValueError("sdf_xml must be non-empty")
+    if actuator_gains and time_step <= 0.0:
+        raise ValueError("actuator_gains need a discrete plant (time_step > 0)")
+    for name, gain_pair in (actuator_gains or {}).items():
+        for gain in gain_pair:
+            require_non_negative(gain, f"actuator_gains[{name!r}]")
     parsing = importlib.import_module("pydrake.multibody.parsing")
     plant_mod = importlib.import_module("pydrake.multibody.plant")
     systems = importlib.import_module("pydrake.systems.framework")
@@ -289,6 +302,12 @@ def load_sdf(
                 weld_poses[spec.name],
                 plant.GetBodyByName(spec.child),
                 math.RigidTransform(),
+            )
+    if actuator_gains:
+        tree = importlib.import_module("pydrake.multibody.tree")
+        for name, (kp, kd) in actuator_gains.items():
+            plant.GetJointActuatorByName(name).set_controller_gains(
+                tree.PdControllerGains(p=kp, d=kd)
             )
     plant.Finalize()
     # The SDF carries no gravity (model-level <gravity> is not allowed), so

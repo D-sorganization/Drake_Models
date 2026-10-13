@@ -116,3 +116,24 @@ def test_strip_initial_pose_preserves_unrelated_elements() -> None:
 def test_strip_initial_pose_no_op_without_initial_pose() -> None:
     raw = '<sdf version="1.8"><model name="m"/></sdf>'
     assert strip_initial_pose(raw) == raw
+
+
+class TestActuatorGainPreconditions:
+    """``load_sdf(actuator_gains=...)`` rejects bad gains before touching Drake."""
+
+    _SDF = '<sdf version="1.8"><model name="m"/></sdf>'
+
+    def test_rejects_continuous_plant(self) -> None:
+        from drake_models.loader import load_sdf
+
+        with pytest.raises(ValueError, match="discrete plant"):
+            load_sdf(self._SDF, "m", actuator_gains={"knee_l": (1.0, 1.0)})
+
+    @pytest.mark.parametrize("gains", [(-1.0, 1.0), (1.0, float("nan"))])
+    def test_rejects_negative_or_non_finite_gain(
+        self, gains: tuple[float, float]
+    ) -> None:
+        from drake_models.loader import load_sdf
+
+        with pytest.raises(ValueError, match="actuator_gains"):
+            load_sdf(self._SDF, "m", time_step=1e-3, actuator_gains={"knee_l": gains})
