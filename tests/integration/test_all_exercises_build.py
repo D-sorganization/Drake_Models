@@ -217,3 +217,51 @@ class TestAllExercisesBuild:
         assert not violations, f"{name}: kinematic tree violation — " + "; ".join(
             violations
         )
+
+    @pytest.mark.parametrize(
+        "name,builder",
+        ALL_BUILDERS,
+        ids=[n for n, _ in ALL_BUILDERS],  # type: ignore
+    )
+    def test_human_body_collision_filter_group_present(
+        self, name: Any, builder: Any
+    ) -> None:
+        """Every exercise must include the full human_body_filter group (#363)."""
+        xml_str = builder()
+        root = ET.fromstring(xml_str)
+        model = root.find("model")
+        assert model is not None
+
+        ns = {"drake": "drake.mit.edu"}
+        groups = model.findall("drake:collision_filter_group", ns)
+        group_names = [g.get("name") for g in groups]
+        assert "human_body_filter" in group_names
+
+        human_group = next(g for g in groups if g.get("name") == "human_body_filter")
+        members = [
+            m.text
+            for m in human_group.findall("drake:member", ns)
+            if m.text is not None
+        ]
+        ignored = [
+            ig.text
+            for ig in human_group.findall("drake:ignored_collision_filter_group", ns)
+            if ig.text is not None
+        ]
+        assert "human_body_filter" in ignored
+        assert len(members) == 29
+        assert "pelvis" in members
+        assert "torso" in members
+        assert "head" in members
+        for side in ("l", "r"):
+            assert f"thigh_{side}" in members
+            assert f"shank_{side}" in members
+            assert f"foot_{side}" in members
+            assert f"upper_arm_{side}" in members
+            assert f"forearm_{side}" in members
+            assert f"hand_{side}" in members
+
+        assert "ground_plane" not in members
+        assert "barbell_shaft" not in members
+        assert "bench_pad" not in members
+        assert "chair_seat" not in members
