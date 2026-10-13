@@ -24,8 +24,6 @@ from drake_models.shared.parity.standard import SEGMENT_BILATERAL, SEGMENT_TABLE
 # Geometry / placement constants
 # ---------------------------------------------------------------------------
 
-# Standing pelvis height above ground (meters) for a 50th-percentile male.
-PELVIS_STANDING_HEIGHT: float = 0.93
 
 # Shoulder attachment point as a fraction of torso length from pelvis.
 SHOULDER_HEIGHT_FRACTION: float = 0.95
@@ -153,3 +151,23 @@ def _seg(spec: BodyModelSpec, name: str) -> tuple[float, float, float]:
     # ⚡ Bolt: Fast dictionary lookup replaces float multiplication on every call
     assert spec._cached_segments is not None
     return spec._cached_segments[name]
+
+
+def standing_pelvis_height(spec: BodyModelSpec | None = None) -> float:
+    """Return the standing pelvis height (meters) derived from the leg chain.
+
+    Computed from pelvis, thigh, shank and foot segment lengths plus the
+    foot contact box thickness, so foot soles rest exactly on the ground plane (z=0)
+    in the neutral standing pose (#364).
+    """
+    s = spec if spec is not None else BodyModelSpec()
+    _p_mass, p_len, _p_rad = _seg(s, "pelvis")
+    _th_mass, th_len, _th_rad = _seg(s, "thigh")
+    _sh_mass, sh_len, _sh_rad = _seg(s, "shank")
+    _ft_mass, ft_len, _ft_rad = _seg(s, "foot")
+    return p_len / 2.0 + th_len + sh_len + ft_len + FOOT_CONTACT_HEIGHT
+
+
+# Standing pelvis height above ground (meters) for a 50th-percentile male,
+# derived from the neutral standing leg chain so foot soles rest on the ground plane (z=0).
+PELVIS_STANDING_HEIGHT: float = standing_pelvis_height()

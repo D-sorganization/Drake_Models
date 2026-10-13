@@ -26,6 +26,7 @@ from drake_models.__main__ import EXERCISES  # noqa: E402
 from drake_models.loader import (  # noqa: E402
     grounded_pelvis_height,
     load_sdf,
+    sole_corner_heights,
     weld_residuals,
 )
 from drake_models.model_pack import list_exercises, manifest  # noqa: E402
@@ -81,6 +82,34 @@ def test_raw_parse_keeps_pelvis_standing_height(exercise: str, tmp_path: Path) -
     pelvis = plant.GetBodyByName("pelvis")
     z = plant.EvalBodyPoseInWorld(context, pelvis).translation()[2]
     assert z == pytest.approx(PELVIS_STANDING_HEIGHT, abs=1e-9)
+
+
+@pytest.mark.parametrize("exercise", [e for e in EXERCISE_IDS if FREE_BODIES[e] > 0])
+def test_load_sdf_grounds_lowest_foot_point(exercise: str) -> None:
+    """load_sdf(apply_pose=True) places lowest foot collision point within 5 mm of z=0 (#364)."""
+    loaded = load_sdf(_build_sdf(exercise), exercise, apply_pose=True)
+    context = loaded.plant.CreateDefaultContext()
+    heights = sole_corner_heights(loaded.plant, loaded.scene_graph, context)
+    assert heights, f"{exercise} has no foot collision geometry"
+    assert min(heights) == pytest.approx(0.0, abs=0.005)
+
+
+@pytest.mark.parametrize("exercise", [e for e in EXERCISE_IDS if FREE_BODIES[e] > 0])
+def test_raw_parse_grounds_lowest_foot_point(exercise: str, tmp_path: Path) -> None:
+    """Loading SDF with a plain Parser places lowest foot collision point within 5 mm of z=0 (#364)."""
+    from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
+    from pydrake.systems.framework import DiagramBuilder
+
+    builder = DiagramBuilder()
+    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.0)
+    sdf = tmp_path / f"{exercise}.sdf"
+    sdf.write_text(_build_sdf(exercise), encoding="utf-8")
+    Parser(plant).AddModels(str(sdf))
+    plant.Finalize()
+    context = plant.CreateDefaultContext()
+    heights = sole_corner_heights(plant, scene_graph, context)
+    assert heights, f"{exercise} has no foot collision geometry"
+    assert min(heights) == pytest.approx(0.0, abs=0.005)
 
 
 # --- Conformance against the canonical bundle -------------------------------
