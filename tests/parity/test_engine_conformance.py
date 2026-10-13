@@ -423,9 +423,9 @@ def test_human_body_collision_pairs_are_filtered(exercise: str) -> None:
 
     for i, g1 in enumerate(human_geoms):
         for g2 in human_geoms[i + 1 :]:
-            assert inspector.CollisionFiltered(
-                g1, g2
-            ), f"Collision between {geom_to_body[g1]} and {geom_to_body[g2]} is not filtered in {exercise}"
+            assert inspector.CollisionFiltered(g1, g2), (
+                f"Collision between {geom_to_body[g1]} and {geom_to_body[g2]} is not filtered in {exercise}"
+            )
 
     ground_body = loaded.plant.GetBodyByName("ground_plane")
     ground_geoms = loaded.plant.GetCollisionGeometriesForBody(ground_body)
@@ -433,9 +433,9 @@ def test_human_body_collision_pairs_are_filtered(exercise: str) -> None:
     foot_geoms = loaded.plant.GetCollisionGeometriesForBody(foot_l)
     for fg in foot_geoms:
         for gg in ground_geoms:
-            assert not inspector.CollisionFiltered(
-                fg, gg
-            ), f"Foot-ground contact is filtered in {exercise}"
+            assert not inspector.CollisionFiltered(fg, gg), (
+                f"Foot-ground contact is filtered in {exercise}"
+            )
 
 
 @pytest.mark.parametrize("exercise", EXERCISE_IDS)
@@ -468,6 +468,6 @@ def test_no_body_body_self_contacts_at_initial_pose(exercise: str) -> None:
         if bodyA in human_links and bodyB in human_links:
             body_contacts.append((bodyA, bodyB))
 
-    assert (
-        body_contacts == []
-    ), f"Unintended self-contacts detected in {exercise}: {body_contacts}"
+    assert body_contacts == [], (
+        f"Unintended self-contacts detected in {exercise}: {body_contacts}"
+    )
