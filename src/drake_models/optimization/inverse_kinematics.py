@@ -271,14 +271,16 @@ def _refine_keyframe(
         goal = np.asarray(target.position_w, dtype=float)
         ik.AddPositionConstraint(
             frameB=plant.GetBodyByName(target.body).body_frame(),
-            p_BQ=np.asarray(target.point_b, dtype=float),
+            p_BQ=cast(Any, np.asarray(target.point_b, dtype=float)),
             frameA=world,
-            p_AQ_lower=goal,
-            p_AQ_upper=goal,
+            p_AQ_lower=cast(Any, goal),
+            p_AQ_upper=cast(Any, goal),
         )
     q_vars = ik.q()
     prog = ik.get_mutable_prog()
-    prog.AddQuadraticErrorCost(np.eye(q_nominal.size), q_nominal, q_vars)
+    prog.AddQuadraticErrorCost(
+        cast(Any, np.eye(q_nominal.size)), cast(Any, q_nominal), q_vars
+    )
     prog.SetInitialGuess(cast(Any, q_vars), cast(Any, q_nominal))
     result = Solve(prog)
     return np.asarray(result.GetSolution(q_vars), dtype=float), result.is_success()
