@@ -18,6 +18,32 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Active
 
+### DL-#374 · Load the SHA-Pinned Pinocchio_Models URDF With Drake Parser and Compare Fingerprints With the Native SDF Model
+
+- **State:** in_review
+- **Owner:** unassigned
+- **Issue:** #374
+- **Branch:** feat/374-urdf-fingerprint
+- **PR:** #422
+- **Paths:** see #422
+- **Started:** 2026-10-13
+- **Last verified:** 2026-10-13 (`961ad3d7`; collated from changes/374-load-the-sha-pinned-pinocchio-models-urd.md)
+- **Summary:** Load the SHA-pinned Pinocchio_Models URDF with Drake Parser and compare fingerprints with the native SDF model
+- **Next step:** Merge the PR; resolve #421 (bench fixture mass) and delete its ledger entry.
+
+### DL-#371 · Expose Drake Contact Results as Per-Foot and Total GRF With CoP (Standing Test on Real Pydrake)
+
+- **State:** in_review
+- **Owner:** unassigned
+- **Issue:** #371
+- **Branch:** feat/371-grf-cop
+- **PR:** #420
+- **Paths:** see #420
+- **Started:** 2026-10-13
+- **Last verified:** 2026-10-13 (`2eeba803`; collated from changes/371-expose-drake-contact-results-as-per-foot.md)
+- **Summary:** Expose Drake contact results as per-foot and total GRF with CoP (standing test on real pydrake)
+- **Next step:** Merge the PR once CI (real-pydrake standing test) is green.
+
 ### DL-#381 · Floor-Pull Start Poses: Palm-Centre Grip, Solved Pelvis Pitch in the Start Pose; Snatch Wide-Grip Floor Start Still Unreachable Within Hip Range
 
 - **State:** in_review
@@ -118,6 +144,19 @@ reachable from any live state and `abandoned` from `parked`.
   definition.
 
 ## Shipped (Last 90 Days)
+
+### DL-#364 · Derive Pelvis Standing Height From Leg Chain so Feet Rest on Ground
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #364
+- **Branch:** merged via #417
+- **PR:** #417
+- **Paths:** see #417
+- **Started:** 2026-10-13
+- **Last verified:** 2026-10-13 (`e1951d15`; collated from changes/364-derive-pelvis-standing-height-from-leg-c.md)
+- **Summary:** Derive pelvis standing height from leg chain so feet rest on ground
+- **Next step:** Shipped in PR #417.
 
 ### DL-#409 · Name Gait and Sit-to-Stand Phases per Standard V2.0
 
