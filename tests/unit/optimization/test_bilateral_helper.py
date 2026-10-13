@@ -56,7 +56,7 @@ class TestBilateral:
             ("hip", 15, "rotate"),
             ("knee", -120, ""),
             ("ankle", 25, "flex"),
-            ("shoulder", 75, "abd"),
+            ("shoulder", 75, "adduct"),
             ("elbow", -90, ""),
         ],
     )

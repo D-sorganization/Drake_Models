@@ -1,10 +1,15 @@
 """Tests for exercise-specific optimization objectives."""
 
 import math
+import xml.etree.ElementTree as ET
+from typing import Any
 
 import numpy as np
 import pytest
 
+from drake_models.exercises.bench_press.bench_press_model import (
+    build_bench_press_model,
+)
 from drake_models.optimization.exercise_objectives import (
     BENCH_PRESS,
     CLEAN_AND_JERK,
@@ -16,6 +21,7 @@ from drake_models.optimization.exercise_objectives import (
     ExercisePhase,
     get_objective,
 )
+from tests.integration.test_all_exercises_build import ALL_BUILDERS
 
 
 class TestExercisePhase:
@@ -205,6 +211,22 @@ class TestBenchPressObjective:
         touch = BENCH_PRESS.get_phase("chest_touch")
         assert touch.joint_angles["elbow_l"] > math.radians(90)
 
+    def test_phase_keys_match_model_coordinates(self) -> None:
+        """Issue #390: bench-press keys use shoulder_*_adduct, matching model."""
+        root = ET.fromstring(build_bench_press_model())
+        model_joints = {j.get("name") for j in root.findall(".//joint")}
+        assert "shoulder_l_adduct" in model_joints
+        assert "shoulder_r_adduct" in model_joints
+        for phase in BENCH_PRESS.phases:
+            assert "shoulder_l_adduct" in phase.joint_angles
+            assert "shoulder_r_adduct" in phase.joint_angles
+            assert "shoulder_l_abd" not in phase.joint_angles
+            assert "shoulder_r_abd" not in phase.joint_angles
+            unmapped = set(phase.joint_angles.keys()) - model_joints
+            assert not unmapped, (
+                f"Bench phase '{phase.name}' has unmapped keys: {unmapped}"
+            )
+
 
 class TestSnatchObjective:
     def test_exercise_name(self) -> None:
@@ -261,3 +283,25 @@ class TestGetObjective:
     def test_unknown_exercise_raises(self) -> None:
         with pytest.raises(KeyError, match="No objective"):
             get_objective("bicep_curl")
+
+
+class TestAllObjectivesCoordinateResolution:
+    """Issue #390: all objective phase keys resolve exactly to model coordinates."""
+
+    @pytest.mark.parametrize(
+        "name,builder",
+        ALL_BUILDERS,
+        ids=[n for n, _ in ALL_BUILDERS],
+    )
+    def test_all_phase_keys_resolve_to_model_coordinates(
+        self, name: str, builder: Any
+    ) -> None:
+        obj = get_objective(name)
+        root = ET.fromstring(builder())
+        model_joints = {j.get("name") for j in root.findall(".//joint")}
+        for phase in obj.phases:
+            unmapped = set(phase.joint_angles.keys()) - model_joints
+            assert not unmapped, (
+                f"{name} phase '{phase.name}' has unmapped coordinate keys: "
+                f"{sorted(unmapped)}"
+            )
