@@ -1,0 +1,10 @@
+{
+  "schema": "parity-divergences/v1",
+  "divergences": {
+    "urdf.total_mass_kg": {
+      "issue": "#421",
+      "exercises": ["bench_press"],
+      "reason": "Native Drake SDF has a 30 kg world-welded bench_pad; the Pinocchio_Models URDF bench link is a 1e-6 kg placeholder (230.000016 vs 200.000017 kg). The standard defines no fixture mass. Human segment masses agree exactly."
+    }
+  }
+}
