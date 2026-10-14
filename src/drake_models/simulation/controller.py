@@ -16,8 +16,8 @@ lever, and its own gravity stiffness ``k_g`` (the change of its gravity-holding
 torque with its angle) is not always covered by the same frequency, so each
 joint takes ``Kp = max(w^2 I, margin k_g)``: every joint's stiffness is at
 least ``margin`` times its gravity stiffness, and every joint's natural
-frequency ``sqrt(Kp / I)`` is at least ``w``.  At ``margin = 100`` gravity
-softens any joint loop by at most 1 %.  ``Kd = 2 zeta sqrt(Kp I)`` damps every
+frequency ``sqrt(Kp / I)`` is at least ``w``.  At ``margin = 400`` gravity
+softens any joint loop by at most 0.25 %.  ``Kd = 2 zeta sqrt(Kp I)`` damps every
 joint critically (``zeta = 1``).  Drake applies the PD implicitly (SAP), so
 the gains carry no time-step stability limit.
 """
@@ -40,8 +40,12 @@ from drake_models.shared.contracts.preconditions import (
 FloatArray = NDArray[np.float64]
 
 # Ratio of PD stiffness to the gravitational toppling stiffness m g h (see the
-# module docstring): gravity then softens each joint loop by at most 1 %.
-DEFAULT_STIFFNESS_MARGIN = 100.0
+# module docstring): gravity then softens each joint loop by at most 0.25 %.
+# The feedforward is gravity only, so the inertial load of a squat is left to
+# the feedback: the quarter-squat tracking error falls as ~1/sqrt(margin) (0.123
+# rad at 100, 0.064 rad at 400) and 400 keeps it inside the squat via-pose
+# tolerance (0.1 rad) with headroom.
+DEFAULT_STIFFNESS_MARGIN = 400.0
 # Critical damping: the fastest non-oscillatory error decay.
 DEFAULT_DAMPING_RATIO = 1.0
 # Relative residual of the support-wrench solve.  The base rows are a full-rank
