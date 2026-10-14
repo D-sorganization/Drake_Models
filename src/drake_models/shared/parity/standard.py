@@ -33,6 +33,7 @@ SEGMENT_BILATERAL: dict[str, bool] = {
 }
 SEGMENT_MASS_FRACTIONS = {n: r["mass_frac"] for n, r in SEGMENT_TABLE.items()}
 SEGMENT_LENGTH_FRACTIONS = {n: r["length_frac"] for n, r in SEGMENT_TABLE.items()}
+SEGMENT_RADIUS_FRACTIONS = {n: r["radius_frac"] for n, r in SEGMENT_TABLE.items()}
 
 
 def _joint_limits() -> dict[str, tuple[float, float]]:

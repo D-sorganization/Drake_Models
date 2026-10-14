@@ -40,8 +40,8 @@ BENCH_PAD_LENGTH = 1.20  # length along X (head-to-foot)
 BENCH_PAD_WIDTH = 0.30  # width along Y (lateral)
 BENCH_PAD_THICKNESS = 0.05  # thickness along Z
 
-# Bench pad mass (kg) — approximate for a standard competition bench.
-BENCH_PAD_MASS = 30.0
+# Bench pad mass (kg) — near-zero mass; bench mass is borne by ground (#391).
+BENCH_PAD_MASS = 1e-4
 
 # Grip offset from barbell center (meters) — approximately shoulder width.
 # Standard competition bench press grip is ~0.81 m between index fingers;
