@@ -5,19 +5,28 @@ the exercise phases defined in exercise_objectives. When Drake is
 available, uses Drake's InverseKinematics solver for physically
 consistent solutions. Otherwise, falls back to direct phase
 interpolation.
+
+:func:`solve_ik_pose` solves a single pose against task-space position
+targets (e.g. bar centre and feet, issue #367) with joint limits and a cost
+that regularises toward a nominal pose.
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, cast
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from drake_models.optimization.exercise_objectives import (
     ExerciseObjective,
     get_objective,
 )
+from drake_models.optimization.inverse_dynamics import _resolve_plant
+from drake_models.shared.contracts.preconditions import require_finite, require_shape
 
 logger = logging.getLogger(__name__)
 
@@ -135,35 +144,188 @@ def _build_ik_plant(sdf_string: str) -> Any:
     return load_sdf(sdf_string, "ik", apply_pose=False).plant
 
 
+@dataclass(frozen=True)
+class PositionTarget:
+    """World-frame position target for a point fixed in one body.
+
+    Attributes:
+        body: Name of the plant body carrying the point (e.g. ``"foot_l"`` or
+            ``"barbell_shaft"``).
+        position_w: Target position of the point in the world frame (m).
+        point_b: The point in the body frame (m); the body origin by default.
+    """
+
+    body: str
+    position_w: tuple[float, ...]
+    point_b: tuple[float, ...] = (0.0, 0.0, 0.0)
+
+
+@dataclass(frozen=True)
+class IkSolution:
+    """Result of :func:`solve_ik_pose`.
+
+    Attributes:
+        q: Plant positions, shape ``(plant.num_positions(),)``.
+        success: Whether the solver reported success.
+        residuals_m: Distance (m) from each target point to its world target
+            at ``q``, keyed by body name.
+    """
+
+    q: np.ndarray
+    success: bool
+    residuals_m: dict[str, float]
+
+
+def _default_positions(plant: Any) -> np.ndarray:
+    """Positions of *plant*'s default context as a float array."""
+    return np.array(plant.GetPositions(plant.CreateDefaultContext()), dtype=float)
+
+
+def _position_start(plant: Any, name: str) -> int:
+    """Index in ``q`` of the one position of joint *name*.
+
+    Raises:
+        ValueError: *name* is not a joint of *plant*, or the joint does not
+            have exactly one position.
+    """
+    if not plant.HasJointNamed(name):
+        raise ValueError(f"unknown joint {name!r}")
+    joint = plant.GetJointByName(name)
+    if joint.num_positions() != 1:
+        raise ValueError(f"joint {name!r} has {joint.num_positions()} positions")
+    return int(joint.position_start())
+
+
+def nominal_positions(
+    plant: Any, joint_angles: Mapping[str, float], base: ArrayLike | None = None
+) -> np.ndarray:
+    """Plant positions with the named one-DOF joints set to *joint_angles*.
+
+    Positions of joints not named (including the floating base) come from
+    *base*, or from the plant's default context when *base* is ``None``.
+
+    Raises:
+        ValueError: A name is not a joint of *plant*, or the joint does not
+            have exactly one position.
+    """
+    q = _default_positions(plant) if base is None else np.array(base, dtype=float)
+    for name, angle in joint_angles.items():
+        q[_position_start(plant, name)] = angle
+    return q
+
+
+def _validate_targets(plant: Any, targets: Sequence[PositionTarget]) -> None:
+    """Reject unknown or repeated bodies and malformed target vectors."""
+    seen: set[str] = set()
+    for target in targets:
+        if not plant.HasBodyNamed(target.body):
+            raise ValueError(f"unknown body {target.body!r}")
+        if target.body in seen:
+            raise ValueError(f"duplicate target for body {target.body!r}")
+        seen.add(target.body)
+        for label, vec in (
+            ("position_w", target.position_w),
+            ("point_b", target.point_b),
+        ):
+            name = f"{target.body}.{label}"
+            require_shape(np.asarray(vec, dtype=float), (3,), name)
+            require_finite(vec, name)
+
+
+def task_space_residuals(
+    plant: Any, q: ArrayLike, targets: Sequence[PositionTarget]
+) -> dict[str, float]:
+    """Distance (m) from each target point to its world target at *q*."""
+    context = plant.CreateDefaultContext()
+    plant.SetPositions(context, np.asarray(q, dtype=float))
+    residuals: dict[str, float] = {}
+    for target in targets:
+        pose = plant.EvalBodyPoseInWorld(context, plant.GetBodyByName(target.body))
+        point_w = np.asarray(pose.multiply(np.asarray(target.point_b, dtype=float)))
+        error = point_w - np.asarray(target.position_w, dtype=float)
+        residuals[target.body] = float(np.linalg.norm(error))
+    return residuals
+
+
 def _refine_keyframe(
     plant: Any,
-    initial_guess: np.ndarray,
-    n_q: int,
-    n_joints: int,
-    frame_index: int,
-) -> np.ndarray:
-    """Refine one keyframe via Drake's InverseKinematics solver.
+    q_nominal: np.ndarray,
+    targets: Sequence[PositionTarget] = (),
+) -> tuple[np.ndarray, bool]:
+    """Solve one keyframe with Drake's InverseKinematics.
 
-    Returns the refined joint angles (length *n_joints*).  Falls back to
-    *initial_guess* if the IK solve fails.
+    Each target is an equality position constraint on its body point in the
+    world frame; ``InverseKinematics`` enforces the joint limits and the
+    floating base's unit quaternion.  The cost ``|q - q_nominal|^2`` (identity
+    weight) regularises the redundant DOF toward the nominal pose, so with no
+    targets the feasible nominal pose is itself the optimum.
+
+    Returns:
+        ``(q, success)``; *q* is the solver's final iterate.
     """
     from pydrake.all import InverseKinematics, Solve
 
-    ik = InverseKinematics(plant)
+    ik = InverseKinematics(plant, with_joint_limits=True)
+    world = plant.world_frame()
+    for target in targets:
+        goal = np.asarray(target.position_w, dtype=float)
+        ik.AddPositionConstraint(
+            frameB=plant.GetBodyByName(target.body).body_frame(),
+            p_BQ=cast(Any, np.asarray(target.point_b, dtype=float)),
+            frameA=world,
+            p_AQ_lower=cast(Any, goal),
+            p_AQ_upper=cast(Any, goal),
+        )
     q_vars = ik.q()
     prog = ik.get_mutable_prog()
-
-    q_init = np.zeros(n_q)
-    for j in range(min(n_joints, n_q)):
-        q_init[j] = initial_guess[j]
-    prog.SetInitialGuess(cast(Any, q_vars), cast(Any, q_init))
-
+    prog.AddQuadraticErrorCost(
+        cast(Any, np.eye(q_nominal.size)), cast(Any, q_nominal), q_vars
+    )
+    prog.SetInitialGuess(cast(Any, q_vars), cast(Any, q_nominal))
     result = Solve(prog)
-    if result.is_success():
-        return result.GetSolution(q_vars)[:n_joints]
+    return np.asarray(result.GetSolution(q_vars), dtype=float), result.is_success()
 
-    logger.warning("IK failed for keyframe %d, using interpolation", frame_index)
-    return initial_guess
+
+def solve_ik_pose(
+    exercise: Any,
+    targets: Sequence[PositionTarget],
+    q_nominal: ArrayLike | None = None,
+) -> IkSolution:
+    """Solve one pose that meets task-space position targets.
+
+    Args:
+        exercise: Manifest exercise id (e.g. ``"squat"``), a ``LoadedExercise``
+            or a finalized ``MultibodyPlant``.
+        targets: World-frame position targets, at most one per body.
+        q_nominal: Pose the regularising cost pulls toward, also the initial
+            guess, shape ``(plant.num_positions(),)``; the plant's default
+            positions when ``None``.
+
+    Returns:
+        The solved positions, the solver's success flag and each target's
+        residual, measured by forward kinematics at the solution.
+
+    Raises:
+        ValueError: Unknown exercise id or body, a duplicate target body, a
+            wrong shape or a non-finite value.
+        TypeError: ``exercise`` is not a str, LoadedExercise or plant.
+        AssertionError: The solver returned non-finite positions.
+    """
+    plant = _resolve_plant(exercise)
+    target_list = tuple(targets)
+    _validate_targets(plant, target_list)
+    q_nom = (
+        _default_positions(plant)
+        if q_nominal is None
+        else np.asarray(q_nominal, dtype=float)
+    )
+    require_shape(q_nom, (plant.num_positions(),), "q_nominal")
+    require_finite(q_nom, "q_nominal")
+
+    q, success = _refine_keyframe(plant, q_nom, target_list)
+    if not np.isfinite(q).all():
+        raise AssertionError("IK returned non-finite positions")
+    return IkSolution(q, success, task_space_residuals(plant, q, target_list))
 
 
 def _solve_ik_with_drake(
@@ -173,20 +335,24 @@ def _solve_ik_with_drake(
 ) -> np.ndarray:
     """Generate IK-refined keyframes using Drake's InverseKinematics.
 
-    First interpolates phases, then refines each keyframe through
-    Drake's IK solver to ensure kinematic feasibility within the
-    multibody model's joint limits and constraints.
+    First interpolates phases, then refines each keyframe through Drake's IK
+    solver (joint limits, regularised toward the interpolated pose).  Joint
+    angles map to and from the plant positions by joint name.
     """
     plant = _build_ik_plant(sdf_string)
     initial_keyframes = _interpolate_phases(objective, n_frames)
-    n_q = plant.num_positions()
-    n_joints = initial_keyframes.shape[1]
+    joint_names = objective.joint_names()
+    base = _default_positions(plant)
+    starts = [_position_start(plant, name) for name in joint_names]
 
-    refined = np.zeros((n_frames, n_joints))
+    refined = np.array(initial_keyframes, dtype=float)
     for i in range(n_frames):
-        refined[i, :] = _refine_keyframe(
-            plant, initial_keyframes[i, :], n_q, n_joints, i
-        )
+        angles = dict(zip(joint_names, initial_keyframes[i], strict=True))
+        q, success = _refine_keyframe(plant, nominal_positions(plant, angles, base))
+        if not success:
+            logger.warning("IK failed for keyframe %d, using interpolation", i)
+            continue
+        refined[i] = q[starts]
 
     logger.info(
         "Generated %d IK-refined keyframes for %s",
@@ -194,3 +360,13 @@ def _solve_ik_with_drake(
         objective.exercise_name,
     )
     return refined
+
+
+__all__ = [
+    "IkSolution",
+    "PositionTarget",
+    "nominal_positions",
+    "solve_ik_keyframes",
+    "solve_ik_pose",
+    "task_space_residuals",
+]

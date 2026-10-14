@@ -28,8 +28,8 @@ capabilities:
   forward_kinematics: { level: none, evidence: null } # no public FK API
   inverse_kinematics: {
       level: partial,
-      evidence: src/drake_models/optimization/inverse_kinematics.py,
-    } # solver defines no end-effector targets
+      evidence: tests/parity/test_inverse_kinematics.py,
+    } # solve_ik_pose: world position targets only (no orientation/marker/per-frame targets)
   forward_dynamics: {
       level: partial,
       evidence: src/drake_models/optimization/drake_trajectory_solver.py,
