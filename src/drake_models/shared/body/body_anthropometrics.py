@@ -52,8 +52,11 @@ NECK_RANGE_LIMIT: float = 0.5236  # +/-30 degrees
 # Shoulder range of motion (radians) -- 3-DOF compound.
 SHOULDER_FLEX_LOWER: float = -1.0472  # -60 degrees
 SHOULDER_FLEX_UPPER: float = 3.1416  # +180 degrees
-SHOULDER_ADDUCT_LOWER: float = -0.5236  # -30 degrees
-SHOULDER_ADDUCT_UPPER: float = 3.1416  # +180 degrees
+# Positive adduction is toward the midline, so the range is ~180 degrees of
+# abduction and 30 degrees of adduction (standard v2.1,
+# Repository_Management#2079; the v2.0 range was mirrored).
+SHOULDER_ADDUCT_LOWER: float = -3.1416  # -180 degrees
+SHOULDER_ADDUCT_UPPER: float = 0.5236  # +30 degrees
 SHOULDER_ROTATE_LOWER: float = -1.5708  # -90 degrees
 SHOULDER_ROTATE_UPPER: float = 1.5708  # +90 degrees
 

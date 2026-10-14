@@ -399,13 +399,47 @@ class ExerciseModelBuilder(ABC):
         ]
 
     @staticmethod
-    def _add_collision_filters(model: ET.Element) -> None:
-        """Add collision exclusion filters for adjacent body segments.
+    def _human_body_link_names() -> list[str]:
+        """Return the complete list of link names in the human body model."""
+        links = ["pelvis", "torso", "head", "lumbar_virtual_1", "lumbar_virtual_2"]
+        for side in ("l", "r"):
+            links.extend(
+                [
+                    f"upper_arm_{side}",
+                    f"forearm_{side}",
+                    f"hand_{side}",
+                    f"shoulder_{side}_virtual_1",
+                    f"shoulder_{side}_virtual_2",
+                    f"wrist_{side}_virtual_1",
+                    f"thigh_{side}",
+                    f"shank_{side}",
+                    f"foot_{side}",
+                    f"hip_{side}_virtual_1",
+                    f"hip_{side}_virtual_2",
+                    f"ankle_{side}_virtual_1",
+                ]
+            )
+        return sorted(links)
+
+    @staticmethod
+    def _add_collision_filters(
+        model: ET.Element,
+        body_links: dict[str, ET.Element] | None = None,
+    ) -> None:
+        """Add collision exclusion filters for human body segments.
 
         Drake uses ``<drake:collision_filter_group>`` to prevent collision
-        detection between segments that are connected by joints. Without
-        these filters, adjacent links would interpenetrate at joint limits.
+        detection between segments. Filters all body-body pairs of the human
+        model to eliminate self-contacts while keeping external contacts
+        (foot-ground, hand-barbell, chair/bench) active (#363).
         """
+        human_members = (
+            sorted(body_links.keys())
+            if body_links is not None
+            else ExerciseModelBuilder._human_body_link_names()
+        )
+        add_collision_filter_group(model, name="human_body", members=human_members)
+
         adjacent_pairs: list[tuple[str, list[str]]] = [
             ("torso_pelvis", ["pelvis", "torso"]),
             ("torso_head", ["torso", "head"]),
@@ -414,7 +448,10 @@ class ExerciseModelBuilder(ABC):
             adjacent_pairs.extend(ExerciseModelBuilder._bilateral_collision_pairs(side))
         for group_name, members in adjacent_pairs:
             add_collision_filter_group(model, name=group_name, members=members)
-        logger.debug("Added %d collision filter groups", len(adjacent_pairs))
+        logger.debug(
+            "Added human body filter group and %d adjacent collision filter groups",
+            len(adjacent_pairs),
+        )
 
     def _init_sdf_root(self) -> tuple[ET.Element, ET.Element]:
         """Create the SDF root, model element, and static flag.
@@ -459,7 +496,7 @@ class ExerciseModelBuilder(ABC):
         self.set_initial_pose(model)
         if self.uses_barbell:
             self._centre_bar_between_hands(model)
-        self._add_collision_filters(model)
+        self._add_collision_filters(model, body_links)
         pelvis_height = standing_pelvis_height(self.config.body_spec)
         root_poses = {"pelvis": (0.0, 0.0, pelvis_height, 0.0, 0.0, 0.0)}
         resolve_link_poses(model, root_poses)
