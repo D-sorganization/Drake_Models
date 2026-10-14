@@ -159,7 +159,7 @@ def test_real_engine_segment_inertia_matches_standard() -> None:
         # In Drake, spatial inertia is about the body origin Bo.
         # Shifting to center of mass Bcm yields the rotational inertia about CoM.
         p_BoBcm_B = spatial_inertia.get_com()
-        rot_inertia_com = spatial_inertia.Shift(-p_BoBcm_B).CalcRotationalInertia()
+        rot_inertia_com = spatial_inertia.Shift(p_BoBcm_B).CalcRotationalInertia()
         moments = rot_inertia_com.get_moments()
 
         assert moments[0] == pytest.approx(expected[0], rel=1e-6, abs=1e-6)
