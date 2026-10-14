@@ -29,7 +29,8 @@ from drake_models.shared.utils.sdf_helpers import BIOMECH_NS, biomech_tag
 logger = logging.getLogger(__name__)
 
 _ROOT_LINK = "pelvis"
-_FOOT_BODIES = ("foot_l", "foot_r")
+# Foot bodies carrying the sole contact boxes (ground reaction is read on these).
+FOOT_BODIES = ("foot_l", "foot_r")
 _CONTACT_SUFFIX = "_contact"
 
 
@@ -125,11 +126,13 @@ def parse_weld_constraints(sdf_xml: str) -> tuple[WeldConstraintSpec, ...]:
     )
 
 
-def _sole_corner_heights(plant: Any, scene_graph: Any, context: Any) -> list[float]:
-    """World heights of every foot sole contact-box corner at *context*."""
+def sole_corner_points(
+    plant: Any, scene_graph: Any, context: Any
+) -> list[tuple[float, float, float]]:
+    """World positions of every foot sole contact-box corner at *context*."""
     inspector = scene_graph.model_inspector()
-    heights: list[float] = []
-    for name in _FOOT_BODIES:
+    points: list[tuple[float, float, float]] = []
+    for name in FOOT_BODIES:
         body = plant.GetBodyByName(name)
         body_pose = plant.EvalBodyPoseInWorld(context, body)
         for gid in plant.GetCollisionGeometriesForBody(body):
@@ -138,9 +141,15 @@ def _sole_corner_heights(plant: Any, scene_graph: Any, context: Any) -> list[flo
             size = inspector.GetShape(gid).size()
             pose = body_pose.multiply(inspector.GetPoseInFrame(gid))
             for corner in itertools.product((-0.5, 0.5), repeat=3):
-                point = [c * d for c, d in zip(corner, size, strict=True)]
-                heights.append(float(pose.multiply(point)[2]))
-    return heights
+                local = [c * d for c, d in zip(corner, size, strict=True)]
+                x, y, z = (float(v) for v in pose.multiply(local))
+                points.append((x, y, z))
+    return points
+
+
+def _sole_corner_heights(plant: Any, scene_graph: Any, context: Any) -> list[float]:
+    """World heights of every foot sole contact-box corner at *context*."""
+    return [p[2] for p in sole_corner_points(plant, scene_graph, context)]
 
 
 def grounded_pelvis_height(plant: Any, scene_graph: Any) -> float | None:
@@ -315,6 +324,7 @@ sole_corner_heights = _sole_corner_heights
 
 __all__ = [
     "BIOMECH_NS",
+    "FOOT_BODIES",
     "InitialPose",
     "LoadedExercise",
     "WeldConstraintSpec",
@@ -324,6 +334,7 @@ __all__ = [
     "parse_initial_pose",
     "parse_weld_constraints",
     "sole_corner_heights",
+    "sole_corner_points",
     "strip_initial_pose",
     "weld_residuals",
 ]

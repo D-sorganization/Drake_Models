@@ -36,10 +36,7 @@ capabilities:
     } # only inside the trajectory solver
   inverse_dynamics:
     { level: full, evidence: tests/parity/test_inverse_dynamics.py }
-  contact_grf: {
-      level: partial,
-      evidence: src/drake_models/shared/utils/sdf_helpers.py,
-    } # hydroelastic contact defined in SDF, GRF not exposed
+  contact_grf: { level: full, evidence: tests/parity/test_ground_reaction.py } # contact_results.measure_ground_reaction: per-foot + total GRF and CoP
   urdf_import: { level: none, evidence: null }
   urdf_export: { level: none, evidence: null }
   video_export: { level: none, evidence: null }
