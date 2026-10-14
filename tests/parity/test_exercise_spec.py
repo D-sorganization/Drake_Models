@@ -1,4 +1,4 @@
-"""The lift objectives consume the vendored exercise spec (standard v2.0).
+"""The lift objectives consume the vendored exercise spec (standard v2.1).
 
 UpstreamDrift#11742 (LIFT-2), Repository_Management#2060 (Option A): phase
 names, phase timing and the start, catch and lockout via-poses come from the
@@ -27,9 +27,9 @@ ALL_EXERCISES = (
 )
 
 # sha256 of Repository_Management/shared_scripts/model_parity/
-# biomech_parity_standard.json at v2.0.0 (Repository_Management#2069, d625a18).
-RM_STANDARD_V2_SHA256 = (
-    "351b74be85f64d70020e3e2db8d42f6a512eb876752b9bc7d11ac2253e2f784d"
+# biomech_parity_standard.json at v2.1.0 (Repository_Management#2079).
+RM_STANDARD_V2_1_SHA256 = (
+    "a0eb6c2bbbfeb70011bad62cf6d21a9245ffabce757c390633b516f542eb3ef8"
 )
 
 
@@ -45,9 +45,9 @@ def _full_pose(exercise: str, pose: str) -> dict[str, float]:
     return {engine_name(name): value for name, value in out.items()}
 
 
-def test_vendored_standard_is_repository_management_v2() -> None:
-    assert conformance.standard_sha256() == RM_STANDARD_V2_SHA256
-    assert STD["version"] == "2.0.0"
+def test_vendored_standard_is_repository_management_v2_1() -> None:
+    assert conformance.standard_sha256() == RM_STANDARD_V2_1_SHA256
+    assert STD["version"] == "2.1.0"
 
 
 @pytest.mark.parametrize("exercise", ALL_EXERCISES)

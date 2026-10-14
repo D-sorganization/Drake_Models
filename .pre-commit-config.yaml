@@ -57,7 +57,9 @@ repos:
       - id: prettier
         name: "prettier (yaml/json/md)"
         types_or: [yaml, markdown, json]
-        exclude: '(\.py|package-lock\.json|\.ipynb)$'
+        # _canonical/ is vendored byte-for-byte from Repository_Management and
+        # digest-checked (MANIFEST.json); reformatting it would break parity.
+        exclude: '((\.py|package-lock\.json|\.ipynb)$|^src/drake_models/shared/parity/_canonical/)'
 
 default_language_version:
   python: python

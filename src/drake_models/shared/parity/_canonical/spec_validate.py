@@ -7,8 +7,9 @@ Never edit a vendored copy.
 ``problems(std)`` returns every way a v2 standard contradicts itself: phase
 lists, root policy, grip attached anywhere but the palm centre, a via-pose joint
 angle outside the standard's own ranges (ranges are never widened to reach a
-pose), and poses the reference forward kinematics cannot realise (palms off the
-bar, feet off the floor or not flat). It reuses the standard's existing
+pose), poses the reference forward kinematics cannot realise (palms off the
+bar, feet off the floor or not flat) and via-poses not bound to a phase (v2.1,
+Repository_Management#2077). It reuses the standard's existing
 tolerances; it defines none.
 
 Stdlib-only.
@@ -191,6 +192,19 @@ def _one_pose_problems(
     return _range_problems(std, ex, pose) or _reach_problems(std, ex, pose)
 
 
+def _binding_problems(ex: str, block: dict[str, Any]) -> list[str]:
+    """Every via-pose names an existing phase; ``start`` anchors the first."""
+    names = [p.get("name") for p in block.get("phases", [])]
+    out: list[str] = []
+    for pose, data in block["via_poses"].items():
+        phase = data.get("phase")
+        if phase not in names:
+            out.append(f"{ex}/{pose}: phase {phase!r} is not a phase of {ex}")
+        elif pose == "start" and names and phase != names[0]:
+            out.append(f"{ex}/start: must anchor the first phase {names[0]!r}")
+    return out
+
+
 def _pose_problems(std: dict[str, Any], ex: str, block: dict[str, Any]) -> list[str]:
     poses = block["via_poses"]
     out = [
@@ -198,6 +212,7 @@ def _pose_problems(std: dict[str, Any], ex: str, block: dict[str, Any]) -> list[
         for n in ("start", "lockout")
         if n not in poses
     ]
+    out += _binding_problems(ex, block)
     for pose, data in poses.items():
         out += _one_pose_problems(std, ex, pose, data)
     if block.get("root_joint") == "weld":

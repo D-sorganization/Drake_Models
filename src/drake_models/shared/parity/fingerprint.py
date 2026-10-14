@@ -132,9 +132,9 @@ def fingerprint(exercise: str) -> dict[str, Any]:
     std = conformance.load_standard()
     version = _engine_version()
     sdf = _build_sdf(exercise)
+    # Standard v2.0 conformance criterion 3: the ordered phase names, a core
+    # assemble_fingerprint field since Repository_Management#2089.
     names = _phase_names(exercise, std)
-    # Standard v2.0 conformance criterion 3: the ordered phase names.
-    extras = {} if names is None else {"phase_names": names}
     try:
         loaded = load_sdf(sdf, exercise)
         plant = loaded.plant
@@ -166,7 +166,7 @@ def fingerprint(exercise: str) -> dict[str, Any]:
             segment_aliases=SEGMENT_ALIASES,
             ground_friction=_ground_friction(loaded),
             phase_count=None if names is None else len(names),
-            extras=extras,
+            phase_names=names,
         )
     except Exception as exc:  # noqa: BLE001 - any engine failure is reported
         logger.warning("Drake load failed for %s: %s", exercise, exc)
