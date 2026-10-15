@@ -12,6 +12,7 @@ from drake_models.simulation.controller import (
     pd_gains,
     stance_natural_frequency,
     support_gravity_compensation,
+    support_inverse_dynamics,
 )
 from drake_models.simulation.simulator import (
     DEFAULT_SAMPLE_PERIOD,
@@ -33,4 +34,5 @@ __all__ = [
     "pd_gains",
     "stance_natural_frequency",
     "support_gravity_compensation",
+    "support_inverse_dynamics",
 ]

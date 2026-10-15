@@ -40,6 +40,7 @@ from drake_models.simulation.controller import (
     require_known_joints,
     stance_natural_frequency,
     support_gravity_compensation,
+    support_inverse_dynamics,
 )
 
 logger = logging.getLogger(__name__)
@@ -135,9 +136,13 @@ def _support_frames(plant: Any, layout: _Layout) -> tuple[Any, ...]:
 
 
 def _feedforward(
-    plant: Any, context: Any, layout: _Layout, frames: tuple[Any, ...]
+    plant: Any,
+    context: Any,
+    layout: _Layout,
+    frames: tuple[Any, ...],
+    vdot: FloatArray | None = None,
 ) -> FloatArray:
-    """Support gravity compensation at the posture held in *context*."""
+    """Support dynamic or gravity compensation at the state held in *context*."""
     tree = _drake("multibody.tree")
     jacobian = np.zeros((6 * len(frames), plant.num_velocities()))
     for k, frame in enumerate(frames):
@@ -149,8 +154,17 @@ def _feedforward(
             plant.world_frame(),
             plant.world_frame(),
         )
-    return support_gravity_compensation(
-        plant.CalcGravityGeneralizedForces(context),
+    if vdot is None:
+        return support_gravity_compensation(
+            plant.CalcGravityGeneralizedForces(context),
+            jacobian,
+            layout.base_v_indices,
+            layout.v_indices,
+        )
+    forces = tree.MultibodyForces(plant)
+    tau_id = plant.CalcInverseDynamics(context, vdot, forces)
+    return support_inverse_dynamics(
+        tau_id,
         jacobian,
         layout.base_v_indices,
         layout.v_indices,
@@ -239,6 +253,41 @@ def _desired_state(
     q_d[columns] = q
     v_d[columns] = v
     return np.concatenate([q_d, v_d])
+
+
+def _computed_torque_feedforward(
+    plant: Any,
+    layout: _Layout,
+    trajectory: JointTrajectory,
+    columns: list[int],
+) -> Any:
+    """Drake system: plant state in, computed-torque feedforward out."""
+    leaf_system: Any = _drake("systems.framework").LeafSystem
+    frames = _support_frames(plant, layout)
+    nq, nv = plant.num_positions(), plant.num_velocities()
+    v_columns = [layout.v_indices[c] for c in columns]
+
+    class _ComputedTorqueFeedforward(leaf_system):  # type: ignore[misc]
+        def __init__(self) -> None:
+            super().__init__()
+            self._scratch = plant.CreateDefaultContext()
+            self._state = self.DeclareVectorInputPort("state", nq + nv)
+            self.DeclareVectorOutputPort(
+                "actuation", len(layout.joint_names), self._calc
+            )
+
+        def _calc(self, context: Any, output: Any) -> None:
+            t = context.get_time()
+            state = self._state.Eval(context)
+            plant.SetPositions(self._scratch, state[:nq])
+            plant.SetVelocities(self._scratch, state[nq:])
+            vdot = np.zeros(nv)
+            vdot[v_columns] = trajectory.sample_acceleration(t)
+            output.SetFromVector(
+                _feedforward(plant, self._scratch, layout, frames, vdot)
+            )
+
+    return _ComputedTorqueFeedforward()
 
 
 def _gravity_feedforward(plant: Any, layout: _Layout) -> Any:
@@ -374,7 +423,9 @@ class TrackingSimulator:
 
         builder = loaded.builder
         reference = builder.AddSystem(_reference_source(trajectory, columns, hold))
-        feedforward = builder.AddSystem(_gravity_feedforward(plant, layout))
+        feedforward = builder.AddSystem(
+            _computed_torque_feedforward(plant, layout, trajectory, columns)
+        )
         builder.Connect(
             reference.get_output_port(),
             plant.get_desired_state_input_port(loaded.model_instance),

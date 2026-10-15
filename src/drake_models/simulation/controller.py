@@ -40,12 +40,11 @@ from drake_models.shared.contracts.preconditions import (
 FloatArray = NDArray[np.float64]
 
 # Ratio of PD stiffness to the gravitational toppling stiffness m g h (see the
-# module docstring): gravity then softens each joint loop by at most 0.25 %.
-# The feedforward is gravity only, so the inertial load of a squat is left to
-# the feedback: the quarter-squat tracking error falls as ~1/sqrt(margin) (0.123
-# rad at 100, 0.064 rad at 400) and 400 keeps it inside the squat via-pose
-# tolerance (0.1 rad) with headroom.
-DEFAULT_STIFFNESS_MARGIN = 400.0
+# module docstring): gravity then softens each joint loop by at most 1 %.
+# With computed-torque feedforward compensating inertial and Coriolis loads
+# (Issue #435), a margin of 100 keeps tracking errors well within via-pose
+# tolerances.
+DEFAULT_STIFFNESS_MARGIN = 100.0
 # Critical damping: the fastest non-oscillatory error decay.
 DEFAULT_DAMPING_RATIO = 1.0
 # Relative residual of the support-wrench solve.  The base rows are a full-rank
@@ -128,6 +127,31 @@ class JointTrajectory:
         )
         return q, dq_ds / h
 
+    def sample_acceleration(self, t: float) -> FloatArray:
+        """Reference joint acceleration ``vdot`` at time *t* (s)."""
+        if not math.isfinite(t):
+            raise ValueError("t must be finite")
+        if t <= self.times[0] or t >= self.times[-1]:
+            return np.zeros(len(self.joint_names))
+        k = int(np.searchsorted(self.times, t, side="right")) - 1
+        h = float(self.times[k + 1] - self.times[k])
+        s = (t - float(self.times[k])) / h
+        knot_v = self._knot_velocities()
+        p0, p1 = self.positions[k], self.positions[k + 1]
+        m0, m1 = h * knot_v[k], h * knot_v[k + 1]
+        d2q_ds2 = (
+            (12 * s - 6) * p0 + (6 * s - 4) * m0 + (-12 * s + 6) * p1 + (6 * s - 2) * m1
+        )
+        return d2q_ds2 / (h * h)
+
+    def sample_state_and_acceleration(
+        self, t: float
+    ) -> tuple[FloatArray, FloatArray, FloatArray]:
+        """Reference ``(q, v, a)`` at time *t* (s), in ``joint_names`` order."""
+        q, v = self.sample(t)
+        a = self.sample_acceleration(t)
+        return q, v, a
+
 
 def stance_natural_frequency(
     com_height: float,
@@ -198,6 +222,57 @@ def pd_gains(
     return kp, kd
 
 
+def support_inverse_dynamics(
+    inverse_dynamics_forces: ArrayLike,
+    support_jacobian: ArrayLike,
+    base_indices: Sequence[int],
+    actuated_indices: Sequence[int],
+) -> FloatArray:
+    """Actuator torques producing inverse-dynamics forces while on supports.
+
+    Dynamic equilibrium is ``B u + J^T w = tau_id`` where ``tau_id`` is the
+    generalized force vector from inverse dynamics (e.g.
+    ``M(q) vdot + C(q, v) v - tau_g``). The unactuated floating-base rows fix
+    ``J_b^T w = tau_id[base]``; the minimum-norm ``w`` shares the load
+    between supports, and the actuated rows give
+    ``u = (tau_id - J^T w)[actuated]``.
+
+    Args:
+        inverse_dynamics_forces: ``tau_id`` (e.g. from ``CalcInverseDynamics``), ``(nv,)``.
+        support_jacobian: Stacked spatial-velocity Jacobians of the support
+            frames, shape ``(6 k, nv)``; ``k = 0`` is allowed.
+        base_indices: Velocity indices of the floating base (empty if welded).
+        actuated_indices: Velocity index of each actuated joint.
+
+    Returns:
+        ``u`` with one entry per actuated joint.
+
+    Raises:
+        ValueError: Inconsistent shapes or non-finite inputs.
+        AssertionError: The supports cannot balance the base (postcondition).
+    """
+    tau_id = np.asarray(inverse_dynamics_forces, dtype=np.float64)
+    if tau_id.ndim != 1:
+        raise ValueError("inverse_dynamics_forces must be 1-D")
+    nv = tau_id.size
+    jacobian = np.asarray(support_jacobian, dtype=np.float64).reshape(-1, nv)
+    require_finite(tau_id, "inverse_dynamics_forces")
+    require_finite(jacobian, "support_jacobian")
+    base = np.asarray(base_indices, dtype=np.intp)
+    actuated = np.asarray(actuated_indices, dtype=np.intp)
+    if base.size == 0 or jacobian.shape[0] == 0:
+        return tau_id[actuated]
+    jb_t = jacobian[:, base].T
+    wrench = np.linalg.lstsq(jb_t, tau_id[base], rcond=None)[0]
+    residual = float(np.linalg.norm(jb_t @ wrench - tau_id[base]))
+    scale = max(1.0, float(np.linalg.norm(tau_id[base])))
+    if residual > _EQUILIBRIUM_RTOL * scale:
+        raise AssertionError(
+            f"Postcondition violated: supports leave a base wrench of {residual:g}"
+        )
+    return (tau_id - jacobian.T @ wrench)[actuated]
+
+
 def support_gravity_compensation(
     gravity_forces: ArrayLike,
     support_jacobian: ArrayLike,
@@ -230,23 +305,9 @@ def support_gravity_compensation(
     tau_g = np.asarray(gravity_forces, dtype=np.float64)
     if tau_g.ndim != 1:
         raise ValueError("gravity_forces must be 1-D")
-    nv = tau_g.size
-    jacobian = np.asarray(support_jacobian, dtype=np.float64).reshape(-1, nv)
-    require_finite(tau_g, "gravity_forces")
-    require_finite(jacobian, "support_jacobian")
-    base = np.asarray(base_indices, dtype=np.intp)
-    actuated = np.asarray(actuated_indices, dtype=np.intp)
-    if base.size == 0 or jacobian.shape[0] == 0:
-        return -tau_g[actuated]
-    jb_t = jacobian[:, base].T
-    wrench = np.linalg.lstsq(jb_t, -tau_g[base], rcond=None)[0]
-    residual = float(np.linalg.norm(jb_t @ wrench + tau_g[base]))
-    scale = max(1.0, float(np.linalg.norm(tau_g[base])))
-    if residual > _EQUILIBRIUM_RTOL * scale:
-        raise AssertionError(
-            f"Postcondition violated: supports leave a base wrench of {residual:g}"
-        )
-    return -(tau_g + jacobian.T @ wrench)[actuated]
+    return support_inverse_dynamics(
+        -tau_g, support_jacobian, base_indices, actuated_indices
+    )
 
 
 def require_known_joints(names: Sequence[str], known: Sequence[str]) -> None:
@@ -268,4 +329,5 @@ __all__ = [
     "require_known_joints",
     "stance_natural_frequency",
     "support_gravity_compensation",
+    "support_inverse_dynamics",
 ]

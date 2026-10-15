@@ -222,3 +222,96 @@ def test_require_known_joints() -> None:
     require_known_joints(["a"], ["a", "b"])
     with pytest.raises(ValueError, match="'c'"):
         require_known_joints(["a", "c"], ["a", "b"])
+
+
+class TestTrajectoryAcceleration:
+    def test_starts_and_ends_with_zero_acceleration_and_holds_outside(self) -> None:
+        traj = _trajectory()
+        for t in (-1.0, 0.0, 3.0, 9.0):
+            a = traj.sample_acceleration(t)
+            np.testing.assert_array_equal(a, 0.0)
+
+    def test_acceleration_is_the_derivative_of_velocity(self) -> None:
+        traj = _trajectory()
+        h = 1e-6
+        for t in (0.3, 1.7, 2.9):
+            _, v_plus = traj.sample(t + h)
+            _, v_minus = traj.sample(t - h)
+            a = traj.sample_acceleration(t)
+            np.testing.assert_allclose(a, (v_plus - v_minus) / (2 * h), atol=1e-5)
+
+    def test_sample_state_and_acceleration_matches_sample(self) -> None:
+        traj = _trajectory()
+        for t in (0.0, 0.5, 1.0, 2.0, 3.0):
+            q, v = traj.sample(t)
+            a = traj.sample_acceleration(t)
+            q_all, v_all, a_all = traj.sample_state_and_acceleration(t)
+            np.testing.assert_array_equal(q_all, q)
+            np.testing.assert_array_equal(v_all, v)
+            np.testing.assert_array_equal(a_all, a)
+
+    def test_rejects_non_finite_time(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            _trajectory().sample_acceleration(math.nan)
+
+
+class TestSupportInverseDynamics:
+    """Test computed-torque feedforward under support contacts."""
+
+    def _model(self) -> tuple[np.ndarray, np.ndarray]:
+        nv = 7
+        weight = 100.0 * 9.80665
+        tau_id = np.zeros(nv)
+        tau_id[5] = weight  # dynamic load pulling base upwards/reaction
+        tau_id[1] = weight * 0.02
+        tau_id[6] = 15.0  # joint torque requirement
+        jacobian = np.zeros((12, nv))
+        jacobian[:6, :6] = _rigid_body_jacobian(np.array([0.0, 0.1, -1.0]))
+        jacobian[6:, :6] = _rigid_body_jacobian(np.array([0.0, -0.1, -1.0]))
+        jacobian[6:, 6] = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+        return tau_id, jacobian
+
+    def test_matches_support_gravity_compensation_when_pure_gravity(self) -> None:
+        from drake_models.simulation.controller import support_inverse_dynamics
+
+        tau_g = np.array([0.0, 20.0, 0.0, 0.0, 0.0, -980.0, -5.0])
+        jacobian = np.zeros((12, 7))
+        jacobian[:6, :6] = _rigid_body_jacobian(np.array([0.0, 0.1, -1.0]))
+        jacobian[6:, :6] = _rigid_body_jacobian(np.array([0.0, -0.1, -1.0]))
+        base, actuated = list(range(6)), [6]
+
+        u_grav = support_gravity_compensation(tau_g, jacobian, base, actuated)
+        u_dyn = support_inverse_dynamics(-tau_g, jacobian, base, actuated)
+        np.testing.assert_allclose(u_dyn, u_grav, atol=1e-12)
+
+    def test_balances_base_and_transmits_accelerations(self) -> None:
+        from drake_models.simulation.controller import support_inverse_dynamics
+
+        tau_id, jacobian = self._model()
+        base, actuated = list(range(6)), [6]
+        u = support_inverse_dynamics(tau_id, jacobian, base, actuated)
+
+        wrench = np.linalg.lstsq(jacobian[:, base].T, tau_id[base], rcond=None)[0]
+        np.testing.assert_allclose(
+            jacobian[:, base].T @ wrench, tau_id[base], atol=1e-9
+        )
+        np.testing.assert_allclose(u + jacobian[:, 6] @ wrench, tau_id[6], atol=1e-9)
+
+    def test_unbalanceable_base_violates_postcondition(self) -> None:
+        from drake_models.simulation.controller import support_inverse_dynamics
+
+        tau_id, jacobian = self._model()
+        jacobian[:, :3] = 0.0
+        with pytest.raises(AssertionError, match="Postcondition"):
+            support_inverse_dynamics(tau_id, jacobian, list(range(6)), [6])
+
+    def test_rejects_non_finite_or_bad_shapes(self) -> None:
+        from drake_models.simulation.controller import support_inverse_dynamics
+
+        tau_id, jacobian = self._model()
+        bad = tau_id.copy()
+        bad[0] = np.nan
+        with pytest.raises(ValueError, match="non-finite"):
+            support_inverse_dynamics(bad, jacobian, range(6), [6])
+        with pytest.raises(ValueError, match="1-D"):
+            support_inverse_dynamics(tau_id[None, :], jacobian, range(6), [6])
