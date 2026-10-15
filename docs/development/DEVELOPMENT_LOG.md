@@ -18,6 +18,84 @@ reachable from any live state and `abandoned` from `parked`.
 
 ## Active
 
+### DL-#435 · Replace Stiffness-Margin Gain Hike With Computed-Torque Feedforward in TrackingSimulator
+
+- **State:** in_review
+- **Owner:** unassigned
+- **Issue:** #435
+- **Branch:** fix/435-computed-torque-feedforward
+- **PR:** #437
+- **Paths:** see #437
+- **Started:** 2026-10-15
+- **Last verified:** 2026-10-15 (`6ead3523`; collated from changes/435-computed-torque-feedforward.md)
+- **Summary:** Replace stiffness-margin gain hike with computed-torque feedforward in TrackingSimulator
+- **Next step:** Merge via PR into main
+
+### DL-#429 · Set the Bench-Press Bench Pad Mass to the Cross-Pack 1E-4 kg Ground-Borne Convention and Add Drake-Free Parity Guards for Shoulder Adduct Limits and Bench Mass
+
+- **State:** in_review
+- **Owner:** unassigned
+- **Issue:** #429
+- **Branch:** fix/429-shoulder-limits-bench-mass
+- **PR:** #432
+- **Paths:** see #432
+- **Started:** 2026-10-15
+- **Last verified:** 2026-10-15 (`e2ddab08`; collated from changes/429-set-the-bench-press-bench-pad-mass-to-th.md)
+- **Summary:** Set the bench-press bench pad mass to the cross-pack 1e-4 kg ground-borne convention and add drake-free parity guards for shoulder adduct limits and bench mass
+- **Next step:** Merge the PR; shoulder adduct limits land via #426 (standard v2.1.0 resync).
+
+### DL-#375 · Add Headless Meshcat Rollout Recording (Record_Rollout) to Static HTML
+
+- **State:** in_review
+- **Owner:** unassigned
+- **Issue:** #375
+- **Branch:** feat/375-record
+- **PR:** #432
+- **Paths:** see #432
+- **Started:** 2026-10-15
+- **Last verified:** 2026-10-15 (`e2ddab08`; collated from changes/375-add-headless-meshcat-rollout-recording-r.md)
+- **Summary:** Add headless Meshcat rollout recording (record_rollout) to static HTML
+- **Next step:** Merge the PR; #369 can pass its controller-wired builder to record_rollout.
+
+### DL-#374 · Load the SHA-Pinned Pinocchio_Models URDF With Drake Parser and Compare Fingerprints With the Native SDF Model
+
+- **State:** in_review
+- **Owner:** unassigned
+- **Issue:** #374
+- **Branch:** feat/374-urdf-fingerprint
+- **PR:** #422
+- **Paths:** see #422
+- **Started:** 2026-10-15
+- **Last verified:** 2026-10-15 (`961ad3d7`; collated from changes/374-load-the-sha-pinned-pinocchio-models-urd.md)
+- **Summary:** Load the SHA-pinned Pinocchio_Models URDF with Drake Parser and compare fingerprints with the native SDF model
+- **Next step:** Merge the PR; resolve #421 (bench fixture mass) and delete its ledger entry.
+
+### DL-#371 · Expose Drake Contact Results as Per-Foot and Total GRF With CoP (Standing Test on Real Pydrake)
+
+- **State:** in_review
+- **Owner:** unassigned
+- **Issue:** #371
+- **Branch:** feat/371-grf-cop
+- **PR:** #420
+- **Paths:** see #420
+- **Started:** 2026-10-15
+- **Last verified:** 2026-10-15 (`2eeba803`; collated from changes/371-expose-drake-contact-results-as-per-foot.md)
+- **Summary:** Expose Drake contact results as per-foot and total GRF with CoP (standing test on real pydrake)
+- **Next step:** Merge the PR once CI (real-pydrake standing test) is green.
+
+### DL-#369 · Add TrackingSimulator: Forward-Dynamics Rollouts Tracking a Joint Trajectory (Implicit PD Plus Support Gravity Compensation)
+
+- **State:** in_review
+- **Owner:** unassigned
+- **Issue:** #369
+- **Branch:** feat/369-simulator
+- **PR:** #432
+- **Paths:** see #432
+- **Started:** 2026-10-15
+- **Last verified:** 2026-10-15 (`e2ddab08`; collated from changes/369-add-trackingsimulator-forward-dynamics-r.md)
+- **Summary:** Add TrackingSimulator: forward-dynamics rollouts tracking a joint trajectory (implicit PD plus support gravity compensation)
+- **Next step:** Merge after #416 (self-contact filtering) lands; the real rollout test needs it.
+
 ### DL-#381 · Floor-Pull Start Poses: Palm-Centre Grip, Solved Pelvis Pitch in the Start Pose; Snatch Wide-Grip Floor Start Still Unreachable Within Hip Range
 
 - **State:** in_review
@@ -118,6 +196,71 @@ reachable from any live state and `abandoned` from `parked`.
   definition.
 
 ## Shipped (Last 90 Days)
+
+### DL-#391 · Verify Segment Inertia Parity Against Canonical Standard and Set Bench Pad Mass Near-Zero
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #391
+- **Branch:** merged via #432
+- **PR:** #432
+- **Paths:** see #432
+- **Started:** 2026-10-15
+- **Last verified:** 2026-10-15 (`e2ddab08`; collated from changes/391-segment-inertia-parity.md)
+- **Summary:** Verify segment inertia parity against canonical standard and set bench pad mass near-zero
+- **Next step:** Shipped in PR #432.
+
+### DL-#367 · Add Task-Space Position Targets, Joint Limits and a Regularising Cost to IK (Solve_Ik_Pose)
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #367
+- **Branch:** merged via #423
+- **PR:** #423
+- **Paths:** see #423
+- **Started:** 2026-10-15
+- **Last verified:** 2026-10-15 (`c9872afa`; collated from changes/367-add-task-space-position-targets-joint-li.md)
+- **Summary:** Add task-space position targets, joint limits and a regularising cost to IK (solve_ik_pose)
+- **Next step:** Shipped in PR #423.
+
+### DL-#364 · Derive Pelvis Standing Height From Leg Chain so Feet Rest on Ground
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #364
+- **Branch:** merged via #417
+- **PR:** #417
+- **Paths:** see #417
+- **Started:** 2026-10-15
+- **Last verified:** 2026-10-15 (`e1951d15`; collated from changes/364-derive-pelvis-standing-height-from-leg-c.md)
+- **Summary:** Derive pelvis standing height from leg chain so feet rest on ground
+- **Next step:** Shipped in PR #417.
+
+### DL-#363 · Filter All Human Body-Body Collision Pairs to Eliminate Self-Contacts
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #363
+- **Branch:** merged via #432
+- **PR:** #432
+- **Paths:** see #432
+- **Started:** 2026-10-15
+- **Last verified:** 2026-10-15 (`e2ddab08`; collated from changes/363-filter-all-human-body-body-collision-pai.md)
+- **Summary:** Filter all human body-body collision pairs to eliminate self-contacts
+- **Next step:** Shipped in PR #432.
+
+### DL-#361 · Re-Sync Vendored Model-Parity Bundle to Repository_Management Main (Standard V2.1, assemble.py Phase_Names From RM#2089)
+
+- **State:** shipped
+- **Owner:** unassigned
+- **Issue:** #361
+- **Branch:** merged via #432
+- **PR:** #432
+- **Paths:** see #432
+- **Started:** 2026-10-15
+- **Last verified:** 2026-10-15 (`e2ddab08`; collated from changes/361-parity-bundle-resync.md)
+- **Summary:** Re-sync vendored model-parity bundle to Repository_Management main (standard v2.1, assemble.py phase_names from RM#2089)
+- **Next step:** Shipped in PR #432.
 
 ### DL-#409 · Name Gait and Sit-to-Stand Phases per Standard V2.0
 
