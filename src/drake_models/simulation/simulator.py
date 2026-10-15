@@ -161,7 +161,7 @@ def _feedforward(
             layout.base_v_indices,
             layout.v_indices,
         )
-    forces = _drake("multibody.plant").MultibodyForces(plant)
+    forces = tree.MultibodyForces(plant)
     tau_id = plant.CalcInverseDynamics(context, vdot, forces)
     return support_inverse_dynamics(
         tau_id,
